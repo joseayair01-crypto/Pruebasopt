@@ -207,96 +207,110 @@ class OrdenExpirationService {
         }
     }
 
-    /**
-     * Libera una orden específica y devuelve sus boletos a disponibles
-     * ⚠️ PROTECCIÓN: Solo libera órdenes SIN comprobante (cancelación automática)
-     * @param {Object} orden - Objeto de orden con: id, numero_orden, boletos JSON
-     * @returns {Object} - { boletosCancelados, ordenId }
-     */
     async liberarOrden(orden) {
         let boletosCancelados = 0;
 
         try {
             // ⭐ VALIDACIÓN CRÍTICA: No liberar órdenes con comprobante de pago
-            // El admin puede rechazarlas manualmente, pero automáticamente están protegidas
             if (orden.comprobante_path) {
-                console.warn(`⚠️  [ExpService] PROTECCIÓN: No se libera ${orden.numero_orden} - tiene comprobante (debe rechazarse manualmente)`);
+                console.warn(`⚠️  [ExpService] PROTECCIÓN: No se libera ${orden.numero_orden} - tiene comprobante`);
                 throw new Error('ORDEN_PROTEGIDA_CON_COMPROBANTE');
             }
 
             // 1. Parsear boletos de forma segura
             let boletos = [];
             try {
-                boletos = JSON.parse(orden.boletos);
-                if (!Array.isArray(boletos)) {
-                    boletos = [];
+                if (Array.isArray(orden.boletos)) {
+                    boletos = orden.boletos.map(n => {
+                        const num = parseInt(n, 10);
+                        return isNaN(num) ? null : num;
+                    }).filter(n => n !== null);
+                } else if (typeof orden.boletos === 'string') {
+                    boletos = JSON.parse(orden.boletos);
+                    if (!Array.isArray(boletos)) boletos = [];
                 }
             } catch (parseError) {
-                console.warn(`⚠️  Boletos malformados en orden ${orden.numero_orden}`);
+                console.warn(`⚠️  [ExpService] Boletos malformados en orden ${orden.numero_orden}:`, parseError.message);
                 boletos = [];
             }
 
             boletosCancelados = boletos.length;
+            console.log(`  📋 ${orden.numero_orden}: ${boletos.length} boletos a liberar`);
+            console.log(`     Primeros: [${boletos.slice(0, 10).join(',')}]`);
 
-            // 2. Actualizar estado en transacción para garantizar consistencia
-            await db.transaction(async (trx) => {
+            if (boletos.length === 0) {
+                console.warn(`  ⚠️  ${orden.numero_orden}: SIN BOLETOS para liberar`);
+                return { boletosCancelados: 0, ordenId: orden.id };
+            }
+
+            // 2. Actualizar estado en transacción
+            const resultado = await db.transaction(async (trx) => {
                 // PASO 1: Actualizar la orden a 'cancelada'
-                const actualizado = await trx('ordenes')
+                console.log(`  🔄 [PASO 1] Actualizando orden ${orden.numero_orden} a 'cancelada'...`);
+                
+                const actualizadoOrden = await trx('ordenes')
                     .where('id', orden.id)
                     .update({
                         estado: 'cancelada',
                         updated_at: new Date()
                     });
 
-                if (actualizado === 0) {
-                    throw new Error(`No se pudo actualizar orden ${orden.numero_orden}`);
+                if (actualizadoOrden === 0) {
+                    throw new Error(`NO SE ACTUALIZÓ LA ORDEN ${orden.numero_orden}`);
+                }
+                console.log(`  ✅ Orden actualizada a 'cancelada'`);
+
+                // PASO 2: CRÍTICO - Liberar los boletos
+                console.log(`  🔄 [PASO 2] Liberando ${boletos.length} boletos a 'disponible'...`);
+                console.log(`     IDs: [${boletos.slice(0, 5).join(',')}${boletos.length > 5 ? '...' : ''}]`);
+
+                // Verificar que los boletos EXISTEN antes de actualizar
+                const boletosExistentes = await trx('boletos_estado')
+                    .whereIn('numero', boletos)
+                    .count('* as cantidad')
+                    .first();
+
+                console.log(`  🔍 Boletos encontrados en BD: ${boletosExistentes.cantidad} de ${boletos.length}`);
+
+                if (!boletosExistentes.cantidad || boletosExistentes.cantidad === 0) {
+                    console.error(`  ❌ ERROR CRÍTICO: Ninguno de los boletos existe en boletos_estado`);
+                    throw new Error('BOLETOS_NO_ENCONTRADOS_EN_BD');
                 }
 
-                // PASO 2: CRÍTICO - Liberar los boletos de vuelta a 'disponible'
-                if (boletos.length > 0) {
-                    console.log(`  📋 Preparando liberar ${boletos.length} boletos: [${boletos.slice(0, 5).join(',')}...]`);
-                    
-                    // Verificar estado ANTES de actualizar (debug)
-                    const estadosAntes = await trx('boletos_estado')
-                        .whereIn('numero', boletos)
-                        .select('numero', 'estado')
-                        .limit(3);
-                    
-                    console.log(`  🔍 Estados ANTES: ${JSON.stringify(estadosAntes.map(b => `${b.numero}:${b.estado}`))}`);
-                    
-                    // ACTUALIZAR BOLETOS
-                    const actualizadosBoletos = await trx('boletos_estado')
-                        .whereIn('numero', boletos)
-                        .update({
-                            estado: 'disponible',
-                            numero_orden: null,
-                            reservado_en: null,
-                            vendido_en: null,
-                            updated_at: new Date()
-                        });
+                // Actualizar boletos
+                const actualizadosBoletos = await trx('boletos_estado')
+                    .whereIn('numero', boletos)
+                    .update({
+                        estado: 'disponible',
+                        numero_orden: null,
+                        reservado_en: null,
+                        vendido_en: null,
+                        updated_at: new Date()
+                    });
 
-                    console.log(`  ✓ ${orden.numero_orden} → CANCELADA (${actualizadosBoletos}/${boletos.length} boletos liberados a 'disponible')`);
-                    
-                    // Verificar estado DESPUÉS de actualizar (debug)
-                    const estadosDespues = await trx('boletos_estado')
-                        .whereIn('numero', boletos)
-                        .select('numero', 'estado')
-                        .limit(3);
-                    
-                    console.log(`  ✅ Estados DESPUÉS: ${JSON.stringify(estadosDespues.map(b => `${b.numero}:${b.estado}`))}`);
-                    
-                    if (actualizadosBoletos !== boletos.length) {
-                        console.warn(`  ⚠️  Solo se liberaron ${actualizadosBoletos} de ${boletos.length} boletos`);
-                    }
-                } else {
-                    console.log(`  ✓ ${orden.numero_orden} → CANCELADA (sin boletos para liberar)`);
+                console.log(`  ✅ Boletos liberados: ${actualizadosBoletos}/${boletos.length}`);
+
+                if (actualizadosBoletos !== boletos.length) {
+                    console.warn(`  ⚠️  Advertencia: Solo se liberaron ${actualizadosBoletos} de ${boletos.length}`);
                 }
+
+                // Verificar que realmente se actualizaron
+                const boletosVerificacion = await trx('boletos_estado')
+                    .whereIn('numero', boletos.slice(0, 5))
+                    .select('numero', 'estado')
+                    .limit(5);
+
+                console.log(`  🔍 Verificación post-update (primeros 5): ${JSON.stringify(boletosVerificacion.map(b => `${b.numero}:${b.estado}`))}`);
+
+                return { actualizadosBoletos, boletosVerificacion };
             });
 
-            return { boletosCancelados, ordenId: orden.id };
+            console.log(`  ✅ TRANSACCIÓN EXITOSA: ${resultado.actualizadosBoletos} boletos liberados`);
+            return { boletosCancelados: resultado.actualizadosBoletos, ordenId: orden.id };
 
         } catch (error) {
-            console.error(`❌ Error procesando orden ${orden.numero_orden}:`, error.message);
+            console.error(`  ❌ ERROR FATAL en ${orden.numero_orden}:`, error.message);
+            console.error(`     Stack:`, error.stack);
             throw error;
         }
     }
