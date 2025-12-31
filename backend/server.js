@@ -1950,6 +1950,16 @@ app.post('/api/public/ordenes-cliente/:numero_orden/comprobante', async (req, re
         const whatsapp = req.body?.whatsapp;
         const archivo = req.files?.comprobante;
 
+        console.log('[Comprobante Upload] Iniciando upload:', {
+            numero_orden,
+            whatsapp_received: !!whatsapp,
+            archivo_received: !!archivo,
+            archivo_mimetype: archivo?.mimetype,
+            archivo_size: archivo?.size,
+            req_files_keys: Object.keys(req.files || {}),
+            req_body_keys: Object.keys(req.body || {})
+        });
+
         // ===== VALIDACIONES =====
 
         // Orden ID es obligatorio
@@ -1962,6 +1972,7 @@ app.post('/api/public/ordenes-cliente/:numero_orden/comprobante', async (req, re
 
         // WhatsApp es obligatorio
         if (!whatsapp) {
+            console.log('[Comprobante Upload] Error: WhatsApp no recibido');
             return res.status(400).json({
                 success: false,
                 message: 'WhatsApp es obligatorio'
@@ -1979,6 +1990,7 @@ app.post('/api/public/ordenes-cliente/:numero_orden/comprobante', async (req, re
 
         // Archivo es obligatorio
         if (!archivo) {
+            console.log('[Comprobante Upload] Error: Archivo no recibido');
             return res.status(400).json({
                 success: false,
                 message: 'Archivo de comprobante es obligatorio'
@@ -2096,8 +2108,10 @@ app.post('/api/public/ordenes-cliente/:numero_orden/comprobante', async (req, re
         });
 
     } catch (error) {
+        console.error('[Comprobante Upload] Error capturado:', error);
         log('error', 'POST /api/public/ordenes-cliente/:numero_orden/comprobante error', {
             error: error.message,
+            stack: error.stack,
             ip: req.ip
         });
         return res.status(500).json({
