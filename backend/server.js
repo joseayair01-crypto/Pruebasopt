@@ -61,7 +61,7 @@ const PRECIO_BOLETO_DEFAULT = configExpiracion.precioBoleto; // ✅ PRECIO DINÁ
 
 // Log de configuración cargada
 console.log(`⚙️  Configuración de expiración cargada:`);
-console.log(`   - Tiempo apartado: ${TIEMPO_APARTADO_HORAS} horas`);
+console.log(`   - Tiempo reservado: ${TIEMPO_APARTADO_HORAS} horas`);
 console.log(`   - Intervalo limpieza: ${INTERVALO_LIMPIEZA_MINUTOS} minutos`);
 console.log(`   - Precio boleto: $${PRECIO_BOLETO_DEFAULT}`);  // ✅ LOG del precio
 
@@ -770,7 +770,7 @@ app.patch('/api/admin/config', verificarToken, async (req, res) => {
         if (tiempoApartadoHoras && tiempoApartadoHoras < 1) {
             return res.status(400).json({
                 success: false,
-                message: 'Tiempo apartado debe ser mayor a 0'
+                message: 'Tiempo reservado debe ser mayor a 0'
             });
         }
 
@@ -1340,7 +1340,7 @@ app.get('/api/boletos/cleanup-orphaned', async (req, res) => {
         // Paso 1: Contar cuántos hay
         const resultado = await db.raw(`
             SELECT COUNT(*) as total FROM boletos_estado
-            WHERE estado = 'apartado'
+            WHERE estado = 'reservado'
             AND (
               numero_orden IS NULL
               OR NOT EXISTS (
@@ -1370,7 +1370,7 @@ app.get('/api/boletos/cleanup-orphaned', async (req, res) => {
                 numero_orden = NULL,
                 reservado_en = NULL,
                 updated_at = NOW()
-            WHERE estado = 'apartado'
+            WHERE estado = 'reservado'
             AND (
               numero_orden IS NULL
               OR NOT EXISTS (
@@ -1413,8 +1413,8 @@ app.get('/api/boletos/sync-full', async (req, res) => {
     try {
         console.log('\n=== SINCRONIZACIÓN COMPLETA DE BOLETOS_ESTADO ===\n');
 
-        // PASO 1: Limpiar boletos apartados huérfanos
-        console.log('1️⃣  Limpiando boletos apartados sin orden válida...');
+        // PASO 1: Limpiar boletos reservados huérfanos
+        console.log('1️⃣  Limpiando boletos reservados sin orden válida...');
         
         const liberarHuerfanos = await db.raw(`
             UPDATE boletos_estado
@@ -1422,7 +1422,7 @@ app.get('/api/boletos/sync-full', async (req, res) => {
                 numero_orden = NULL,
                 reservado_en = NULL,
                 updated_at = NOW()
-            WHERE estado = 'apartado'
+            WHERE estado = 'reservado'
             AND (
               numero_orden IS NULL
               OR NOT EXISTS (
@@ -2292,7 +2292,7 @@ app.get('/api/admin/boleto-simple/:numero', verificarToken, async (req, res) => 
                 ok: true,
                 data: {
                     numero: numeroboleto,
-                    estado: ordenEncontrada.estado === 'confirmada' ? 'vendido' : 'apartado',
+                    estado: ordenEncontrada.estado === 'confirmada' ? 'vendido' : 'reservado',
                     numero_orden: ordenEncontrada.numero_orden,
                     nombre_cliente: ordenEncontrada.nombre_cliente || '',
                     apellido_cliente: ordenEncontrada.apellido_cliente || '',
@@ -2455,7 +2455,7 @@ app.get('/api/public/ordenes-stats', async (req, res) => {
  * GET /api/public/boletos
  * ⚠️ CRÍTICO: Devuelve estado REAL DE BOLETOS directamente de boletos_estado
  * - "sold": boletos en estado 'vendido' (ya pagados y confirmados)
- * - "reserved": boletos en estado 'apartado' (en orden pendiente o con comprobante)
+ * - "reserved": boletos en estado 'reservado' (en orden pendiente o con comprobante)
  * 
  * SIN CACHE: Siempre devuelve datos frescos directamente de BD para sincronización 100%
  * Esta es la fuente única de verdad para UI
@@ -2469,17 +2469,17 @@ app.get('/api/public/boletos', async (req, res) => {
         const connection = await db.raw(`
             SELECT 
                 COUNT(*) FILTER (WHERE estado = 'vendido') as vendidos,
-                COUNT(*) FILTER (WHERE estado = 'apartado') as apartados
+                COUNT(*) FILTER (WHERE estado = 'reservado') as reservados
             FROM boletos_estado
         `);
         
-        const result = connection.rows && connection.rows[0] ? connection.rows[0] : { vendidos: 0, apartados: 0 };
+        const result = connection.rows && connection.rows[0] ? connection.rows[0] : { vendidos: 0, reservados: 0 };
         const vendidos = parseInt(result.vendidos) || 0;
-        const apartados = parseInt(result.apartados) || 0;
+        const reservados = parseInt(result.reservados) || 0;
 
         // Traer las listas reales SOLO si es crítico
         const boletosNoDisponibles = await db('boletos_estado')
-            .whereIn('estado', ['vendido', 'apartado'])
+            .whereIn('estado', ['vendido', 'reservado'])
             .select('numero', 'estado')
             .timeout(20000);
 
@@ -2489,11 +2489,11 @@ app.get('/api/public/boletos', async (req, res) => {
             .sort((a, b) => a - b);
         
         const reserved = boletosNoDisponibles
-            .filter(b => b.estado === 'apartado')
+            .filter(b => b.estado === 'reservado')
             .map(b => Number(b.numero))
             .sort((a, b) => a - b);
 
-        const disponibles = 60000 - vendidos - apartados;
+        const disponibles = 60000 - vendidos - reservados;
         const queryTime = Date.now() - startTime;
         
         const payload = {
@@ -2504,7 +2504,7 @@ app.get('/api/public/boletos', async (req, res) => {
             },
             stats: {
                 vendidos: vendidos,
-                apartados: apartados,
+                reservados: reservados,
                 disponibles: disponibles,
                 total: 60000,
                 queryTime: queryTime
@@ -2512,7 +2512,7 @@ app.get('/api/public/boletos', async (req, res) => {
         };
 
         if (queryTime > 1000 || Math.random() < 0.05) {
-            console.log(`[PublicBoletos] Sold: ${vendidos}, Apartados: ${apartados}, Time: ${queryTime}ms`);
+            console.log(`[PublicBoletos] Sold: ${vendidos}, Apartados: ${reservados}, Time: ${queryTime}ms`);
         }
 
         return res.json(payload);
@@ -2524,7 +2524,7 @@ app.get('/api/public/boletos', async (req, res) => {
             message: 'Error temporal',
             data: { sold: [], reserved: [] },
             stats: {
-                vendidos: 0, apartados: 0, disponibles: 60000, total: 60000
+                vendidos: 0, reservados: 0, disponibles: 60000, total: 60000
             }
         });
     }
@@ -2588,7 +2588,7 @@ app.get('/api/admin/boletos', verificarToken, async (req, res) => {
         const config = obtenerConfigExpiracion(); // O cargar desde config.js
         const totalBoletos = 100000; // Valor por defecto - puede obtener de config si lo necesita
         
-        // Crear set de boletos vendidos/apartados
+        // Crear set de boletos vendidos/reservados
         const boletosEnOrdenes = new Set();
         const boletosDetallados = [];
 
@@ -2602,7 +2602,7 @@ app.get('/api/admin/boletos', verificarToken, async (req, res) => {
                         boletosDetallados.push({
                             numero: numNum,
                             numero_orden: orden.numero_orden,
-                            estado: orden.estado.includes('confirmada') || orden.estado.includes('completada') ? 'vendido' : orden.estado.includes('pendiente') || orden.estado.includes('comprobante') ? 'apartado' : orden.estado,
+                            estado: orden.estado.includes('confirmada') || orden.estado.includes('completada') ? 'vendido' : orden.estado.includes('pendiente') || orden.estado.includes('comprobante') ? 'reservado' : orden.estado,
                             cliente_nombre: orden.nombre_cliente || '',
                             cliente_whatsapp: orden.telefono_cliente || '',
                             created_at: orden.created_at
@@ -3974,7 +3974,7 @@ app.post('/api/admin/cleanup-boletos', async (req, res) => {
         // Paso 1: Contar cuántos hay
         const resultado = await db.raw(`
             SELECT COUNT(*) as total FROM boletos_estado
-            WHERE estado = 'apartado'
+            WHERE estado = 'reservado'
             AND (
               numero_orden IS NULL
               OR NOT EXISTS (
@@ -4004,7 +4004,7 @@ app.post('/api/admin/cleanup-boletos', async (req, res) => {
                 numero_orden = NULL,
                 reservado_en = NULL,
                 updated_at = NOW()
-            WHERE estado = 'apartado'
+            WHERE estado = 'reservado'
             AND (
               numero_orden IS NULL
               OR NOT EXISTS (
