@@ -2072,3 +2072,35 @@ window.actualizarResumenCompra = actualizarResumenCompra;
 window.actualizarContadorCarritoGlobal = actualizarContadorCarritoGlobal;
 window.controlarEstadoBotonesLoQuiero = controlarEstadoBotonesLoQuiero;
 
+/**
+ * 🔍 DEBUG MODE: Escribe "debug()" en consola para ver estado
+ */
+function debug() {
+    const debugPanel = document.getElementById('debugPanel');
+    const debugInfo = document.getElementById('debugInfo');
+    
+    if (!debugPanel || !debugInfo) return;
+    
+    debugPanel.style.display = 'block';
+    
+    const info = `
+<div style="font-family: monospace; white-space: pre-wrap; word-break: break-all;">
+Sold count: ${window.rifaplusSoldNumbers?.length || 0}
+Reserved count: ${window.rifaplusReservedNumbers?.length || 0}
+Loaded: ${window.rifaplusBoletosLoaded}
+Browser: ${/Safari/.test(navigator.userAgent) && !/Chrome|Edge|Firefox/.test(navigator.userAgent) ? '🍎 Safari' : 'Other'}
+Worker timeout: ${window.workerTimeoutId || 'None'}
+Config estado: ${JSON.stringify(window.rifaplusConfig?.estado || {}, null, 2)}
+    </div>
+    `;
+    
+    debugInfo.innerHTML = info;
+    console.log('DEBUG INFO:', {
+        sold: window.rifaplusSoldNumbers,
+        reserved: window.rifaplusReservedNumbers,
+        loaded: window.rifaplusBoletosLoaded,
+        config: window.rifaplusConfig?.estado
+    });
+}
+
+window.debug = debug;
