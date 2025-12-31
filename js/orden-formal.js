@@ -709,8 +709,7 @@ async function guardarOrden() {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'User-Agent': 'RifaPlus-Cliente/1.0'
+                        'Accept': 'application/json'
                     },
                     body: JSON.stringify(payload),
                     mode: 'cors',
