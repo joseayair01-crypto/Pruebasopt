@@ -1322,15 +1322,24 @@
         // Export filtered orders to Excel using SheetJS
         function exportFilteredToExcel() {
             try {
-                const data = filteredOrdenes.map(o => ({
-                    'ID de orden': o.numero_orden,
-                    'Nombre': o.nombre_cliente || '',
-                    'WhatsApp': o.telefono_cliente || '',
-                    'Boletos': Array.isArray(o.boletos) ? o.boletos.join(',') : (o.boletos || ''),
-                    'Total': Number(o.total || 0),
-                    'Estado': o.estado || '',
-                    'Fecha': formatFechaLocalConOffset(o.created_at)
-                }));
+                const data = filteredOrdenes.map(o => {
+                    // Limitar boletos a 32,000 caracteres para evitar límite de Excel
+                    let boletoStr = Array.isArray(o.boletos) ? o.boletos.join(',') : (o.boletos || '');
+                    if (boletoStr.length > 32000) {
+                        boletoStr = boletoStr.substring(0, 31995) + '...';
+                    }
+                    
+                    return {
+                        'ID de orden': o.numero_orden,
+                        'Nombre': o.nombre_cliente || '',
+                        'WhatsApp': o.telefono_cliente || '',
+                        'Cantidad': Array.isArray(o.boletos) ? o.boletos.length : 0,
+                        'Boletos': boletoStr,
+                        'Total': Number(o.total || 0),
+                        'Estado': o.estado || '',
+                        'Fecha': formatFechaLocalConOffset(o.created_at)
+                    };
+                });
 
                 const ws = XLSX.utils.json_to_sheet(data);
                 const wb = XLSX.utils.book_new();
