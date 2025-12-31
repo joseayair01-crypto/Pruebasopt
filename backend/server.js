@@ -151,28 +151,31 @@ app.use(fileUpload({
 
 const limiterGeneral = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutos
-    max: process.env.NODE_ENV === 'production' ? 150 : 100, // Producción: 150, desarrollo: 100
+    max: process.env.NODE_ENV === 'production' ? 1000 : 500, // Aumentado significativamente
     message: 'Demasiadas solicitudes, intenta más tarde',
     standardHeaders: true,
     legacyHeaders: false,
     skip: (req, res) => {
-        return req.path === '/api/public/boletos';
+        // Excluir: archivos estáticos, boletos públicos, y requests GET simples
+        return req.path === '/api/public/boletos' || 
+               req.method === 'GET' && !req.path.startsWith('/api/') ||
+               req.path.match(/\.(html|css|js|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$/i);
     }
 });
 
 const limiterLogin = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 5, // máximo 5 intentos de login (protección contra fuerza bruta)
+    max: 10, // máximo 10 intentos de login (protección contra fuerza bruta)
     message: 'Demasiados intentos de login, intenta más tarde',
     skipSuccessfulRequests: true // No cuenta intentos exitosos
 });
 
 const limiterOrdenes = rateLimit({
     windowMs: 1 * 60 * 1000, // 1 minuto
-    max: process.env.NODE_ENV === 'production' ? 15 : 10, // Producción: 15, desarrollo: 10
+    max: process.env.NODE_ENV === 'production' ? 50 : 30, // Aumentado: 50 en producción, 30 en desarrollo
     message: 'Demasiadas órdenes, intenta más tarde'
     // Considera la cantidad de boletos en la orden (max 1000)
-    // 15 órdenes × 500 boletos promedio = 7500 boletos/minuto ≈ 450k/hora = cómodo
+    // 50 órdenes × 500 boletos promedio = 25k boletos/minuto ≈ 1.5M/hora = cómodo
 });
 
 app.use(limiterGeneral); // Aplicar a todas las rutas
