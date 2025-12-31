@@ -231,142 +231,77 @@ async function inicializarSistemaCompra() {
 /* ============================================================ */
 
 /**
- * Inicia timer para actualizar boletos cada 2 minutos
+ * Inicia timer para actualizar boletos cada 30 segundos
  * Detecta cuándo órdenes han sido canceladas por expiración
  * y libera los boletos en el grid
- * 
- * ⚠️ SOLO actualiza cuando el usuario está activo (escucha eventos)
  */
 function iniciarActualizacionPeriodicaBoletos() {
-    let ultimaActualizacion = Date.now();
-    let timerActualizacion = null;
-    let usuarioActivo = true;
+    // Recargar boletos cada 30 segundos (agresivo pero necesario para detectar cancelaciones)
+    setInterval(async () => {
+        try {
+            let endpoint = (window.rifaplusConfig?.backend?.apiBase) ? window.rifaplusConfig.backend.apiBase : 'http://localhost:3000';
+            endpoint = String(endpoint).replace(/\/+$/, '');
 
-    function actualizarBoletosDisponibles() {
-        const ahora = Date.now();
-        const minutosDesdeUltima = (ahora - ultimaActualizacion) / (1000 * 60);
+            console.log(`🔄 [PeriodicUpdate] Recargando disponibilidad...`);
 
-        // Actualizar cada 2 minutos mínimo
-        if (minutosDesdeUltima >= 2) {
-            console.log(`🔄 [Actualización] Recargando disponibilidad (${minutosDesdeUltima.toFixed(1)} min desde última)`);
-            
-            ultimaActualizacion = ahora;
-            
-            // Recargar datos SIN mostrar loading (silencioso en background)
-            (async () => {
-                try {
-                    let endpoint = (window.rifaplusConfig?.backend?.apiBase) ? window.rifaplusConfig.backend.apiBase : 'http://localhost:3000';
-                    endpoint = String(endpoint).replace(/\/+$/, '');
+            const response = await fetch(`${endpoint}/api/public/boletos?t=${Date.now()}`, {
+                priority: 'low',
+                cache: 'no-store'
+            });
 
-                    const response = await fetch(`${endpoint}/api/public/boletos?t=${Date.now()}`, {
-                        priority: 'low',
-                        cache: 'no-store' // ⭐ Forzar sin caché
-                    });
+            if (!response.ok) {
+                console.warn(`⚠️  [PeriodicUpdate] Error: ${response.status}`);
+                return;
+            }
 
-                    if (!response.ok) {
-                        console.warn(`⚠️  [Actualización] Error: ${response.status}`);
-                        return;
-                    }
+            const json = await response.json();
+            if (!json.success || !json.data) {
+                console.warn(`⚠️  [PeriodicUpdate] Respuesta inválida`, json);
+                return;
+            }
 
-                    const json = await response.json();
-                    if (!json.success || !json.data) {
-                        console.warn(`⚠️  [Actualización] Respuesta inválida`, json);
-                        return;
-                    }
+            let sold = Array.isArray(json.data.sold) ? json.data.sold : [];
+            let reserved = Array.isArray(json.data.reserved) ? json.data.reserved : [];
 
-                    // ✅ CRITICAL: Solo actualizar si hay datos nuevos
-                    let sold = Array.isArray(json.data.sold) ? json.data.sold : [];
-                    let reserved = Array.isArray(json.data.reserved) ? json.data.reserved : [];
+            const soldActual = window.rifaplusSoldNumbers || [];
+            const reservadoActual = window.rifaplusReservedNumbers || [];
 
-                    // Detectar si cambió algo (boletos liberados)
-                    const soldActual = window.rifaplusSoldNumbers || [];
-                    const reservadoActual = window.rifaplusReservedNumbers || [];
-                    
-                    console.debug(`[Actualización] Datos recibidos: ${sold.length} vendidos, ${reserved.length} apartados`);
-                    console.debug(`[Actualización] Datos actuales: ${soldActual.length} vendidos, ${reservadoActual.length} apartados`);
+            // COMPARAR: Si los datos cambiaron (cualquier diferencia)
+            if (JSON.stringify(sold.sort((a,b)=>a-b)) !== JSON.stringify(soldActual.sort((a,b)=>a-b)) ||
+                JSON.stringify(reserved.sort((a,b)=>a-b)) !== JSON.stringify(reservadoActual.sort((a,b)=>a-b))) {
+                
+                console.log(`✅ [PeriodicUpdate] CAMBIOS DETECTADOS`);
+                console.log(`   - Vendidos: ${soldActual.length} → ${sold.length}`);
+                console.log(`   - Reservados: ${reservadoActual.length} → ${reserved.length}`);
 
-                    // ⭐ COMPARAR CONTENIDO: No solo longitud, sino si realmente hay diferencias
-                    const soldSet = new Set(sold);
-                    const reservedSet = new Set(reserved);
-                    const soldActualSet = new Set(soldActual);
-                    const reservadoActualSet = new Set(reservadoActual);
+                // ACTUALIZAR EN MEMORIA
+                window.rifaplusSoldNumbers = sold;
+                window.rifaplusReservedNumbers = reserved;
 
-                    // Buscar diferencias
-                    const boletosLiberados = [];
-                    for (const num of soldActualSet) {
-                        if (!soldSet.has(num) && !reservedSet.has(num)) {
-                            boletosLiberados.push(num); // Estaba vendido, ahora no
-                        }
-                    }
-                    for (const num of reservadoActualSet) {
-                        if (!soldSet.has(num) && !reservedSet.has(num)) {
-                            boletosLiberados.push(num); // Estaba apartado, ahora no
-                        }
-                    }
-
-                    if (boletosLiberados.length > 0 || sold.length !== soldActual.length || reserved.length !== reservadoActual.length) {
-                        console.log(`📊 [Actualización] CAMBIOS DETECTADOS:`);
-                        console.log(`   - Vendidos: ${soldActual.length} → ${sold.length}`);
-                        console.log(`   - Reservados: ${reservadoActual.length} → ${reserved.length}`);
-                        if (boletosLiberados.length > 0) {
-                            console.log(`   - Boletos liberados: ${boletosLiberados.join(', ').substring(0, 100)}...`);
-                        }
-
-                        // ⭐ FORZAR ACTUALIZACIÓN: Siempre actualizar si hay cambios
-                        window.rifaplusSoldNumbers = sold;
-                        window.rifaplusReservedNumbers = reserved;
-
-                        // Actualizar stats
-                        if (window.rifaplusConfig?.estado) {
-                            const total = 60000;
-                            window.rifaplusConfig.estado.boletosVendidos = sold.length;
-                            window.rifaplusConfig.estado.boletosApartados = reserved.length;
-                            window.rifaplusConfig.estado.boletosDisponibles = total - sold.length - reserved.length;
-                        }
-
-                        console.log(`🎨 [Actualización] Re-renderizando grid...`);
-                        // ♻️ ACTUALIZAR GRID: Re-renderizar colores sin recargar página
-                        actualizarEstadoBoletosVisibles();
-
-                        // ✅ Log de cambios
-                        if (boletosLiberados.length > 0) {
-                            console.log(`✅ [Actualización] ${boletosLiberados.length} boletos fueron liberados (órdenes canceladas)`);
-                        }
-                    } else {
-                        console.debug(`[Actualización] Sin cambios en disponibilidad`);
-                    }
-                } catch (error) {
-                    console.error(`❌ [Actualización] Error:`, error.message);
+                // ACTUALIZAR STATS EN CONFIG
+                if (window.rifaplusConfig?.estado) {
+                    const total = 60000;
+                    window.rifaplusConfig.estado.boletosVendidos = sold.length;
+                    window.rifaplusConfig.estado.boletosApartados = reserved.length;
+                    window.rifaplusConfig.estado.boletosDisponibles = total - sold.length - reserved.length;
                 }
-            })();
-        }
-    }
 
-    // 👁️ Detectar inactividad del usuario (pausa actualizaciones después de 10 min sin actividad)
-    document.addEventListener('mousemove', () => { usuarioActivo = true; });
-    document.addEventListener('touchstart', () => { usuarioActivo = true; });
-    document.addEventListener('keypress', () => { usuarioActivo = true; });
+                // ACTUALIZAR GRID INMEDIATAMENTE
+                console.log(`🎨 [PeriodicUpdate] Re-renderizando grid...`);
+                actualizarEstadoBoletosVisibles();
 
-    // Pausa después de 10 minutos sin actividad
-    setInterval(() => {
-        if (!usuarioActivo) {
-            if (timerActualizacion) {
-                clearInterval(timerActualizacion);
-                timerActualizacion = null;
-                console.log('⏸️ [Actualización] Pausada (usuario inactivo)');
+                // ACTUALIZAR DASHBOARD (si existe)
+                if (typeof actualizarDashboardStats === 'function') {
+                    console.log(`📊 [PeriodicUpdate] Actualizando dashboard...`);
+                    actualizarDashboardStats();
+                }
             }
-        } else {
-            if (!timerActualizacion) {
-                timerActualizacion = setInterval(actualizarBoletosDisponibles, 30000); // Cada 30s, pero solo si pasaron 2+ min
-                console.log('▶️ [Actualización] Reanudada (usuario activo)');
-            }
+        } catch (error) {
+            console.error(`❌ [PeriodicUpdate] Error:`, error.message);
         }
-        usuarioActivo = false;
-    }, 10 * 60 * 1000); // 10 minutos sin actividad
+    }, 30000); // Cada 30 segundos
 
-    // Iniciar el timer
-    timerActualizacion = setInterval(actualizarBoletosDisponibles, 30000); // Verificar cada 30 segundos si deben actualizar
-    console.log('✅ [Actualización] Sistema de actualización periódica iniciado');
+    console.log(`✅ [PeriodicUpdate] Sistema de actualización periódica iniciado (cada 30s)`);
 }
 
 /* ============================================================ */
