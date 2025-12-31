@@ -221,6 +221,126 @@ async function inicializarSistemaCompra() {
     inicializarMaquinaSuerteMejorada();
     // La función `cargarBoletosPublicos` se encarga ahora de programar su siguiente ejecución
     // usando setTimeout + backoff para evitar solapamientos que causan 429.
+    
+    // 🔄 INICIAR ACTUALIZACIÓN PERIÓDICA: Detectar órdenes canceladas por expiración
+    iniciarActualizacionPeriodicaBoletos();
+}
+
+/* ============================================================ */
+/* SECCIÓN 3.5: ACTUALIZACIÓN PERIÓDICA - DETECTAR ÓRDENES CANCELADAS */
+/* ============================================================ */
+
+/**
+ * Inicia timer para actualizar boletos cada 2 minutos
+ * Detecta cuándo órdenes han sido canceladas por expiración
+ * y libera los boletos en el grid
+ * 
+ * ⚠️ SOLO actualiza cuando el usuario está activo (escucha eventos)
+ */
+function iniciarActualizacionPeriodicaBoletos() {
+    let ultimaActualizacion = Date.now();
+    let timerActualizacion = null;
+    let usuarioActivo = true;
+
+    function actualizarBoletosDisponibles() {
+        const ahora = Date.now();
+        const minutosDesdeUltima = (ahora - ultimaActualizacion) / (1000 * 60);
+
+        // Actualizar cada 2 minutos mínimo
+        if (minutosDesdeUltima >= 2) {
+            console.log(`🔄 [Actualización] Recargando disponibilidad (${minutosDesdeUltima.toFixed(1)} min desde última)`);
+            
+            ultimaActualizacion = ahora;
+            
+            // Recargar datos SIN mostrar loading (silencioso en background)
+            (async () => {
+                try {
+                    let endpoint = (window.rifaplusConfig?.backend?.apiBase) ? window.rifaplusConfig.backend.apiBase : 'http://localhost:3000';
+                    endpoint = String(endpoint).replace(/\/+$/, '');
+
+                    const response = await fetch(`${endpoint}/api/public/boletos`, {
+                        priority: 'low'
+                    });
+
+                    if (!response.ok) {
+                        console.warn(`⚠️  [Actualización] Error: ${response.status}`);
+                        return;
+                    }
+
+                    const json = await response.json();
+                    if (!json.success || !json.data) return;
+
+                    // ✅ CRITICAL: Solo actualizar si hay datos nuevos
+                    let sold = Array.isArray(json.data.sold) ? json.data.sold : [];
+                    let reserved = Array.isArray(json.data.reserved) ? json.data.reserved : [];
+
+                    // Detectar si cambió algo (boletos liberados)
+                    const soldActual = window.rifaplusSoldNumbers || [];
+                    const reservadoActual = window.rifaplusReservedNumbers || [];
+                    
+                    const cambioEnVendidos = sold.length !== soldActual.length;
+                    const cambioEnReservados = reserved.length !== reservadoActual.length;
+
+                    if (cambioEnVendidos || cambioEnReservados) {
+                        console.log(`📊 [Actualización] Cambios detectados:`);
+                        console.log(`   - Vendidos: ${soldActual.length} → ${sold.length}`);
+                        console.log(`   - Reservados: ${reservadoActual.length} → ${reserved.length}`);
+
+                        // Actualizar arrays en memoria
+                        window.rifaplusSoldNumbers = sold;
+                        window.rifaplusReservedNumbers = reserved;
+
+                        // Actualizar stats
+                        if (window.rifaplusConfig?.estado) {
+                            const total = 60000;
+                            window.rifaplusConfig.estado.boletosVendidos = sold.length;
+                            window.rifaplusConfig.estado.boletosApartados = reserved.length;
+                            window.rifaplusConfig.estado.boletosDisponibles = total - sold.length - reserved.length;
+                        }
+
+                        // ♻️ ACTUALIZAR GRID: Re-renderizar colores sin recargar página
+                        actualizarEstadoBoletosVisibles();
+
+                        // ✅ Log de cambios
+                        const liberados = (soldActual.length + reservadoActual.length) - (sold.length + reserved.length);
+                        if (liberados > 0) {
+                            console.log(`✅ [Actualización] ${liberados} boletos fueron liberados (órdenes canceladas)`);
+                        }
+                    } else {
+                        console.log(`[Actualización] Sin cambios en disponibilidad`);
+                    }
+                } catch (error) {
+                    console.error(`❌ [Actualización] Error:`, error.message);
+                }
+            })();
+        }
+    }
+
+    // 👁️ Detectar inactividad del usuario (pausa actualizaciones después de 10 min sin actividad)
+    document.addEventListener('mousemove', () => { usuarioActivo = true; });
+    document.addEventListener('touchstart', () => { usuarioActivo = true; });
+    document.addEventListener('keypress', () => { usuarioActivo = true; });
+
+    // Pausa después de 10 minutos sin actividad
+    setInterval(() => {
+        if (!usuarioActivo) {
+            if (timerActualizacion) {
+                clearInterval(timerActualizacion);
+                timerActualizacion = null;
+                console.log('⏸️ [Actualización] Pausada (usuario inactivo)');
+            }
+        } else {
+            if (!timerActualizacion) {
+                timerActualizacion = setInterval(actualizarBoletosDisponibles, 30000); // Cada 30s, pero solo si pasaron 2+ min
+                console.log('▶️ [Actualización] Reanudada (usuario activo)');
+            }
+        }
+        usuarioActivo = false;
+    }, 10 * 60 * 1000); // 10 minutos sin actividad
+
+    // Iniciar el timer
+    timerActualizacion = setInterval(actualizarBoletosDisponibles, 30000); // Verificar cada 30 segundos si deben actualizar
+    console.log('✅ [Actualización] Sistema de actualización periódica iniciado');
 }
 
 /* ============================================================ */
