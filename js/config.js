@@ -180,7 +180,7 @@ Object.assign(window.rifaplusConfig, {
         // Tiempo que una orden permanece apartada sin comprobante de pago (en HORAS)
         // Después de este tiempo, los boletos se liberan automáticamente
         // ⚠️  CAMBIAR AQUÍ para modificar el tiempo de expiración (4, 12, 24, etc.)
-        tiempoApartadoHoras: 0.5,  // 30 minutos (0.5 horas) - TEST
+        tiempoApartadoHoras: 4,  // 4 horas por defecto
         
         // Mostrar advertencia al cliente X horas antes de expirar
         advertenciaExpirationHoras: 1,  // Avisar 1 hora antes de expirar
@@ -813,6 +813,36 @@ window.rifaplusConfig.aplicarConfiguracion = function() {
         const metaDesc = document.querySelector('meta[name="description"]');
         if (metaDesc && this.cliente && this.rifa) {
             metaDesc.setAttribute('content', `Participa en ${this.cliente.nombre}. Gana un ${this.rifa.titulo}. Sorteo 100% transparente en vivo.`);
+        }
+
+        // ===== ACTUALIZAR OPEN GRAPH META TAGS =====
+        // Para que las redes sociales muestren información actualizada
+        if (this.cliente && this.rifa) {
+            const ogTitle = document.querySelector('meta[property="og:title"]');
+            if (ogTitle) ogTitle.setAttribute('content', `${this.cliente.nombre} - Gana ${this.rifa.titulo}`);
+            
+            const ogDesc = document.querySelector('meta[property="og:description"]');
+            if (ogDesc) ogDesc.setAttribute('content', `Participa en ${this.cliente.nombre}. ${this.rifa.descripcion}. Sorteo 100% transparente en vivo.`);
+            
+            const ogImage = document.querySelector('meta[property="og:image"]');
+            if (ogImage && this.rifa.premios[0]?.imagenes[0]) {
+                const imgUrl = new URL(this.rifa.premios[0].imagenes[0], window.location.href).href;
+                ogImage.setAttribute('content', imgUrl);
+            }
+            
+            const twitterTitle = document.querySelector('meta[name="twitter:title"]');
+            if (twitterTitle) twitterTitle.setAttribute('content', `${this.cliente.nombre} - Gana ${this.rifa.titulo}`);
+            
+            const twitterDesc = document.querySelector('meta[name="twitter:description"]');
+            if (twitterDesc) twitterDesc.setAttribute('content', `Participa en ${this.cliente.nombre}. ${this.rifa.descripcion}. Sorteo 100% transparente en vivo.`);
+            
+            const twitterImage = document.querySelector('meta[name="twitter:image"]');
+            if (twitterImage && this.rifa.premios[0]?.imagenes[0]) {
+                const imgUrl = new URL(this.rifa.premios[0].imagenes[0], window.location.href).href;
+                twitterImage.setAttribute('content', imgUrl);
+            }
+            
+            console.log('✅ Open Graph meta tags actualizados dinámicamente');
         }
 
         // Aplicar colores a elementos específicos si existen

@@ -6,6 +6,16 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:* http://localhost:* https://gorgeous-heliotrope-5a6b8e.netlify.app https://rifas-web-1.onrender.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' http://127.0.0.1:* http://localhost:* https: https://rifas-web-1.onrender.com https://gorgeous-heliotrope-5a6b8e.netlify.app; img-src 'self' data: https:;">
     <title>SORTEOS YEPE - Gana un iPhone 15 Pro Max 256GB | Rifas 100% Transparentes</title>
     <meta name="description" content="Participa en SORTEOS YEPE del iPhone 15 Pro Max 256GB. Sorteo 100% transparente en vivo. Compra tus boletos de forma segura.">
+    <!-- Open Graph Meta Tags (actualizados por JavaScript) -->
+    <meta property="og:title" content="SORTEOS YEPE - Gana un iPhone 15 Pro Max" />
+    <meta property="og:description" content="Participa en SORTEOS YEPE. Sorteo 100% transparente en vivo." />
+    <meta property="og:image" content="https://rifas-web.vercel.app/images/ImgPrincipal.png" />
+    <meta property="og:url" content="https://rifas-web.vercel.app" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="SORTEOS YEPE - Gana un iPhone 15 Pro Max" />
+    <meta name="twitter:description" content="Participa en SORTEOS YEPE. Sorteo 100% transparente en vivo." />
+    <meta name="twitter:image" content="https://rifas-web.vercel.app/images/ImgPrincipal.png" />
     <link rel="stylesheet" href="css/styles.css?v=20251228.15">
     <link rel="preload" as="image" href="images/logo.png" fetchpriority="high">
     <link rel="icon" href="images/logo.png" sizes="32x32">
@@ -17,6 +27,19 @@
     <!-- ✅ Carga inteligente de boletos para 1M boletos -->
     <script src="js/boletos-loader.js"></script>
     <script>
+        // ============================================================
+        // DETECCIÓN DE BOTS PARA OPEN GRAPH
+        // ============================================================
+        (function detectarBots() {
+            const userAgent = navigator.userAgent.toLowerCase();
+            const esBot = /facebookexternalhit|twitterbot|whatsapp|linkedinbot|slurp|googlebot|slackbot|discordbot/i.test(userAgent);
+            
+            if (esBot) {
+                // No redirigir, los bots usan el og endpoint en Vercel
+                console.log('🤖 Bot detectado:', userAgent);
+            }
+        })();
+        
         // ============================================================
         // LIMPIEZA COMPLETA DE CACHÉ - EJECUTAR ANTES DE CARGAR CONFIG
         // ============================================================

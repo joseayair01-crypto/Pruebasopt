@@ -352,6 +352,69 @@ setInterval(verificarSaludBD, 30000);
 // Verificación inicial
 verificarSaludBD();
 
+// ===== ENDPOINT CRÍTICO: OPEN GRAPH PARA REDES SOCIALES =====
+// Sirve HTML dinámico con meta tags cuando lo solicita WhatsApp, Facebook, etc.
+app.get('/og', (req, res) => {
+    try {
+        // Detectar si es un bot de red social
+        const userAgent = req.get('user-agent') || '';
+        const esBotRedSocial = /facebookexternalhit|twitterbot|whatsapp|linkedinbot|slurp|googlebot/i.test(userAgent);
+        
+        // Leer config.js para obtener datos dinámicos
+        const configPath = path.join(__dirname, '../js/config.js');
+        const configContent = fs.readFileSync(configPath, 'utf8');
+        
+        // Extraer valores de config usando regex (no es lo ideal pero funciona)
+        const rifaTitulo = configContent.match(/titulo:\s*"([^"]+)"/)?.[1] || 'RAM 700 2025 - Rifas el Trebol';
+        const rifaDescripcion = configContent.match(/descripcion:\s*"([^"]+)"/)?.[1] || 'Participa en nuestro sorteo 100% transparente';
+        
+        // URL de la imagen del premio
+        const imagenUrl = 'https://rifas-web-1.onrender.com/images/ImgPrincipal.png';
+        
+        // Construir meta tags dinámicamente
+        const metaTags = `
+<meta property="og:title" content="SORTEOS YEPE - Gana ${rifaTitulo}" />
+<meta property="og:description" content="${rifaDescripcion}" />
+<meta property="og:image" content="${imagenUrl}" />
+<meta property="og:url" content="https://rifas-web-1.onrender.com" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="SORTEOS YEPE - Gana ${rifaTitulo}" />
+<meta name="twitter:description" content="${rifaDescripcion}" />
+<meta name="twitter:image" content="${imagenUrl}" />
+        `;
+        
+        // Leer el index.html
+        const indexPath = path.join(__dirname, '../index.html');
+        let html = fs.readFileSync(indexPath, 'utf8');
+        
+        // Reemplazar los meta tags estáticos con los dinámicos
+        html = html.replace(
+            /<title>.*?<\/title>/,
+            `<title>SORTEOS YEPE - Gana ${rifaTitulo} | Rifas 100% Transparentes</title>`
+        );
+        
+        // Insertar meta tags dinámicos después de <meta name="viewport"...>
+        html = html.replace(
+            /(<meta name="viewport"[^>]*>)/,
+            `$1\n    ${metaTags}`
+        );
+        
+        // Actualizar meta description
+        html = html.replace(
+            /(<meta name="description" content=")([^"]*)/,
+            `$1Participa en SORTEOS YEPE. ${rifaDescripcion} Sorteo 100% transparente en vivo.`
+        );
+        
+        res.type('text/html').send(html);
+        
+        console.log(`✅ Open Graph servido para: ${req.get('user-agent')?.substring(0, 50)}`);
+    } catch (error) {
+        console.error('❌ Error sirviendo Open Graph:', error.message);
+        res.status(500).json({ error: 'Error sirviendo página' });
+    }
+});
+
 // Rutas
 app.get('/', (req, res) => {
     res.json({ 
