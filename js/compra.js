@@ -597,11 +597,21 @@ function actualizarEstadoBotonGenerar() {
 function actualizarNotaDisponibilidad() {
     const note = document.getElementById('availabilityNote');
     if (!note) return;
+    
+    // 🚀 OPTIMIZACIÓN: Si ya mostramos el valor del endpoint /stats, NO recalcular
+    // El endpoint /stats ya actualizó esto correctamente
+    if (note.textContent && note.textContent.includes('boletos disponibles') && !note.textContent.includes('Cargando')) {
+        // Ya tenemos un valor del endpoint /stats, no lo sobrescribas
+        return;
+    }
+    
     if (!window.rifaplusBoletosLoaded) {
         note.textContent = 'Cargando disponibilidad...';
         note.style.display = 'inline-block';
         return;
     }
+    
+    // Solo si NO hay datos del endpoint, calcular localmente
     const disponibles = obtenerNumerosDisponibles();
     if (!Array.isArray(disponibles)) {
         note.textContent = 'Disponibilidad desconocida';
