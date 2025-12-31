@@ -605,28 +605,28 @@ function actualizarEstadoBotonGenerar() {
     const btnGenerar = document.getElementById('btnGenerarNumeros');
     const inputCantidad = document.getElementById('cantidadNumeros');
     if (!btnGenerar || !inputCantidad) return;
+    
     let val = parseInt(inputCantidad.value, 10);
     if (isNaN(val) || val < 1) {
         btnGenerar.disabled = true;
         return;
     }
+    
+    // 🚀 SIMPLE Y ESTABLE: Usar SOLO el estado de /stats endpoint
+    // No recalcular nada que cause oscilaciones
     const loaded = !!window.rifaplusBoletosLoaded;
     
-    // 🚀 OPTIMIZACIÓN: Usar conteo del endpoint /stats en lugar de recalcular
-    // Esto evita oscilaciones cuando Web Worker está procesando
-    let disponiblesCount = 0;
+    // Usar conteo del endpoint /stats (fiable)
+    const boletosDisponiblesSegunStats = window.rifaplusConfig && 
+                                         window.rifaplusConfig.estado && 
+                                         window.rifaplusConfig.estado.boletosDisponibles !== undefined
+                                         ? window.rifaplusConfig.estado.boletosDisponibles
+                                         : 0;
     
-    if (window.rifaplusConfig && window.rifaplusConfig.estado && window.rifaplusConfig.estado.boletosDisponibles !== undefined) {
-        // Usar conteo confiable del endpoint
-        disponiblesCount = window.rifaplusConfig.estado.boletosDisponibles;
-    } else {
-        // Fallback: recalcular (lento pero funciona)
-        const disponibles = obtenerNumerosDisponibles();
-        disponiblesCount = Array.isArray(disponibles) ? disponibles.length : 0;
-    }
+    const hay_suficientes = boletosDisponiblesSegunStats >= val;
     
-    const enough = disponiblesCount >= val;
-    btnGenerar.disabled = !loaded || !enough;
+    // ⭐ SIMPLE: Si /stats dice que hay datos cargados y hay suficientes → HABILITAR y no tocar más
+    btnGenerar.disabled = !loaded || !hay_suficientes;
 }
 
 // Mostrar nota de disponibilidad bajo el botón Generar
@@ -684,13 +684,25 @@ async function generarNumerosAleatoriosMejorado() {
     numerosSuerte.innerHTML = '';
     
     // ⚠️ CRÍTICO: Validar que tengamos datos de vendidos/apartados ANTES de generar
-    // Si están vacíos, es peligroso - podría elegir números ya vendidos/apartados
+    // Si están vacíos, esperar un poco a que se procesen o recargar
+    let intentos = 0;
+    const maxIntentos = 50; // 5 segundos máximo (50 * 100ms)
+    
+    while ((!Array.isArray(window.rifaplusSoldNumbers) || !Array.isArray(window.rifaplusReservedNumbers) || 
+            window.rifaplusSoldNumbers.length === 0 || window.rifaplusReservedNumbers.length === 0) && 
+           intentos < maxIntentos) {
+        intentos++;
+        console.debug(`⏳ Esperando datos (intento ${intentos}/${maxIntentos})...`);
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    // Si después de esperar aún están vacíos, recargar
     if (!Array.isArray(window.rifaplusSoldNumbers) || !Array.isArray(window.rifaplusReservedNumbers)) {
-        console.error('❌ CRÍTICO: Arrays de vendidos/apartados no inicializados');
-        rifaplusUtils.showFeedback('❌ Datos de boletos no disponibles. Recargando...', 'error');
+        console.error('❌ CRÍTICO: Arrays de vendidos/apartados no inicializados después de esperar');
+        rifaplusUtils.showFeedback('⚠️ Datos de boletos aún no listos. Recargando...', 'warning');
         await cargarBoletosPublicos();
-        // No continuar - esperar a que se recarguen
-        return;
+        // Esperar a que se recarguen
+        await new Promise(resolve => setTimeout(resolve, 500));
     }
     
     // Asegurarnos de tener datos actualizados de vendidos/apartados
