@@ -117,7 +117,9 @@ app.use(cors({
             'http://127.0.0.1:5500',
             'http://127.0.0.1:3000',
             'http://127.0.0.1:5001',  // mismo servidor
-            'https://rifas-web.onrender.com',  // si existe
+            'https://rifas-web-1.onrender.com',  // Backend Render
+            'https://gorgeous-heliotrope-5a6b8e.netlify.app',  // Frontend Netlify
+            'https://magnificent-heliotrope-5a6b8e.netlify.app',  // Frontend Netlify (alt)
         ];
         
         // En producción, permitir cualquier origen durante desarrollo local
