@@ -2679,11 +2679,6 @@ app.patch('/api/ordenes/:id/estado', verificarToken, async (req, res) => {
                 throw new Error('ORDER_NOT_FOUND');
             }
             
-            // ⭐ CRÍTICO: No permitir cancelar órdenes con comprobante de pago
-            if (estado === 'cancelada' && ordenActual.comprobante_path) {
-                throw new Error('CANNOT_CANCEL_WITH_COMPROBANTE');
-            }
-            
             let boletosActualizados = 0;
 
             // LÓGICA DE TRANSICIÓN DE ESTADOS Y BOLETOS
@@ -2810,13 +2805,6 @@ app.patch('/api/ordenes/:id/estado', verificarToken, async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'Orden no encontrada'
-            });
-        }
-        
-        if (error.message === 'CANNOT_CANCEL_WITH_COMPROBANTE') {
-            return res.status(400).json({
-                success: false,
-                message: 'No se puede cancelar una orden que tiene comprobante de pago. Contacta al administrador.'
             });
         }
         

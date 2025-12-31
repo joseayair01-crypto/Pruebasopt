@@ -121,6 +121,7 @@ class OrdenExpirationService {
             let ordenesIncompletas;
             try {
                 ordenesIncompletas = await db('ordenes')
+                    .select('id', 'numero_orden', 'estado', 'boletos', 'comprobante_path', 'created_at')
                     .where('estado', 'pendiente')  // SOLO pendiente, sin comprobante
                     .timeout(10000); // Timeout de 10 segundos
             } catch (dbError) {
@@ -208,6 +209,7 @@ class OrdenExpirationService {
 
     /**
      * Libera una orden específica y devuelve sus boletos a disponibles
+     * ⚠️ PROTECCIÓN: Solo libera órdenes SIN comprobante (cancelación automática)
      * @param {Object} orden - Objeto de orden con: id, numero_orden, boletos JSON
      * @returns {Object} - { boletosCancelados, ordenId }
      */
@@ -215,6 +217,13 @@ class OrdenExpirationService {
         let boletosCancelados = 0;
 
         try {
+            // ⭐ VALIDACIÓN CRÍTICA: No liberar órdenes con comprobante de pago
+            // El admin puede rechazarlas manualmente, pero automáticamente están protegidas
+            if (orden.comprobante_path) {
+                console.warn(`⚠️  [ExpService] PROTECCIÓN: No se libera ${orden.numero_orden} - tiene comprobante (debe rechazarse manualmente)`);
+                throw new Error('ORDEN_PROTEGIDA_CON_COMPROBANTE');
+            }
+
             // 1. Parsear boletos de forma segura
             let boletos = [];
             try {
