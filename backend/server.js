@@ -2499,11 +2499,13 @@ app.get('/api/public/boletos/stats', async (req, res) => {
 
         return res.json({
             success: true,
-            vendidos: vendidos,
-            reservados: reservados,
-            disponibles: disponibles,
-            total: 60000,
-            queryTime: queryTime
+            data: {
+                vendidos: vendidos,
+                reservados: reservados,
+                disponibles: disponibles,
+                total: 60000,
+                queryTime: queryTime
+            }
         });
 
     } catch (error) {
@@ -2511,10 +2513,13 @@ app.get('/api/public/boletos/stats', async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Error al obtener estadísticas',
-            vendidos: 0,
-            reservados: 0,
-            disponibles: 60000,
-            total: 60000
+            data: {
+                vendidos: 0,
+                reservados: 0,
+                disponibles: 60000,
+                total: 60000,
+                queryTime: 0
+            }
         });
     }
 });
