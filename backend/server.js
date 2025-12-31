@@ -110,20 +110,22 @@ app.use(compression({
 // Configurar CORS para desarrollo y producción
 app.use(cors({
     origin: function(origin, callback) {
-        // Lista de orígenes permitidos
+        // Lista de orígenes permitidos (desarrollo local)
         const allowedOrigins = [
             'http://localhost:3000',
             'http://localhost:5500',
             'http://127.0.0.1:5500',
             'http://127.0.0.1:3000',
-            'http://127.0.0.1:5001',  // mismo servidor
-            'https://rifas-web-1.onrender.com',  // Backend Render
-            'https://gorgeous-heliotrope-5a6b8e.netlify.app',  // Frontend Netlify
-            'https://magnificent-heliotrope-5a6b8e.netlify.app',  // Frontend Netlify (alt)
+            'http://127.0.0.1:5001',
         ];
         
-        // En producción, permitir cualquier origen durante desarrollo local
-        if (process.env.NODE_ENV === 'development' || !origin || allowedOrigins.includes(origin)) {
+        // En producción, permitir HTTPS (cualquier origen)
+        // En desarrollo, usar lista blanca
+        if (process.env.NODE_ENV === 'production') {
+            // Producción: permitir todos los orígenes HTTPS
+            callback(null, true);
+        } else if (!origin || allowedOrigins.includes(origin)) {
+            // Desarrollo: usar lista blanca
             callback(null, true);
         } else {
             callback(new Error('CORS policy: Origin not allowed'));
