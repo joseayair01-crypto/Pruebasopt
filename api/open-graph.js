@@ -16,23 +16,22 @@ export default async function handler(req, res) {
             return;
         }
 
-        // Leer config.js para obtener datos dinámicos
-        const configPath = path.join(process.cwd(), 'js/config.js');
-        let configContent;
+        // Obtener datos del sorteo desde el backend
+        let rifaTitulo = 'RAM 700 2025 - Rifas el Trebol';
+        let rifaDescripcion = 'Participa en nuestro sorteo 100% transparente';
         
         try {
-            configContent = fs.readFileSync(configPath, 'utf8');
-        } catch (e) {
-            // Si no puedo leer config.js, usar valores por defecto
-            configContent = '';
+            const backendUrl = process.env.BACKEND_URL || 'https://rifas-web-1.onrender.com';
+            const response = await fetch(`${backendUrl}/api/public/sorteo-info`);
+            if (response.ok) {
+                const data = await response.json();
+                rifaTitulo = data.titulo || rifaTitulo;
+                rifaDescripcion = data.descripcion || rifaDescripcion;
+                console.log(`✅ Open Graph dinámico: ${rifaTitulo}`);
+            }
+        } catch (fetchError) {
+            console.warn('⚠️ No se pudo obtener datos del backend, usando valores por defecto');
         }
-        
-        // Extraer valores usando regex
-        const rifaTituloMatch = configContent.match(/titulo:\s*"([^"]+)"/);
-        const rifaDescripcionMatch = configContent.match(/descripcion:\s*"([^"]+)"/);
-        
-        const rifaTitulo = rifaTituloMatch ? rifaTituloMatch[1] : 'RAM 700 2025 - Rifas el Trebol';
-        const rifaDescripcion = rifaDescripcionMatch ? rifaDescripcionMatch[1] : 'Participa en nuestro sorteo 100% transparente';
         
         const imagenUrl = 'https://rifas-web.vercel.app/images/ImgPrincipal.png';
         const urlBase = 'https://rifas-web.vercel.app';

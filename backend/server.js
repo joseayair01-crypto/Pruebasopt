@@ -415,6 +415,44 @@ app.get('/og', (req, res) => {
     }
 });
 
+/**
+ * GET /api/public/sorteo-info - Información pública del sorteo para Open Graph
+ * Devuelve el nombre y descripción del sorteo actual desde config.js
+ * Usado por Vercel para generar meta tags dinámicos
+ */
+app.get('/api/public/sorteo-info', (req, res) => {
+    try {
+        // Leer config.js del frontend
+        const configPath = path.join(__dirname, '../js/config.js');
+        const configContent = fs.readFileSync(configPath, 'utf8');
+        
+        // Extraer valores usando regex
+        const rifaTituloMatch = configContent.match(/titulo:\s*"([^"]+)"/);
+        const rifaDescripcionMatch = configContent.match(/descripcion:\s*"([^"]+)"/);
+        const clienteNombreMatch = configContent.match(/nombre:\s*"([^"]+)"/);
+        
+        const rifaTitulo = rifaTituloMatch ? rifaTituloMatch[1] : 'Sorteo';
+        const rifaDescripcion = rifaDescripcionMatch ? rifaDescripcionMatch[1] : 'Participa en nuestro sorteo';
+        
+        res.json({
+            titulo: rifaTitulo,
+            descripcion: rifaDescripcion,
+            titulo_completo: `SORTEOS YEPE - Gana ${rifaTitulo}`,
+            descripcion_completa: `Participa en SORTEOS YEPE. ${rifaDescripcion}. Sorteo 100% transparente en vivo.`
+        });
+        
+        console.log(`✅ /api/public/sorteo-info: ${rifaTitulo}`);
+    } catch (error) {
+        console.error('❌ Error en /api/public/sorteo-info:', error.message);
+        res.json({
+            titulo: 'Sorteo',
+            descripcion: 'Participa en nuestro sorteo',
+            titulo_completo: 'SORTEOS YEPE - Sorteo 100% Transparente',
+            descripcion_completa: 'Participa en SORTEOS YEPE. Sorteo 100% transparente en vivo.'
+        });
+    }
+});
+
 // Rutas
 app.get('/', (req, res) => {
     res.json({ 
