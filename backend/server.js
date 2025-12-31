@@ -4105,12 +4105,13 @@ app.post('/api/admin/limpiar-ordenes-canceladas', verificarToken, async (req, re
     try {
         console.log('🧹 [CLEANUP] Iniciando limpieza de órdenes canceladas...');
         
-        // PASO 1: Encontrar todas las órdenes canceladas
+        // PASO 1: Encontrar todas las órdenes canceladas SIN comprobante
         const ordenesCanceladas = await db('ordenes')
             .where('estado', 'cancelada')
+            .whereNull('comprobante_path')  // ⭐ Solo sin comprobante
             .select('id', 'numero_orden', 'boletos');
 
-        console.log(`[CLEANUP] Encontradas ${ordenesCanceladas.length} órdenes canceladas`);
+        console.log(`[CLEANUP] Encontradas ${ordenesCanceladas.length} órdenes canceladas sin comprobante`);
 
         let boletosLiberadosTotal = 0;
         let ordenesProcessadas = 0;
@@ -4176,6 +4177,45 @@ app.post('/api/admin/limpiar-ordenes-canceladas', verificarToken, async (req, re
         return res.status(500).json({
             success: false,
             message: 'Error durante limpieza',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * GET /api/admin/debug-boletos
+ * DEBUG: Verifica estado de boletos en la BD
+ * Muestra cuántos están en cada estado
+ */
+app.get('/api/admin/debug-boletos', verificarToken, async (req, res) => {
+    try {
+        const stats = await db('boletos_estado')
+            .select('estado')
+            .count('* as cantidad')
+            .groupBy('estado');
+
+        const boletosApartadosOrfanos = await db('boletos_estado')
+            .where('estado', 'reservado')
+            .whereNull('numero_orden')
+            .count('* as cantidad')
+            .first();
+
+        const response = {
+            success: true,
+            timestamp: new Date().toISOString(),
+            stats: stats,
+            problemas: {
+                boletosApartadosSinOrden: boletosApartadosOrfanos?.cantidad || 0,
+                descripcion: 'Boletos marcados como reservado pero sin número de orden (probablemente deberían ser disponibles)'
+            }
+        };
+
+        return res.json(response);
+    } catch (error) {
+        console.error('Error en debug-boletos:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error',
             error: error.message
         });
     }

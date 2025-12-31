@@ -254,16 +254,36 @@ class OrdenExpirationService {
 
                 // PASO 2: CRÍTICO - Liberar los boletos de vuelta a 'disponible'
                 if (boletos.length > 0) {
+                    console.log(`  📋 Preparando liberar ${boletos.length} boletos: [${boletos.slice(0, 5).join(',')}...]`);
+                    
+                    // Verificar estado ANTES de actualizar (debug)
+                    const estadosAntes = await trx('boletos_estado')
+                        .whereIn('numero', boletos)
+                        .select('numero', 'estado')
+                        .limit(3);
+                    
+                    console.log(`  🔍 Estados ANTES: ${JSON.stringify(estadosAntes.map(b => `${b.numero}:${b.estado}`))}`);
+                    
+                    // ACTUALIZAR BOLETOS
                     const actualizadosBoletos = await trx('boletos_estado')
                         .whereIn('numero', boletos)
                         .update({
                             estado: 'disponible',
                             numero_orden: null,
                             reservado_en: null,
+                            vendido_en: null,
                             updated_at: new Date()
                         });
 
                     console.log(`  ✓ ${orden.numero_orden} → CANCELADA (${actualizadosBoletos}/${boletos.length} boletos liberados a 'disponible')`);
+                    
+                    // Verificar estado DESPUÉS de actualizar (debug)
+                    const estadosDespues = await trx('boletos_estado')
+                        .whereIn('numero', boletos)
+                        .select('numero', 'estado')
+                        .limit(3);
+                    
+                    console.log(`  ✅ Estados DESPUÉS: ${JSON.stringify(estadosDespues.map(b => `${b.numero}:${b.estado}`))}`);
                     
                     if (actualizadosBoletos !== boletos.length) {
                         console.warn(`  ⚠️  Solo se liberaron ${actualizadosBoletos} de ${boletos.length} boletos`);
