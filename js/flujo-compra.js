@@ -268,6 +268,10 @@ async function mostrarOrdenFormal(cuenta) {
             const oportunidadesGuardadas = localStorage.getItem('rifaplus_oportunidades');
             if (oportunidadesGuardadas) {
                 const datos = JSON.parse(oportunidadesGuardadas);
+                // ✅ VALIDACIÓN: Verificar que el generador sea correcto
+                if (datos.generador !== 'carrito-global-v3') {
+                    console.warn(`⚠️  [flujo-compra] Advertencia: Generador es '${datos.generador}', esperaba 'carrito-global-v3'`);
+                }
                 if (datos.boletosOcultos && Array.isArray(datos.boletosOcultos) && datos.boletosOcultos.length > 0) {
                     console.log(`✅ [flujo-compra] Recuperadas ${datos.boletosOcultos.length} oportunidades desde carrito-global.js`);
                     console.log(`   Generador usado: ${datos.generador || 'v3'}`);

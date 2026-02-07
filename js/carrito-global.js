@@ -783,14 +783,15 @@ function calcularYLlenarOportunidades(numerosOrdenados, retryCount = 0) {
             // 🔒 CRÍTICO: Esperar a que se carguen los datos de oportunidades disponibles
             // Esto es IGUAL que máquina de suerte - solo genera de lo que está disponible
             if (!window.rifaplusOportunidadesLoaded) {
-                // 🛡️ LÍMITE DE REINTENTOS: máximo 5 intentos (2.5 segundos total)
+                // 🛡️ LÍMITE DE REINTENTOS: máximo 5 intentos con backoff exponencial
                 const MAX_RETRIES = 5;
                 if (retryCount < MAX_RETRIES) {
-                    console.warn(`⚠️  [CARRITO] Oportunidades aún no cargadas (intento ${retryCount + 1}/${MAX_RETRIES}), reintentando en 500ms...`);
-                    setTimeout(() => calcularYLlenarOportunidades(numerosOrdenados, retryCount + 1), 500);
+                    const delayMs = 500 * Math.pow(1.5, retryCount); // 500ms, 750ms, 1125ms, etc.
+                    console.warn(`⚠️  [CARRITO] Oportunidades aún no cargadas (intento ${retryCount + 1}/${MAX_RETRIES}), reintentando en ${Math.round(delayMs)}ms...`);
+                    setTimeout(() => calcularYLlenarOportunidades(numerosOrdenados, retryCount + 1), delayMs);
                     return;
                 } else {
-                    console.warn(`❌ [CARRITO] Oportunidades no disponibles después de ${MAX_RETRIES} intentos (${MAX_RETRIES * 500}ms). Continuando sin oportunidades...`);
+                    console.warn(`❌ [CARRITO] Oportunidades no disponibles después de ${MAX_RETRIES} intentos (~${Math.round(500 + 750 + 1125 + 1687 + 2531)}ms). Continuando sin oportunidades...`);
                     // Marcar como cargado aunque no tenga datos, para no bloquear el carrito
                     window.rifaplusOportunidadesLoaded = true;
                     window.rifaplusOportunidadesDisponibles = [];
@@ -810,20 +811,24 @@ function calcularYLlenarOportunidades(numerosOrdenados, retryCount = 0) {
             const rangoOculto = rifaConfig?.oportunidades?.rango_oculto || { inicio: 250000, fin: 999999 };
             const fueraRango = numerosDisponibles.filter(n => n < rangoOculto.inicio || n > rangoOculto.fin);
             
+            // ✅ FILTRAR números fuera de rango
+            let numerosValidos = numerosDisponibles;
             if (fueraRango.length > 0) {
                 console.error(`❌ [CARRITO] ${fueraRango.length} números FUERA del rango en la lista local!`);
                 console.error(`   Primeros fuera de rango: ${fueraRango.slice(0, 5).join(', ')}`);
+                numerosValidos = numerosDisponibles.filter(n => n >= rangoOculto.inicio && n <= rangoOculto.fin);
+                console.warn(`   Filtrando: Usando ${numerosValidos.length} números dentro del rango`);
             }
             
             // Loguear muestra de la lista
-            console.log(`📦 [CARRITO] Lista local tiene ${numerosDisponibles.length} números`);
-            console.log(`   Primeros 10: ${numerosDisponibles.slice(0, 10).join(', ')}`);
-            console.log(`   Últimos 10: ${numerosDisponibles.slice(-10).join(', ')}`);
+            console.log(`📦 [CARRITO] Lista local tiene ${numerosValidos.length} números válidos`);
+            console.log(`   Primeros 10: ${numerosValidos.slice(0, 10).join(', ')}`);
+            console.log(`   Últimos 10: ${numerosValidos.slice(-10).join(', ')}`);
             
             // Calcular min/max sin spread operator (evita stack overflow con arrays grandes)
-            let min = numerosDisponibles[0];
-            let max = numerosDisponibles[0];
-            for (let n of numerosDisponibles) {
+            let min = numerosValidos[0];
+            let max = numerosValidos[0];
+            for (let n of numerosValidos) {
                 if (n < min) min = n;
                 if (n > max) max = n;
             }
@@ -833,18 +838,17 @@ function calcularYLlenarOportunidades(numerosOrdenados, retryCount = 0) {
             const configRifa = window.rifaplusConfig?.rifa;
             let oportunidadesPorBoleto = configRifa?.oportunidades?.oportunidades_por_boleto || 3;
             
-            console.log(`📦 [CARRITO] Generando oportunidades de ${numerosDisponibles.length} disponibles (${oportunidadesPorBoleto} por boleto)`);
+            console.log(`📦 [CARRITO] Generando oportunidades de ${numerosValidos.length} disponibles (${oportunidadesPorBoleto} por boleto)`);
             
             // VALIDACIÓN: Crear un Set para búsqueda rápida
-            const disponiblesSet = new Set(numerosDisponibles);
+            const disponiblesSet = new Set(numerosValidos);
             
             // ✅ CORRECCIÓN: UN SOLO POOL DE NÚMEROS (evita duplicados)
             // No hacer una copia POR BOLETO, sino UNA SOLA LISTA que se va consumiendo
-            const disponiblesPoolGlobal = [...numerosDisponibles]; // ÚNICO pool compartido
+            const disponiblesPoolGlobal = [...numerosValidos]; // ÚNICO pool compartido
             
             const oportunidadesFiltradasPorBoleto = {};
             let totalEnviados = 0;
-            let totalFueraDelSet = 0;
             
             for (const boletVisible of numerosOrdenados) {
                 const oportunidadesParaBoleto = [];
@@ -853,12 +857,6 @@ function calcularYLlenarOportunidades(numerosOrdenados, retryCount = 0) {
                 for (let i = 0; i < oportunidadesPorBoleto && disponiblesPoolGlobal.length > 0; i++) {
                     const randomIndex = Math.floor(Math.random() * disponiblesPoolGlobal.length);
                     const numero = disponiblesPoolGlobal.splice(randomIndex, 1)[0]; // REMUEVE del pool
-                    
-                    // VALIDACIÓN: Verificar que el número exista en el set original
-                    if (!disponiblesSet.has(numero)) {
-                        console.error(`❌ ERROR CRÍTICO: Número ${numero} NO existe en disponiblesSet!`);
-                        totalFueraDelSet++;
-                    }
                     
                     oportunidadesParaBoleto.push(numero);
                     totalEnviados++;
@@ -872,7 +870,7 @@ function calcularYLlenarOportunidades(numerosOrdenados, retryCount = 0) {
                 }
             }
             
-            console.log(`✅ [CARRITO] Total generadas: ${totalEnviados}, Fuera del set: ${totalFueraDelSet}`);
+            console.log(`✅ [CARRITO] Total generadas: ${totalEnviados}`);
             console.log(`   Pool global restante: ${disponiblesPoolGlobal.length} números (estos NO se asignaron)`);
             
             // ✅ NOTA: Ya no necesitamos calcular digitos - formatearNumeroBoleto() lo hace
