@@ -54,6 +54,18 @@ if (variablesFaltantes.length > 0) {
 const JWT_SECRET = process.env.JWT_SECRET; // REQUERIDO en .env (no fallback)
 const JWT_EXPIRES_IN = '24h'; // Token expira en 24 horas
 
+// ⚠️ UTILITY: Limitar concurrencia para evitar "MaxClientsInSessionMode" en Vercel
+// Ejecuta promesas en batches de N simultáneas
+async function pLimit(promises, maxConcurrent = 3) {
+    const results = [];
+    for (let i = 0; i < promises.length; i += maxConcurrent) {
+        const batch = promises.slice(i, i + maxConcurrent);
+        const batchResults = await Promise.all(batch);
+        results.push(...batchResults);
+    }
+    return results;
+}
+
 // Configuración de expiración de órdenes
 // Prioridad: .env > config.js > defaults
 const configExpiracion = obtenerConfigExpiracion();
@@ -2595,7 +2607,8 @@ app.get('/api/ordenes', verificarToken, async (req, res) => {
             .offset(parseInt(offset));
 
         // Parsear boletos de cada orden - manejo seguro para PostgreSQL
-        const ordenesParsadas = await Promise.all(ordenes.map(async (o) => {
+        // ⚠️ CRÍTICO: Limitar concurrencia a 3 para evitar "MaxClientsInSessionMode" en Vercel
+        const ordenesConPromesas = ordenes.map(async (o) => {
             let boletosParsados = [];
             try {
                 // Si ya es un objeto (PostgreSQL JSON), usarlo directamente
@@ -2632,7 +2645,10 @@ app.get('/api/ordenes', verificarToken, async (req, res) => {
                 boletos: boletosParsados,
                 oportunidades: oportunidadesParsadas
             };
-        }));
+        });
+
+        // Ejecutar promesas con concurrencia limitada (máx 3 simultáneas)
+        const ordenesParsadas = await pLimit(ordenesConPromesas, 3);
 
         return res.json({
             success: true,

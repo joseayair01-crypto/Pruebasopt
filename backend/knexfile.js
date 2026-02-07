@@ -19,7 +19,17 @@ const postgresConfig = {
   },
   seeds: {
     directory: './db/seeds'
-  }
+  },
+  // ⚠️ CRÍTICO: Configurar pool de conexiones para evitar "MaxClientsInSessionMode"
+  // Vercel + Supabase en Session mode limita conexiones simultáneas
+  pool: {
+    min: 1,
+    max: 3, // Vercel free tier soporta ~10 conexiones, pero Session mode limita
+    acquireTimeoutMillis: 30000, // Esperar 30s si no hay conexión disponible
+    idleTimeoutMillis: 30000,    // Cerrar conexiones inactivas después de 30s
+    reapIntervalMillis: 1000     // Verificar conexiones cada 1s
+  },
+  asyncStackTraces: true // Para mejor debugging si hay errores
 };
 
 module.exports = {
