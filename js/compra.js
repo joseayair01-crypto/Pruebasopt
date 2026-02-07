@@ -424,7 +424,7 @@ async function cargarBoletosPublicos() {
             window.rifaplusBoletosLoaded = true;
             if (!window.rifaplusSoldNumbers) window.rifaplusSoldNumbers = [];
             if (!window.rifaplusReservedNumbers) window.rifaplusReservedNumbers = [];
-
+        }
         
         // 🔄 STAGE 2: BACKGROUND - Cargar datos completos SIN BLOQUEAR
         // Si es la primera carga, mostrar loading
@@ -451,7 +451,8 @@ async function cargarBoletosPublicos() {
         return true;
         
     } catch (error) {
-        console.error('Error en cargarBoletosPublicos:', error);
+        console.error('❌ Error en cargarBoletosPublicos:', error);
+        window.rifaplusBoletosLoaded = true; // Marcar cargado incluso si falla
         return false;
     }
 }
