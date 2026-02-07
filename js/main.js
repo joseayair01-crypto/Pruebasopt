@@ -6,6 +6,186 @@
 // ============================================================ //
 
 /**
+ * 🔥 CRÍTICO: Cargar boletos públicos al iniciar index.html
+ * Esto llena window.rifaplusSoldNumbers y window.rifaplusReservedNumbers
+ * que se usan en actualizarBarraProgreso() para mostrar el progreso
+ */
+(async function cargarBoletosEnIndexHtml() {
+    try {
+        const apiBase = (window.rifaplusConfig && window.rifaplusConfig.backend && window.rifaplusConfig.backend.apiBase) 
+            ? window.rifaplusConfig.backend.apiBase 
+            : 'http://localhost:3000';
+        const endpoint = String(apiBase).replace(/\/+$/, '');
+        
+        console.debug('[main] Cargando boletos públicos para progreso bar...');
+        
+        // 🎯 INTENTAR CON CACHÉ PRIMERO
+        const cacheKey = 'rifaplusBoletosCache';
+        const cachedData = localStorage.getItem(cacheKey);
+        
+        if (cachedData && window.rifaplusBoletosLoaded) {
+            try {
+                const cached = JSON.parse(cachedData);
+                const cacheAge = Date.now() - (cached.timestamp || 0);
+                
+                if (cacheAge < 300000) { // 5 minutos
+                    console.debug('[main] Usando caché de boletos (edad: ' + Math.round(cacheAge/1000) + 's)');
+                    window.rifaplusSoldNumbers = cached.sold || [];
+                    window.rifaplusReservedNumbers = cached.reserved || [];
+                    window.rifaplusBoletosLoaded = true;
+                    
+                    // 🔥 DISPARA EVENTO para que countdown.js actualice la barra
+                    window.dispatchEvent(new CustomEvent('boletosListos', { detail: { origen: 'cache' } }));
+                    return; // ✅ Datos listos desde caché
+                }
+            } catch (e) {
+                console.warn('[main] Error parseando caché:', e.message);
+            }
+        }
+        
+        // 🎯 FALLBACK: Fetch desde backend
+        console.debug('[main] Fetch desde backend para boletos públicos...');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
+        try {
+            const response = await fetch(`${endpoint}/api/public/boletos`, {
+                signal: controller.signal,
+                cache: 'no-store',
+                headers: { 'Accept': 'application/json' }
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                console.warn('[main] Error cargando boletos:', response.status);
+                window.rifaplusSoldNumbers = [];
+                window.rifaplusReservedNumbers = [];
+                window.rifaplusBoletosLoaded = true;
+                window.dispatchEvent(new CustomEvent('boletosListos', { detail: { origen: 'backend-error' } }));
+                return;
+            }
+            
+            const json = await response.json();
+            const data = json.data || json;
+            const sold = Array.isArray(data.sold) ? data.sold : [];
+            const reserved = Array.isArray(data.reserved) ? data.reserved : [];
+            
+            window.rifaplusSoldNumbers = sold;
+            window.rifaplusReservedNumbers = reserved;
+            window.rifaplusBoletosLoaded = true;
+            
+            // Guardar en caché
+            localStorage.setItem(cacheKey, JSON.stringify({
+                sold: sold,
+                reserved: reserved,
+                timestamp: Date.now()
+            }));
+            
+            console.debug('[main] ✅ Boletos cargados:', { sold: sold.length, reserved: reserved.length });
+            
+            // 🔥 DISPARA EVENTO para que countdown.js actualice la barra
+            window.dispatchEvent(new CustomEvent('boletosListos', { detail: { origen: 'backend', sold: sold.length, reserved: reserved.length } }));
+        } catch (error) {
+            clearTimeout(timeoutId);
+            console.warn('[main] Error fetch boletos:', error.message);
+            window.rifaplusSoldNumbers = [];
+            window.rifaplusReservedNumbers = [];
+            window.rifaplusBoletosLoaded = true;
+            window.dispatchEvent(new CustomEvent('boletosListos', { detail: { origen: 'error', message: error.message } }));
+        }
+    } catch (error) {
+        console.error('[main] Error en cargarBoletosEnIndexHtml:', error);
+    }
+})();
+
+/**
+ * 🔥 CRÍTICO: Cargar oportunidades disponibles para el carrito
+ * Esto llena window.rifaplusOportunidadesDisponibles y marca window.rifaplusOportunidadesLoaded
+ * que se usan en carrito-global.js para calcular qué números pueden estar en el carrito
+ */
+(async function cargarOportunidadesDisponibles() {
+    try {
+        const apiBase = (window.rifaplusConfig && window.rifaplusConfig.backend && window.rifaplusConfig.backend.apiBase) 
+            ? window.rifaplusConfig.backend.apiBase 
+            : 'http://localhost:3000';
+        const endpoint = String(apiBase).replace(/\/+$/, '');
+        
+        console.debug('[main] Cargando oportunidades disponibles...');
+        
+        // 🎯 INTENTAR CON CACHÉ PRIMERO
+        const cacheKey = 'rifaplusOportunidadesCache';
+        const cachedData = localStorage.getItem(cacheKey);
+        
+        if (cachedData) {
+            try {
+                const cached = JSON.parse(cachedData);
+                const cacheAge = Date.now() - (cached.timestamp || 0);
+                
+                if (cacheAge < 600000) { // 10 minutos - oportunidades cambian menos frecuentemente
+                    console.debug('[main] ✅ Oportunidades desde caché (edad: ' + Math.round(cacheAge/1000) + 's, cantidad: ' + (cached.disponibles?.length || 0) + ')');
+                    window.rifaplusOportunidadesDisponibles = cached.disponibles || [];
+                    window.rifaplusOportunidadesLoaded = true;
+                    window.dispatchEvent(new CustomEvent('oportunidadesListas', { detail: { origen: 'cache', cantidad: cached.disponibles?.length || 0 } }));
+                    return;
+                }
+            } catch (e) {
+                console.warn('[main] Error parseando caché de oportunidades:', e.message);
+            }
+        }
+        
+        // 🎯 FALLBACK: Fetch desde backend
+        console.debug('[main] Fetch desde backend para oportunidades disponibles...');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seg timeout para lista grande
+        
+        try {
+            const response = await fetch(`${endpoint}/api/public/oportunidades/disponibles`, {
+                signal: controller.signal,
+                cache: 'no-store',
+                headers: { 'Accept': 'application/json' }
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                console.warn('[main] ⚠️  Error cargando oportunidades:', response.status);
+                window.rifaplusOportunidadesDisponibles = [];
+                window.rifaplusOportunidadesLoaded = true;
+                window.dispatchEvent(new CustomEvent('oportunidadesListas', { detail: { origen: 'backend-error', status: response.status } }));
+                return;
+            }
+            
+            const json = await response.json();
+            const disponibles = Array.isArray(json.disponibles) ? json.disponibles : [];
+            
+            window.rifaplusOportunidadesDisponibles = disponibles;
+            window.rifaplusOportunidadesLoaded = true;
+            
+            // Guardar en caché
+            localStorage.setItem(cacheKey, JSON.stringify({
+                disponibles: disponibles,
+                timestamp: Date.now()
+            }));
+            
+            console.debug('[main] ✅ Oportunidades cargadas:', disponibles.length + ' disponibles');
+            
+            // 🔥 DISPARA EVENTO para componentes que lo necesiten
+            window.dispatchEvent(new CustomEvent('oportunidadesListas', { detail: { origen: 'backend', cantidad: disponibles.length } }));
+        } catch (error) {
+            clearTimeout(timeoutId);
+            console.warn('[main] ⚠️  Error fetch oportunidades:', error.message);
+            window.rifaplusOportunidadesDisponibles = [];
+            window.rifaplusOportunidadesLoaded = true;
+            window.dispatchEvent(new CustomEvent('oportunidadesListas', { detail: { origen: 'error', message: error.message } }));
+        }
+    } catch (error) {
+        console.error('[main] Error en cargarOportunidadesDisponibles:', error);
+        window.rifaplusOportunidadesLoaded = true; // Marcar como cargado aunque falle, para no bloquear
+    }
+})();
+
+/**
  * ESTRUCTURA DE PROMOCIONES (PAQUETES FIJOS):
  * - Paquete 10: 10 boletos por $450 (ahorro de $50)
  * - Paquete 20: 20 boletos por $800 (ahorro de $200)
@@ -942,11 +1122,38 @@ async function actualizarBarraProgreso() {
             return;
         }
         
+        // 🎯 PASO 1: Determinar total y rango de boletos a mostrar
+        // Si oportunidades está habilitada, usar SOLO el rango visible
+        // Si no, usar el totalBoletos configurado
+        const oportunidadesConfig = config.rifa?.oportunidades;
+        const totalBoletosConfiguracion = config.rifa?.totalBoletos || 10000;
+        
+        let totalParaMostrar = totalBoletosConfiguracion;
+        let rangoVisible = null;
+        
+        if (oportunidadesConfig && oportunidadesConfig.enabled && oportunidadesConfig.rango_visible) {
+            rangoVisible = oportunidadesConfig.rango_visible;
+            // El total a mostrar es el TAMAÑO del rango visible, no el config.totalBoletos
+            totalParaMostrar = (rangoVisible.fin - rangoVisible.inicio) + 1;
+            console.debug('[main] Oportunidades enabled, usando rango visible:', rangoVisible, 'Total:', totalParaMostrar);
+        } else {
+            console.debug('[main] Oportunidades disabled, usando totalBoletos:', totalParaMostrar);
+        }
+        
+        // 🎯 PASO 2: Obtener datos de boletos (PRIMERO en memoria, LUEGO backend)
+        const sold = (window.rifaplusSoldNumbers && Array.isArray(window.rifaplusSoldNumbers)) ? window.rifaplusSoldNumbers : [];
+        const reserved = (window.rifaplusReservedNumbers && Array.isArray(window.rifaplusReservedNumbers)) ? window.rifaplusReservedNumbers : [];
+        
+        // Si tenemos datos en memoria, usarlos
+        if (window.rifaplusBoletosLoaded && (sold.length > 0 || reserved.length > 0)) {
+            console.debug('[main] Usando datos en memoria (tiempo real)');
+            actualizarInterfazProgreso(sold, reserved, totalParaMostrar, rangoVisible);
+            return;
+        }
+        
+        // 🎯 PASO 3: FALLBACK - Obtener del backend si no hay datos en memoria
         const apiBase = config.backend.apiBase;
         const url = `${apiBase}/api/public/ordenes-stats`;
-        const totalBoletos = config.rifa?.totalBoletos || 10000;
-        
-        // Usar timeout para evitar esperas largas si backend no responde
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos timeout
         
@@ -960,17 +1167,18 @@ async function actualizarBarraProgreso() {
             
             if (!respuesta.ok) {
                 console.warn('⚠️ Backend no respondió correctamente');
-                actualizarInterfazProgreso(0, totalBoletos);
+                actualizarInterfazProgreso([], [], totalParaMostrar, rangoVisible);
                 return;
             }
 
             const datos = await respuesta.json();
             if (datos.success && datos.data) {
                 const boletosVendidos = datos.data.total_boletos_vendidos || 0;
-                actualizarInterfazProgreso(boletosVendidos, totalBoletos);
+                console.debug('[main] Usando datos del backend:', { boletosVendidos });
+                actualizarInterfazProgreso([], [], totalParaMostrar, rangoVisible, boletosVendidos);
             } else {
                 console.warn('⚠️ Respuesta inválida del backend');
-                actualizarInterfazProgreso(0, totalBoletos);
+                actualizarInterfazProgreso([], [], totalParaMostrar, rangoVisible);
             }
         } catch (fetchError) {
             clearTimeout(timeoutId);
@@ -979,8 +1187,7 @@ async function actualizarBarraProgreso() {
             } else {
                 console.warn('⚠️ No se puede conectar a backend:', apiBase);
             }
-            // Mostrar valores por defecto sin datos
-            actualizarInterfazProgreso(0, totalBoletos);
+            actualizarInterfazProgreso([], [], totalParaMostrar, rangoVisible);
         }
     } catch (error) {
         console.warn('⚠️ Error en actualizarBarraProgreso:', error.message);
@@ -988,53 +1195,66 @@ async function actualizarBarraProgreso() {
 }
 
 /**
- * Actualiza la interfaz visual con los datos de progreso
+ * actualizarInterfazProgreso - Actualiza elementos UI con datos de boletos
+ * 🎯 LÓGICA CORRECTA:
+ * - Si oportunidades ESTÁ ENABLED: Mostrar solo boletos del rango visible
+ *   * Vendidos: Contar solo boletos vendidos/reservados en el rango visible
+ *   * Total: Tamaño del rango visible (ya ajustado en actualizarBarraProgreso)
+ * 
+ * - Si oportunidades NO ESTÁ: Mostrar todos los boletos
+ *   * Vendidos: Todos los vendidos (sin filtrar)
+ *   * Total: totalParaMostrar (que es totalBoletos)
+ * 
+ * @param {Array} sold - Array de boletos vendidos
+ * @param {Array} reserved - Array de boletos reservados
+ * @param {number} totalParaMostrar - Total de boletos a considerar
+ * @param {Object|null} rangoVisible - Rango visible si oportunidades está enabled
+ * @param {number} backendVendidos - (Opcional) Total de vendidos del backend (fallback)
  */
-function actualizarInterfazProgreso(boletosVendidos, totalBoletos) {
-    // ✅ Si oportunidades está habilitada, calcular solo en rango visible
-    const oportunidadesConfig = window.rifaplusConfig && window.rifaplusConfig.rifa && window.rifaplusConfig.rifa.oportunidades;
-    let boletosVendidosEnRango = boletosVendidos;
-    let totalEnRango = totalBoletos;
+function actualizarInterfazProgreso(sold = [], reserved = [], totalParaMostrar = 10000, rangoVisible = null, backendVendidos = null) {
+    // 🎯 CALCULAR BOLETOS VENDIDOS SEGÚN MODALIDAD
+    // ⭐ IMPORTANTE: Contar SOLO boletos vendidos (sold), no apartados/reservados
+    // Los reservados son boletos temporales sin pago confirmado
+    let boletosVendidosParaMostrar = 0;
     
-    if (oportunidadesConfig && oportunidadesConfig.enabled && oportunidadesConfig.rango_visible) {
-        const rangoVisible = oportunidadesConfig.rango_visible;
-        
-        // Contar solo boletos vendidos/apartados que están en el rango visible
-        const sold = (window.rifaplusSoldNumbers && Array.isArray(window.rifaplusSoldNumbers)) ? window.rifaplusSoldNumbers : [];
-        const reserved = (window.rifaplusReservedNumbers && Array.isArray(window.rifaplusReservedNumbers)) ? window.rifaplusReservedNumbers : [];
-        
-        let vendidosEnRangoVisible = 0;
-        let apartadosEnRangoVisible = 0;
-        
-        // Contar vendidos en el rango visible
+    if (rangoVisible && rangoVisible.inicio !== undefined && rangoVisible.fin !== undefined) {
+        // 🎯 MODO OPORTUNIDADES: Contar solo boletos VENDIDOS del rango visible
+        // NO incluir reservados (apartados sin pago)
         sold.forEach(num => {
             const n = Number(num);
             if (n >= rangoVisible.inicio && n <= rangoVisible.fin) {
-                vendidosEnRangoVisible++;
+                boletosVendidosParaMostrar++;
             }
         });
         
-        // Contar apartados en el rango visible
-        reserved.forEach(num => {
-            const n = Number(num);
-            if (n >= rangoVisible.inicio && n <= rangoVisible.fin) {
-                apartadosEnRangoVisible++;
-            }
-        });
-        
-        boletosVendidosEnRango = vendidosEnRangoVisible + apartadosEnRangoVisible;
-        totalEnRango = (rangoVisible.fin - rangoVisible.inicio) + 1;
+        console.debug('[main] MODO OPORTUNIDADES - Rango visible:', rangoVisible, 'Vendidos en rango:', boletosVendidosParaMostrar, 'Total sold:', sold.length, 'Total reserved:', reserved.length);
+    } else if (backendVendidos !== null) {
+        // FALLBACK: Si solo tenemos data del backend
+        boletosVendidosParaMostrar = backendVendidos;
+        console.debug('[main] FALLBACK BACKEND - Vendidos:', boletosVendidosParaMostrar);
+    } else {
+        // 🎯 MODO NORMAL (sin oportunidades): Contar SOLO los vendidos
+        boletosVendidosParaMostrar = sold.length;
+        console.debug('[main] MODO NORMAL - Total vendidos:', boletosVendidosParaMostrar, 'Total reserved:', reserved.length);
     }
     
-    const boletosRestantes = totalEnRango - boletosVendidosEnRango;
-    const porcentaje = totalEnRango > 0 ? Math.round((boletosVendidosEnRango / totalEnRango) * 100) : 0;
+    // 🎯 CALCULAR DISPONIBLES Y PORCENTAJE
+    const boletosRestantes = totalParaMostrar - boletosVendidosParaMostrar;
+    const porcentaje = totalParaMostrar > 0 ? Math.round((boletosVendidosParaMostrar / totalParaMostrar) * 100) : 0;
+
+    console.debug('[main] RESULTADO FINAL:', {
+        boletosVendidos: boletosVendidosParaMostrar,
+        boletosRestantes,
+        totalParaMostrar,
+        porcentaje
+    });
 
     const elemVendidos = document.getElementById('boletos-vendidos');
     const elemRestantes = document.getElementById('boletos-restantes');
     const elemPorcentaje = document.getElementById('porcentaje-vendido');
     const elemProgressFill = document.getElementById('progress-fill');
 
-    if (elemVendidos) elemVendidos.textContent = boletosVendidosEnRango;
+    if (elemVendidos) elemVendidos.textContent = boletosVendidosParaMostrar;
     if (elemRestantes) elemRestantes.textContent = boletosRestantes;
     if (elemPorcentaje) elemPorcentaje.textContent = `${porcentaje}%`;
 
@@ -1072,7 +1292,8 @@ function actualizarInterfazProgreso(boletosVendidos, totalBoletos) {
  * Actualiza el total de boletos en la interfaz
  */
 function actualizarTotalBoletosEnUI() {
-    const totalBoletos = window.rifaplusConfig?.rifa?.totalBoletos || 10000;
+    // DINÁMICO: Usar obtenerRangoMaximoBoletos para considerar oportunidades
+    const totalBoletos = window.rifaplusConfig?.obtenerRangoMaximoBoletos?.() || 10000;
     const elem = document.getElementById('total-boletos-info');
     if (elem) {
         elem.textContent = totalBoletos.toLocaleString();
