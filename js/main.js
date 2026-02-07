@@ -117,15 +117,30 @@
         
         console.log('[main] 🚀 Iniciando carga robusta de oportunidades...');
         
-        // Esperar a que el OportunidadesCacheManager esté disponible
-        let intentos = 0;
-        while (!window.oportunidadesCache && intentos < 50) {
+    try {
+        console.log('[main] ⏳ Esperando que OportunidadesCacheManager esté disponible...');
+        
+        // Step 1: Esperar a que boot-cache haya ejecutado
+        let bootIntenta = 0;
+        while (!window.oportunidadesCacheBootReady && bootIntenta < 50) {
             await new Promise(r => setTimeout(r, 100));
+            bootIntenta++;
+        }
+        
+        // Step 2: Esperar a que la instancia esté disponible
+        let intentos = 0;
+        while (!window.oportunidadesCache && intentos < 100) {
+            await new Promise(r => setTimeout(r, 50));
             intentos++;
         }
         
         if (!window.oportunidadesCache) {
-            console.error('[main] ❌ OportunidadesCacheManager no disponible');
+            console.error('[main] ❌ OportunidadesCacheManager no disponible después de 5000ms');
+            console.error('[DEBUG] Window properties:', {
+                oportunidadesCache: !!window.oportunidadesCache,
+                OportunidadesCacheManager: !!window.OportunidadesCacheManager,
+                oportunidadesCacheBootReady: window.oportunidadesCacheBootReady
+            });
             // Fallback: marcar como cargado para no bloquear
             window.rifaplusOportunidadesLoaded = true;
             window.rifaplusOportunidadesDisponibles = [];
@@ -133,8 +148,12 @@
             return;
         }
         
+        console.log('[main] ✅ OportunidadesCacheManager disponible (boot intento: ' + bootIntenta + ', cache intento: ' + intentos + ')');
+        
         // Usar el gestor robusto
         const resultado = await window.oportunidadesCache.cargar(endpoint);
+        
+        console.log('[main] 📦 Resultado de carga:', resultado);
         
         // Establecer variables globales para compatibilidad
         window.rifaplusOportunidadesDisponibles = window.oportunidadesCache.obtenerTodos();
@@ -153,6 +172,7 @@
         
     } catch (error) {
         console.error('[main] ❌ Error crítico en cargarOportunidadesDisponibles:', error.message);
+        console.error('[main] Stack:', error.stack);
         window.rifaplusOportunidadesLoaded = true;
         window.rifaplusOportunidadesDisponibles = [];
         window.dispatchEvent(new CustomEvent('oportunidadesListas', { 
