@@ -799,6 +799,26 @@ function calcularYLlenarOportunidades(numerosOrdenados, retryCount = 0) {
                 }
             }
 
+            // ⚠️ NUEVA VALIDACIÓN: Esperar a que los datos de boletos sean FRESCOS
+            // Si el Web Worker sigue procesando, esperar
+            if (window.rifaplusBoletosLoading || !window.rifaplusBoletosDatosActualizados) {
+                const MAX_SYNC_RETRIES = 8;
+                if (retryCount < MAX_SYNC_RETRIES) {
+                    // Los datos de boletos aún se están cargando/actualizando
+                    const reason = window.rifaplusBoletosLoading ? 'cargando boletos' : 'Web Worker procesando';
+                    console.warn(`⏳ [CARRITO] Esperando datos frescos de boletos (${reason})... retry ${retryCount + 1}/${MAX_SYNC_RETRIES}`);
+                    const delayMs = 300 * Math.pow(1.2, retryCount); // 300ms, 360ms, 432ms, etc.
+                    setTimeout(() => calcularYLlenarOportunidades(numerosOrdenados, retryCount + 1), delayMs);
+                    return;
+                } else {
+                    console.warn(`⚠️  [CARRITO] Timeout esperando datos frescos, procediendo con datos disponibles`);
+                }
+            }
+
+            console.log(`✅ [CARRITO] Datos frescos confirmados - procediendo a generar oportunidades`);
+            
+            // RESTO DEL CÓDIGO (sin cambios)
+
             const numerosDisponibles = window.rifaplusOportunidadesDisponibles || [];
             
             if (numerosDisponibles.length === 0) {

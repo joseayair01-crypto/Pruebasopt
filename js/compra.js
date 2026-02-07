@@ -25,6 +25,10 @@ var selectedNumbersGlobal = new Set();
 // Guardar estado del filtro de disponibles (persiste al cambiar rangos)
 var filtroDisponiblesActivo = false;
 
+// ⚠️ FLAG DE SINCRONIZACIÓN: Indica si los datos de boletos (sold/reserved) están FRESCOS
+// Previene race conditions donde el Web Worker aún está procesando
+var window_rifaplusBoletosDatosActualizados = false;
+
 /* ============================================================ */
 /* INFINITE SCROLL STATE */
 /* ============================================================ */
@@ -176,6 +180,9 @@ function actualizarResumenCompraConDebounce() {
  */
 async function inicializarSistemaCompra() {
     
+    // ⚠️ Inicializar flag de sincronización
+    window.rifaplusBoletosDatosActualizados = false; // Empezar como FALSE para no permitir generación hasta que esté REALMENTE listo
+    
     const grilla = document.getElementById('numerosGrid');
     if (!grilla) {
         console.error('❌ ERROR CRÍTICO: No se encontró el elemento numerosGrid');
@@ -319,6 +326,10 @@ async function cargarBoletosPublicos() {
         // Mostrar disponibilidad INSTANTÁNEAMENTE
         const stageStartTime = performance.now();
         console.debug('📊 Cargando stats de disponibilidad...');
+        
+        // ⚠️ MARCAR DATOS COMO OBSOLETOS al iniciar la carga
+        // Esto previene que calcularYLlenarOportunidades use datos viejos
+        window.rifaplusBoletosDatosActualizados = false;
         
         try {
             const statsController = new AbortController();
@@ -2178,6 +2189,10 @@ function procesarBoletosEnBackground(sold, reserved) {
                 if (workerTimeoutId) clearTimeout(workerTimeoutId);
                 
                 if (event.data.success) {
+                    // ⚠️ CRÍTICO: Marcar datos como OBSOLETOS ANTES de actualizar
+                    window.rifaplusBoletosDatosActualizados = false;
+                    console.log('🔄 [SYNC] Marcando datos como actualizándose...');
+                    
                     // Worker procesó los datos, guardar en ventana global
                     window.rifaplusSoldNumbers = event.data.soldSet;
                     window.rifaplusReservedNumbers = event.data.reservedSet;
@@ -2185,6 +2200,10 @@ function procesarBoletosEnBackground(sold, reserved) {
                     
                     // Actualizar grid solo los elementos visibles
                     actualizarEstadoBoletosVisibles();
+                    
+                    // ✅ AHORA SÍ: Marcar datos como FRESCOS
+                    window.rifaplusBoletosDatosActualizados = true;
+                    console.log('🔄 [SYNC] Datos frescos y listos para usar');
                 } else {
                     console.warn('⚠️  Error en Web Worker:', event.data.error);
                     // Fallback: procesar en main thread (lento pero funciona)
@@ -2225,21 +2244,26 @@ function procesarBoletosEnBackground(sold, reserved) {
     }
 }
 
-/**
- * Procesar números en main thread (más lento pero funciona en todos lados)
- * Se usa como fallback cuando Web Worker falla o no está disponible
- */
 function procesarEnMainThread(sold, reserved) {
     try {
         console.debug('🔄 Procesando en main thread (fallback)...');
+        
+        // Marcar datos como OBSOLETOS antes de actualizar
+        window.rifaplusBoletosDatosActualizados = false;
+        
         window.rifaplusSoldNumbers = sold.map(Number);
         window.rifaplusReservedNumbers = reserved.map(Number);
         console.debug(`✅ Main thread: Procesados ${sold.length + reserved.length} boletos`);
+        
+        // Marcar datos como FRESCOS
+        window.rifaplusBoletosDatosActualizados = true;
+        console.log('✅ [SYNC] Datos frescos desde main thread');
     } catch (error) {
         console.error('❌ Error procesando en main thread:', error);
         // Último fallback: arrays vacíos (mejor que nada)
         window.rifaplusSoldNumbers = [];
         window.rifaplusReservedNumbers = [];
+        window.rifaplusBoletosDatosActualizados = true; // Marcar como frescos igual
     }
 }
 
