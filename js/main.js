@@ -101,100 +101,67 @@
 
 /**
  * 🔥 CRÍTICO: Cargar oportunidades disponibles para el carrito
- * Esto llena window.rifaplusOportunidadesDisponibles y marca window.rifaplusOportunidadesLoaded
- * que se usan en carrito-global.js para calcular qué números pueden estar en el carrito
+ * ARQUITECTURA ROBUSTA:
+ * 1. IndexedDB (50MB disponible) - optimizado para datos grandes
+ * 2. Memory cache - para acceso rápido dentro de la sesión
+ * 3. Set de números - búsquedas O(1) en lugar de O(n)
+ * 4. Reintentos exponenciales - con backoff automático
  */
 (async function cargarOportunidadesDisponibles() {
     try {
+        // Obtener API base desde config
         const apiBase = (window.rifaplusConfig && window.rifaplusConfig.backend && window.rifaplusConfig.backend.apiBase) 
             ? window.rifaplusConfig.backend.apiBase 
-            : 'http://localhost:3000';
+            : 'http://localhost:5001';
         const endpoint = String(apiBase).replace(/\/+$/, '');
         
-        console.debug('[main] Cargando oportunidades disponibles...');
+        console.log('[main] 🚀 Iniciando carga robusta de oportunidades...');
         
-        // 🎯 INTENTAR CON CACHÉ PRIMERO
-        const cacheKey = 'rifaplusOportunidadesCache';
-        const cachedData = localStorage.getItem(cacheKey);
-        
-        if (cachedData) {
-            try {
-                const cached = JSON.parse(cachedData);
-                const cacheAge = Date.now() - (cached.timestamp || 0);
-                
-                if (cacheAge < 600000) { // 10 minutos - oportunidades cambian menos frecuentemente
-                    console.debug('[main] ✅ Oportunidades desde caché (edad: ' + Math.round(cacheAge/1000) + 's, cantidad: ' + (cached.disponibles?.length || 0) + ')');
-                    window.rifaplusOportunidadesDisponibles = cached.disponibles || [];
-                    window.rifaplusOportunidadesLoaded = true;
-                    window.dispatchEvent(new CustomEvent('oportunidadesListas', { detail: { origen: 'cache', cantidad: cached.disponibles?.length || 0 } }));
-                    return;
-                }
-            } catch (e) {
-                console.warn('[main] Error parseando caché de oportunidades:', e.message);
-            }
+        // Esperar a que el OportunidadesCacheManager esté disponible
+        let intentos = 0;
+        while (!window.oportunidadesCache && intentos < 50) {
+            await new Promise(r => setTimeout(r, 100));
+            intentos++;
         }
         
-        // 🎯 FALLBACK: Fetch desde backend
-        console.debug('[main] Fetch desde backend para oportunidades disponibles...');
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seg timeout para lista grande
-        
-        try {
-            const response = await fetch(`${endpoint}/api/public/oportunidades/disponibles`, {
-                signal: controller.signal,
-                cache: 'no-store',
-                headers: { 'Accept': 'application/json' }
-            });
-            
-            clearTimeout(timeoutId);
-            
-            if (!response.ok) {
-                console.warn('[main] ⚠️  Error cargando oportunidades:', response.status);
-                window.rifaplusOportunidadesDisponibles = [];
-                window.rifaplusOportunidadesLoaded = true;
-                window.dispatchEvent(new CustomEvent('oportunidadesListas', { detail: { origen: 'backend-error', status: response.status } }));
-                return;
-            }
-            
-            const json = await response.json();
-            const disponibles = Array.isArray(json.disponibles) ? json.disponibles : [];
-            
-            window.rifaplusOportunidadesDisponibles = disponibles;
+        if (!window.oportunidadesCache) {
+            console.error('[main] ❌ OportunidadesCacheManager no disponible');
+            // Fallback: marcar como cargado para no bloquear
             window.rifaplusOportunidadesLoaded = true;
-            
-            // 🛡️ Intentar guardar en caché, pero NO fallar si localStorage está lleno
-            try {
-                const cacheData = JSON.stringify({
-                    disponibles: disponibles,
-                    timestamp: Date.now()
-                });
-                // Validar tamaño ANTES de intentar guardar (localStorage tiene límite ~5-10MB)
-                const sizeInMB = (cacheData.length / (1024 * 1024)).toFixed(2);
-                if (sizeInMB > 5) {
-                    console.warn(`[main] ⚠️  Cache muy grande (${sizeInMB}MB), mantiendo solo en memoria`);
-                } else {
-                    localStorage.setItem(cacheKey, cacheData);
-                    console.debug(`[main] 💾 Caché guardado en localStorage (${sizeInMB}MB)`);
-                }
-            } catch (cacheError) {
-                // localStorage lleno o deshabilitado - silent fail, datos ya están en window
-                console.warn('[main] ⚠️  No se pudo cachear (localStorage lleno o excedido):', cacheError.message);
-            }
-            
-            console.debug('[main] ✅ Oportunidades cargadas:', disponibles.length + ' disponibles');
-            
-            // 🔥 DISPARA EVENTO para componentes que lo necesiten
-            window.dispatchEvent(new CustomEvent('oportunidadesListas', { detail: { origen: 'backend', cantidad: disponibles.length } }));
-        } catch (error) {
-            clearTimeout(timeoutId);
-            console.warn('[main] ⚠️  Error fetch oportunidades:', error.message);
             window.rifaplusOportunidadesDisponibles = [];
-            window.rifaplusOportunidadesLoaded = true;
-            window.dispatchEvent(new CustomEvent('oportunidadesListas', { detail: { origen: 'error', message: error.message } }));
+            window.dispatchEvent(new CustomEvent('oportunidadesListas', { detail: { origen: 'error', message: 'OportunidadesCacheManager not available' } }));
+            return;
         }
+        
+        // Usar el gestor robusto
+        const resultado = await window.oportunidadesCache.cargar(endpoint);
+        
+        // Establecer variables globales para compatibilidad
+        window.rifaplusOportunidadesDisponibles = window.oportunidadesCache.obtenerTodos();
+        window.rifaplusOportunidadesLoaded = true;
+        
+        console.log(`✅ [main] Oportunidades cargadas: ${resultado.cantidad} desde ${resultado.origen}`);
+        
+        // Disparar evento para otros componentes
+        window.dispatchEvent(new CustomEvent('oportunidadesListas', { 
+            detail: { 
+                origen: resultado.origen, 
+                cantidad: resultado.cantidad,
+                status: 'success'
+            } 
+        }));
+        
     } catch (error) {
-        console.error('[main] Error en cargarOportunidadesDisponibles:', error);
-        window.rifaplusOportunidadesLoaded = true; // Marcar como cargado aunque falle, para no bloquear
+        console.error('[main] ❌ Error crítico en cargarOportunidadesDisponibles:', error.message);
+        window.rifaplusOportunidadesLoaded = true;
+        window.rifaplusOportunidadesDisponibles = [];
+        window.dispatchEvent(new CustomEvent('oportunidadesListas', { 
+            detail: { 
+                origen: 'error', 
+                message: error.message,
+                status: 'failed'
+            } 
+        }));
     }
 })();
 
