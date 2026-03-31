@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:* http://localhost:* https://gorgeous-heliotrope-5a6b8e.netlify.app http://localhost:5001; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://cdn.sheetjs.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' http://127.0.0.1:* http://localhost:* https: http://localhost:5001 https://gorgeous-heliotrope-5a6b8e.netlify.app; img-src 'self' data: https: http://127.0.0.1:* http://localhost:* https://gorgeous-heliotrope-5a6b8e.netlify.app http://localhost:5001;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:* http://localhost:* https://gorgeous-heliotrope-5a6b8e.netlify.app http://localhost:5001; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://cdn.sheetjs.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' http://127.0.0.1:* http://localhost:* https: http://localhost:5001 https://gorgeous-heliotrope-5a6b8e.netlify.app; img-src 'self' data: https: http://127.0.0.1:* http://localhost:* https://gorgeous-heliotrope-5a6b8e.netlify.app http://localhost:5001; object-src 'none'; base-uri 'self'; form-action 'self';">
     <title>Órdenes - Panel Admin</title>
-    <link rel="icon" href="images/logo.png" sizes="32x32">
-    <link rel="preload" as="image" href="images/logo.png" fetchpriority="high">
+    <link rel="icon" href="images/placeholder-logo.svg" sizes="32x32">
+    <link rel="preload" as="image" href="images/placeholder-logo.svg" fetchpriority="high">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/admin-layout.css?v=20251221">
@@ -17,6 +17,7 @@
         })();
     </script>
     <script src="js/config.js?v=20251228.15"></script>
+    <script src="js/config-sync.js"></script>
     <script src="js/theme-dynamic.js"></script>
     <script src="js/admin-layout.js?v=20251228.15"></script>
     <style>
@@ -165,6 +166,60 @@
             display: block;
         }
 
+        /* ===== INFORMACIÓN DE USUARIO EN HEADER ===== */
+        /**
+         * Contenedor de info del usuario (avatar + nombre/rol)
+         */
+        .admin-user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 1rem;
+            background: rgba(124, 58, 237, 0.05);
+            border-radius: 0.5rem;
+            border: 1px solid rgba(124, 58, 237, 0.1);
+        }
+
+        /**
+         * Avatar circular con icono
+         */
+        .admin-user-avatar {
+            font-size: 1.5rem;
+            color: var(--primary);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /**
+         * Contenedor de nombre y rol del usuario
+         */
+        .admin-user-details {
+            display: flex;
+            flex-direction: column;
+            min-width: 120px;
+        }
+
+        /**
+         * Nombre del usuario
+         */
+        .admin-user-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-dark);
+        }
+
+        /**
+         * Rol del usuario
+         */
+        .admin-user-role {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            text-transform: capitalize;
+        }
+
         /* ===== PAGE ===== */
         .page {
             display: none;
@@ -241,12 +296,23 @@
         .summary-comprobante { background: rgba(124,58,237,0.08); color: var(--primary); }
         .summary-confirmada { background: rgba(49,162,76,0.08); color: var(--success); }
         .summary-cancelada { background: rgba(228,22,58,0.08); color: var(--danger); }
+        .summary-total {
+            margin-left: auto;
+            color: var(--text-lighter);
+            font-weight: 700;
+            white-space: nowrap;
+        }
 
         .search-row {
             display: grid;
             grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
             gap: 0.75rem;
             margin-bottom: 0.75rem;
+        }
+
+        .search-row-secondary {
+            grid-template-columns: 1fr 1fr minmax(220px, 1.2fr);
+            align-items: end;
         }
 
         .search-field {
@@ -276,6 +342,25 @@
             transition: all 0.2s ease;
             background: var(--bg-white);
             color: var(--text-dark);
+        }
+
+        .search-static {
+            min-height: 38px;
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            background: #F8FAFC;
+            color: var(--text-light);
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .search-static.is-loading {
+            color: var(--primary);
+            background: rgba(24, 119, 242, 0.06);
+            border-color: rgba(24, 119, 242, 0.18);
         }
 
         .search-input:focus,
@@ -460,8 +545,10 @@
         }
 
         .status-pendiente {
-            background: rgba(180, 116, 12, 0.15);
-            color: #B4740C;
+            background: rgba(250, 204, 21, 0.32);
+            color: #854d0e;
+            border: 1px solid rgba(202, 138, 4, 0.4);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
         }
 
         .status-comprobante_recibido {
@@ -541,6 +628,7 @@
         .btn-notify-mini {
             background: #25D366;
             color: white;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
         }
 
         .btn-notify-mini:hover {
@@ -548,12 +636,33 @@
         }
 
         .btn-edit-mini {
-            background: #22C55E;
-            color: white;
+            background: #EEF2F7;
+            color: var(--text-dark);
+            border: 1px solid #D7DFEA;
         }
 
         .btn-edit-mini:hover {
-            background: #16A34A;
+            background: #E4EAF2;
+        }
+
+        .btn-edit-cancel-mini {
+            background: rgba(228, 22, 58, 0.1);
+            color: var(--danger);
+            border-color: rgba(228, 22, 58, 0.2);
+        }
+
+        .btn-edit-cancel-mini:hover {
+            background: rgba(228, 22, 58, 0.16);
+        }
+
+        .btn-edit-restore-mini {
+            background: rgba(24, 119, 242, 0.1);
+            color: var(--primary);
+            border-color: rgba(24, 119, 242, 0.18);
+        }
+
+        .btn-edit-restore-mini:hover {
+            background: rgba(24, 119, 242, 0.16);
         }
 
         .order-estado {
@@ -568,8 +677,10 @@
         }
 
         .status-pendiente {
-            background: rgba(180, 116, 12, 0.15);
-            color: #B4740C;
+            background: rgba(250, 204, 21, 0.32);
+            color: #854d0e;
+            border: 1px solid rgba(202, 138, 4, 0.4);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
         }
 
         .status-comprobante_recibido {
@@ -819,6 +930,276 @@
             padding: 1rem;
         }
 
+        .orden-modal-content {
+            width: min(680px, 94vw);
+            border-radius: 0.9rem;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            max-height: 90vh;
+        }
+
+        .orden-modal-header {
+            padding: 1rem 1.1rem;
+            background: linear-gradient(180deg, rgba(24, 119, 242, 0.05), rgba(24, 119, 242, 0));
+        }
+
+        .orden-modal-title {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            margin: 0;
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--text-dark);
+        }
+
+        .orden-modal-title-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 0.65rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(24, 119, 242, 0.12);
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        .orden-modal-subtitle {
+            margin: 0.2rem 0 0 2.95rem;
+            color: var(--text-light);
+            font-size: 0.84rem;
+        }
+
+        .orden-modal-body {
+            display: grid;
+            gap: 0.95rem;
+            padding: 1rem 1.1rem 1.1rem;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .orden-modal-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.7rem;
+        }
+
+        .orden-modal-summary-item {
+            padding: 0.1rem 0;
+        }
+
+        .orden-modal-hero {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .orden-modal-hero-card,
+        .orden-modal-section {
+            border: 1px solid var(--border-color);
+            border-radius: 0.8rem;
+            padding: 0.9rem 0.95rem;
+            background: #fff;
+        }
+
+        .orden-modal-hero-label,
+        .orden-modal-info-label {
+            display: block;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-lighter);
+            font-weight: 700;
+            margin-bottom: 0.35rem;
+        }
+
+        .orden-modal-hero-value {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--text-dark);
+        }
+
+        .orden-modal-hero-value.primary {
+            color: var(--primary);
+        }
+
+        .orden-modal-hero-meta {
+            margin-top: 0.35rem;
+            color: var(--text-light);
+            font-size: 0.8rem;
+            line-height: 1.35;
+        }
+
+        .orden-modal-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 0.9rem;
+        }
+
+        .orden-modal-section-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-dark);
+            font-weight: 800;
+            font-size: 0.92rem;
+        }
+
+        .orden-modal-section-title i {
+            color: var(--primary);
+        }
+
+        .orden-modal-info-list {
+            display: grid;
+            gap: 0.7rem;
+        }
+
+        .orden-modal-info-item {
+            display: grid;
+            gap: 0.18rem;
+        }
+
+        .orden-modal-info-value {
+            color: var(--text-dark);
+            font-weight: 600;
+            line-height: 1.35;
+            word-break: break-word;
+        }
+
+        .orden-modal-info-value.subtle {
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
+        .orden-modal-whatsapp-row {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+        }
+
+        .orden-modal-whatsapp-chip {
+            width: 38px;
+            height: 38px;
+            border-radius: 0.75rem;
+            background: rgba(24, 119, 242, 0.08);
+            color: var(--primary);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .orden-modal-toggle-btn {
+            background: rgba(24, 119, 242, 0.1);
+            color: var(--primary);
+            border: 1px solid rgba(24, 119, 242, 0.16);
+            padding: 0.45rem 0.6rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .orden-modal-toggle-btn:hover {
+            background: rgba(24, 119, 242, 0.16);
+        }
+
+        .orden-modal-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+        }
+
+        .orden-modal-chip {
+            background: #EEF2F7;
+            color: var(--text-dark);
+            padding: 0.26rem 0.48rem;
+            border-radius: 0.42rem;
+            display: inline-block;
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            font-size: 0.82rem;
+            border: 1px solid #DEE3EA;
+        }
+
+        .orden-modal-chip.opportunity {
+            background: #EAF6EC;
+            border-color: #D1E8D6;
+            color: #20703A;
+        }
+
+        .orden-modal-accent {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            flex-wrap: wrap;
+        }
+
+        .orden-modal-promo {
+            background: linear-gradient(135deg, #FF4444, #CC0000);
+            color: white;
+            padding: 0.2rem 0.55rem;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .orden-modal-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.65rem;
+        }
+
+        .orden-modal-action-btn {
+            border: none;
+            border-radius: 0.65rem;
+            padding: 0.78rem 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            font-size: 0.88rem;
+        }
+
+        .orden-modal-action-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .orden-modal-action-btn.primary {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .orden-modal-action-btn.success {
+            background: #31A24C;
+            color: #fff;
+        }
+
+        .orden-modal-action-btn.danger {
+            background: #E4163A;
+            color: #fff;
+        }
+
+        .orden-modal-action-btn.neutral {
+            background: #EEF2F7;
+            color: var(--text-dark);
+            border: 1px solid #DEE3EA;
+        }
+
         .modal-image {
             max-width: 100%;
             height: auto;
@@ -829,6 +1210,10 @@
         @media (max-width: 1200px) {
             .search-row {
                 grid-template-columns: 1fr 1fr 1fr;
+            }
+
+            .search-row-secondary {
+                grid-template-columns: 1fr 1fr;
             }
 
             .search-field-wide {
@@ -874,6 +1259,10 @@
 
             .search-row {
                 gap: 0.5rem;
+                grid-template-columns: 1fr;
+            }
+
+            .search-row-secondary {
                 grid-template-columns: 1fr;
             }
 
@@ -926,6 +1315,33 @@
             .btn-action-mini {
                 padding: 0.3rem 0.5rem;
                 font-size: 0.7rem;
+            }
+
+            .orden-modal-content {
+                width: min(94vw, 94vw);
+                max-height: 92vh;
+            }
+
+            .orden-modal-hero,
+            .orden-modal-grid,
+            .orden-modal-actions,
+            .orden-modal-summary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .orden-modal-body {
+                gap: 0.8rem;
+                padding: 0.9rem;
+            }
+
+            .orden-modal-hero-card,
+            .orden-modal-section {
+                padding: 0.8rem 0.85rem;
+            }
+
+            .orden-modal-subtitle {
+                margin-left: 0;
+                margin-top: 0.35rem;
             }
         }
 
@@ -991,6 +1407,15 @@
                 gap: 0.4rem;
             }
 
+            .summary-banner {
+                flex-wrap: wrap;
+            }
+
+            .summary-total {
+                margin-left: 0;
+                width: 100%;
+            }
+
             .buttons-row {
                 flex-direction: column;
             }
@@ -1007,13 +1432,14 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="css/admin-theme.css?v=20260321.01">
 </head>
 <body>
     <!-- LOGIN SCREEN -->
     <div id="loginScreen" class="login-container">
         <div class="login-box">
             <div class="login-logo">
-                <img src="images/logo.png" alt="Logo" id="loginLogo" width="100" height="50">
+                <img src="images/placeholder-logo.svg" alt="Logo" id="loginLogo" width="100" height="50">
             </div>
             <h1 id="loginTitle">Panel Admin</h1>
             <p class="login-subtitle">Acceso para administradores</p>
@@ -1039,11 +1465,11 @@
             <div class="admin-header-content">
                 <div class="admin-header-left">
                     <div class="admin-logo-container">
-                        <img src="images/logo.png" alt="Logo" id="dashboardLogo">
+                        <img src="images/placeholder-logo.svg" alt="Logo" id="dashboardLogo">
                     </div>
                     <div class="admin-header-title">
                         <div class="admin-header-title-main">Órdenes</div>
-                        <div class="admin-header-title-sub">SORTEOS YEPE</div>
+                        <div class="admin-header-title-sub">SORTEO</div>
                     </div>
                 </div>
                 <div class="admin-header-right">
@@ -1082,7 +1508,7 @@
                         <i class="fas fa-cog"></i>
                         <span>Configuración</span>
                     </a>
-                    <a href="ayuda.html" class="admin-nav-btn" id="navAyuda">
+                    <a href="admin-ayuda.html" class="admin-nav-btn" id="navAyuda">
                         <i class="fas fa-question-circle"></i>
                         <span>Ayuda</span>
                     </a>
@@ -1135,6 +1561,20 @@
                         </select>
                     </div>
                 </div>
+                <div class="search-row search-row-secondary">
+                    <div class="search-field">
+                        <label class="search-label">Fecha Desde</label>
+                        <input type="date" id="filterFechaDesde" class="search-input">
+                    </div>
+                    <div class="search-field">
+                        <label class="search-label">Fecha Hasta</label>
+                        <input type="date" id="filterFechaHasta" class="search-input">
+                    </div>
+                    <div class="search-field">
+                        <label class="search-label">Resultados</label>
+                        <div class="search-static" id="ordersLoadInfo">Preparando listado de órdenes...</div>
+                    </div>
+                </div>
                 <div class="buttons-row">
                     <button class="btn-search" id="btnSearch">
                         <i class="fas fa-search"></i> Buscar
@@ -1151,7 +1591,7 @@
                     <div class="summary-item summary-comprobante clickable-summary" id="sumComprobante" onclick="filtrarPorEstado('comprobante_recibido')">Comprobante: 0</div>
                     <div class="summary-item summary-confirmada clickable-summary" id="sumConfirmada" onclick="filtrarPorEstado('confirmada')">Confirmada: 0</div>
                     <div class="summary-item summary-cancelada clickable-summary" id="sumCancelada" onclick="filtrarPorEstado('cancelada')">Cancelada: 0</div>
-                    <div style="margin-left: auto; color:var(--text-lighter); font-weight:600;" id="sumTotal">Total: 0</div>
+                    <div class="summary-total" id="sumTotal">Total: 0</div>
                 </div>
             </div>
 
@@ -1214,25 +1654,216 @@
 
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script src="js/calculo-precios.js?v=20251230.1"></script>
-    <script src="js/carrito-global.js"></script>
     <script>
         // ===== CONFIG =====
-        const API_BASE = 'http://localhost:5001';
+        const API_BASE = (window.rifaplusConfig?.backend?.apiBase)
+            || window.rifaplusConfig?.obtenerApiBase?.()
+            || window.location.origin;
         let token = null;
         let currentPage = 1;
         const ITEMS_PER_PAGE = 20;
         let allOrdenes = [];
         let filteredOrdenes = [];
+        let filtrosRestaurados = false;
+        let latestLoadRun = 0;
+        let isBackgroundLoading = false;
+        let totalOrdenesServidor = 0;
+        let totalPaginasServidor = 1;
+        let resumenOrdenesActual = {
+            pendiente: 0,
+            comprobante_recibido: 0,
+            confirmada: 0,
+            cancelada: 0,
+            totalBoletos: 0,
+            pendienteTotal: 0
+        };
 
         // ===== INITIALIZE CONFIG =====
         function initializeConfig() {
             const config = window.rifaplusConfig || {};
             const clienteName = config.cliente?.nombre || 'SORTEOS YEPE';
-            const clienteLogo = config.cliente?.logo || 'images/logo.png';
+            const clienteLogo = config.cliente?.logo || 'images/placeholder-logo.svg';
 
             document.getElementById('loginTitle').textContent = `${clienteName} - Admin`;
             document.getElementById('loginLogo').src = clienteLogo;
             document.getElementById('dashboardLogo').src = clienteLogo;
+        }
+
+        function escapeHtmlAdmin(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function escapeJsSingleQuote(value) {
+            return String(value ?? '')
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/\r/g, '\\r')
+                .replace(/\n/g, '\\n')
+                .replace(/<\/script/gi, '<\\/script');
+        }
+
+        function sanitizeStatusClass(value) {
+            return String(value ?? 'pendiente').replace(/[^a-zA-Z0-9_-]/g, '') || 'pendiente';
+        }
+
+        function renderTrackingInfoHtml(orden) {
+            let trackingInfo = '';
+
+            if (orden.confirmado_en && orden.confirmado_por_nombre) {
+                const fechaConfirmada = new Date(orden.confirmado_en).toLocaleString('es-ES', {
+                    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+                trackingInfo += `✅ Confirmada por <strong>${escapeHtmlAdmin(orden.confirmado_por_nombre)}</strong> el ${escapeHtmlAdmin(fechaConfirmada)}`;
+            }
+
+            if (orden.cancelado_en && orden.cancelado_por_nombre) {
+                const fechaCancelada = new Date(orden.cancelado_en).toLocaleString('es-ES', {
+                    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+                trackingInfo += `❌ Cancelada por <strong>${escapeHtmlAdmin(orden.cancelado_por_nombre)}</strong> el ${escapeHtmlAdmin(fechaCancelada)}`;
+            }
+
+            return trackingInfo;
+        }
+
+        function toTimestamp(dateValue) {
+            if (!dateValue) return 0;
+            if (typeof dateValue === 'number') return dateValue;
+            const parsed = new Date(dateValue).getTime();
+            return Number.isFinite(parsed) ? parsed : 0;
+        }
+
+        function ordenarOrdenes(lista = [], sortBy = 'fecha-desc') {
+            return [...lista].sort((a, b) => {
+                const aTime = toTimestamp(a.created_at);
+                const bTime = toTimestamp(b.created_at);
+
+                switch (sortBy) {
+                    case 'fecha-asc':
+                        return aTime - bTime;
+                    case 'nombre-asc':
+                        return (a.nombre_cliente || '').localeCompare(b.nombre_cliente || '', 'es');
+                    case 'nombre-desc':
+                        return (b.nombre_cliente || '').localeCompare(a.nombre_cliente || '', 'es');
+                    case 'estado':
+                        return (a.estado || '').localeCompare(b.estado || '', 'es');
+                    case 'total-desc':
+                        return (Number(b.total) || 0) - (Number(a.total) || 0);
+                    case 'total-asc':
+                        return (Number(a.total) || 0) - (Number(b.total) || 0);
+                    case 'fecha-desc':
+                    default:
+                        return bTime - aTime;
+                }
+            });
+        }
+
+        function obtenerFiltrosActuales() {
+            return {
+                searchId: (document.getElementById('searchId')?.value || '').toLowerCase().trim(),
+                searchNombre: (document.getElementById('searchNombre')?.value || '').toLowerCase().trim(),
+                searchWhatsapp: (document.getElementById('searchWhatsapp')?.value || '').toLowerCase().trim(),
+                estado: document.getElementById('filterEstado')?.value || '',
+                fechaDesde: document.getElementById('filterFechaDesde')?.value || '',
+                fechaHasta: document.getElementById('filterFechaHasta')?.value || '',
+                sortBy: document.getElementById('sortBy')?.value || 'fecha-desc'
+            };
+        }
+
+        function persistirFiltros() {
+            localStorage.setItem('ordenes_filters', JSON.stringify(obtenerFiltrosActuales()));
+        }
+
+        function restaurarFiltrosGuardados() {
+            if (filtrosRestaurados) return;
+            filtrosRestaurados = true;
+
+            const savedFilters = localStorage.getItem('ordenes_filters');
+            if (!savedFilters) return;
+
+            try {
+                const filters = JSON.parse(savedFilters);
+                if (filters.searchId) document.getElementById('searchId').value = filters.searchId;
+                if (filters.searchNombre) document.getElementById('searchNombre').value = filters.searchNombre;
+                if (filters.searchWhatsapp) document.getElementById('searchWhatsapp').value = filters.searchWhatsapp;
+                if (filters.estado) document.getElementById('filterEstado').value = filters.estado;
+                if (filters.fechaDesde) document.getElementById('filterFechaDesde').value = filters.fechaDesde;
+                if (filters.fechaHasta) document.getElementById('filterFechaHasta').value = filters.fechaHasta;
+                if (filters.sortBy) document.getElementById('sortBy').value = filters.sortBy;
+            } catch (e) {
+                console.warn('Error restaurando filtros:', e);
+            }
+        }
+
+        function actualizarInfoCarga(texto, loading = false) {
+            const ordersLoadInfo = document.getElementById('ordersLoadInfo');
+            if (!ordersLoadInfo) return;
+            ordersLoadInfo.textContent = texto;
+            ordersLoadInfo.classList.toggle('is-loading', loading);
+        }
+
+        function describirFiltrosActivos() {
+            const filtros = obtenerFiltrosActuales();
+            const activos = [];
+            if (filtros.searchId) activos.push(`ID: ${filtros.searchId}`);
+            if (filtros.searchNombre) activos.push(`Nombre: ${filtros.searchNombre}`);
+            if (filtros.searchWhatsapp) activos.push(`WhatsApp: ${filtros.searchWhatsapp}`);
+            if (filtros.estado) activos.push(`Estado: ${filtros.estado}`);
+            if (filtros.fechaDesde) activos.push(`Desde: ${filtros.fechaDesde}`);
+            if (filtros.fechaHasta) activos.push(`Hasta: ${filtros.fechaHasta}`);
+            if (filtros.sortBy && filtros.sortBy !== 'fecha-desc') activos.push(`Orden: ${filtros.sortBy}`);
+            return activos;
+        }
+
+        function actualizarOrdenLocal(numeroOrden, cambios = {}) {
+            const index = allOrdenes.findIndex(o => o.numero_orden === numeroOrden);
+            if (index === -1) return;
+
+            allOrdenes[index] = {
+                ...allOrdenes[index],
+                ...cambios,
+                updated_at: cambios.updated_at || new Date().toISOString()
+            };
+        }
+
+        function construirQueryOrdenes({ page = currentPage, limit = ITEMS_PER_PAGE, includePage = true } = {}) {
+            const filtros = obtenerFiltrosActuales();
+            const params = new URLSearchParams();
+
+            if (includePage) {
+                params.set('limit', String(limit));
+                params.set('offset', String(Math.max(0, (page - 1) * limit)));
+            }
+
+            if (filtros.searchId) params.set('searchId', filtros.searchId);
+            if (filtros.searchNombre) params.set('searchNombre', filtros.searchNombre);
+            if (filtros.searchWhatsapp) params.set('searchWhatsapp', filtros.searchWhatsapp);
+            if (filtros.estado) params.set('estado', filtros.estado);
+            if (filtros.fechaDesde) params.set('fechaDesde', filtros.fechaDesde);
+            if (filtros.fechaHasta) params.set('fechaHasta', filtros.fechaHasta);
+            if (filtros.sortBy) params.set('sortBy', filtros.sortBy);
+
+            return params;
+        }
+
+        async function fetchOrdenesPage(page = currentPage, limit = ITEMS_PER_PAGE) {
+            const params = construirQueryOrdenes({ page, limit, includePage: true });
+            const response = await fetch(`${API_BASE}/api/ordenes?${params.toString()}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            if (!data.success) throw new Error(data.message || 'Error cargando órdenes');
+            return data;
+        }
+
+        async function aplicarFiltros(resetPage = true) {
+            if (resetPage) currentPage = 1;
+            await loadOrdenes({ preservePage: true });
         }
 
         // ===== LOGIN =====
@@ -1282,56 +1913,44 @@
         document.getElementById('logoutBtn').addEventListener('click', () => {
             token = null;
             localStorage.removeItem('rifaplus_token');
+            localStorage.removeItem('rifaplus_admin_token');
             document.getElementById('loginScreen').style.display = 'flex';
             document.getElementById('page').classList.remove('active');
             document.getElementById('loginForm').reset();
         });
 
         // ===== LOAD ORDENES =====
-        async function loadOrdenes() {
+        async function loadOrdenes({ preservePage = false } = {}) {
             try {
-                const response = await fetch(`${API_BASE}/api/ordenes?limit=1000`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const data = await response.json();
+                const runId = ++latestLoadRun;
+                isBackgroundLoading = true;
+                if (!preservePage) currentPage = 1;
+                restaurarFiltrosGuardados();
+                persistirFiltros();
+                actualizarInfoCarga('Cargando órdenes...', true);
 
-                if (!data.success) throw new Error(data.message);
+                const data = await fetchOrdenesPage(currentPage, ITEMS_PER_PAGE);
+                if (runId !== latestLoadRun) return;
 
-                // Ordenar por más reciente primero (descendente)
-                allOrdenes = (data.data || []).sort((a, b) => {
-                    const aTime = typeof a.created_at === 'number' ? a.created_at : new Date(a.created_at).getTime();
-                    const bTime = typeof b.created_at === 'number' ? b.created_at : new Date(b.created_at).getTime();
-                    return bTime - aTime;  // Más reciente primero
-                });
+                allOrdenes = Array.isArray(data.data) ? data.data : [];
+                filteredOrdenes = allOrdenes;
+                totalOrdenesServidor = parseInt(data.total || 0, 10) || 0;
+                totalPaginasServidor = Math.max(1, Math.ceil(totalOrdenesServidor / ITEMS_PER_PAGE));
+                resumenOrdenesActual = {
+                    ...resumenOrdenesActual,
+                    ...(data.summary || {})
+                };
 
-                currentPage = 1;
-                
-                // 🔄 Restaurar filtros previos en lugar de limpiarlos
-                const savedFilters = localStorage.getItem('ordenes_filters');
-                if (savedFilters) {
-                    try {
-                        const filters = JSON.parse(savedFilters);
-                        if (filters.searchId) document.getElementById('searchId').value = filters.searchId;
-                        if (filters.searchNombre) document.getElementById('searchNombre').value = filters.searchNombre;
-                        if (filters.searchWhatsapp) document.getElementById('searchWhatsapp').value = filters.searchWhatsapp;
-                        if (filters.estado) document.getElementById('filterEstado').value = filters.estado;
-                        if (filters.fechaDesde) document.getElementById('filterFechaDesde').value = filters.fechaDesde;
-                        if (filters.fechaHasta) document.getElementById('filterFechaHasta').value = filters.fechaHasta;
-                        if (filters.sortBy) document.getElementById('sortBy').value = filters.sortBy;
-                        // Aplicar filtros restaurados
-                        aplicarFiltros();
-                    } catch (e) {
-                        console.warn('Error restaurando filtros:', e);
-                        filteredOrdenes = [...allOrdenes];
-                        renderOrdenes();
-                    }
-                } else {
-                    // Si no hay filtros guardados, mostrar todo
-                    filteredOrdenes = [...allOrdenes];
-                    renderOrdenes();
-                }
+                currentPage = Math.min(currentPage, totalPaginasServidor);
+                renderOrdenes();
             } catch (error) {
                 console.error('Error cargando órdenes:', error);
+                allOrdenes = [];
+                filteredOrdenes = [];
+                totalOrdenesServidor = 0;
+                totalPaginasServidor = 1;
+                isBackgroundLoading = false;
+                actualizarInfoCarga('No se pudieron cargar las órdenes', false);
                 showError('Error al cargar órdenes');
             }
         }
@@ -1339,8 +1958,15 @@
         // ===== RENDER ORDENES =====
         function renderOrdenes() {
             const container = document.getElementById('ordersTable');
+            const totalPages = Math.max(1, totalPaginasServidor);
+            const pageOrdenes = filteredOrdenes;
 
-            if (filteredOrdenes.length === 0) {
+            isBackgroundLoading = false;
+            const filtrosActivos = describirFiltrosActivos();
+            const sufijoFiltros = filtrosActivos.length ? ` · filtros: ${filtrosActivos.join(' · ')}` : '';
+            actualizarInfoCarga(`${totalOrdenesServidor.toLocaleString()} resultado(s) · página ${Math.min(currentPage, totalPages)} de ${totalPages}${sufijoFiltros}`, false);
+
+            if (pageOrdenes.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon"><i class="fas fa-inbox"></i></div>
@@ -1351,18 +1977,22 @@
                 return;
             }
 
-            const totalPages = Math.ceil(filteredOrdenes.length / ITEMS_PER_PAGE);
-            const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-            const endIndex = startIndex + ITEMS_PER_PAGE;
-            const pageOrdenes = filteredOrdenes.slice(startIndex, endIndex);
-
                 container.innerHTML = pageOrdenes.map(orden => {
                 const tieneComprobante = orden.comprobante_path ? true : false;
+                const trackingInfo = renderTrackingInfoHtml(orden);
+                const numeroOrdenSeguro = escapeHtmlAdmin(orden.numero_orden || '-');
+                const numeroOrdenJs = escapeJsSingleQuote(orden.numero_orden || '');
+                const nombreSeguro = escapeHtmlAdmin(orden.nombre_cliente || '-');
+                const nombreClienteJs = escapeJsSingleQuote(orden.nombre_cliente || 'Cliente');
+                const telefonoClienteJs = escapeJsSingleQuote(orden.telefono_cliente || '');
+                const estadoClienteJs = escapeJsSingleQuote(orden.estado_cliente || '');
+                const estadoCss = sanitizeStatusClass(orden.estado);
+                const estadoLabel = escapeHtmlAdmin(formatEstado(orden.estado));
 
                 return `
                     <div class="order-row">
-                        <div class="order-id">${orden.numero_orden}</div>
-                        <div class="order-client">${orden.nombre_cliente || '-'}</div>
+                        <div class="order-id">${numeroOrdenSeguro}</div>
+                        <div class="order-client">${nombreSeguro}</div>
                         <div class="order-comprobante">
                             ${tieneComprobante 
                                 ? '<span class="comprobante-badge comprobante-yes" title="Comprobante recibido"><i class="fas fa-check-circle"></i></span>'
@@ -1370,31 +2000,32 @@
                             }
                         </div>
                         <div class="order-estado">
-                            <div class="order-status status-${orden.estado}">
-                                ${formatEstado(orden.estado)}
+                            <div class="order-status status-${estadoCss}">
+                                ${estadoLabel}
                             </div>
+                            ${trackingInfo ? `<div style="font-size: 0.75rem; color: #666; margin-top: 0.3rem;">${trackingInfo}</div>` : ''}
                         </div>
                         <div class="order-actions">
-                            <button class="btn-view-order" onclick="abrirModalOrden('${orden.numero_orden}')">
+                            <button class="btn-view-order" onclick="abrirModalOrden('${numeroOrdenJs}')">
                                 <i class="fas fa-eye"></i> Ver
                             </button>
                             ${orden.estado !== 'confirmada' && orden.estado !== 'cancelada' ? `
-                                <button class="btn-action-mini btn-confirm-mini" onclick="confirmarOrden('${orden.numero_orden}')">
+                                <button class="btn-action-mini btn-confirm-mini" onclick="confirmarOrden('${numeroOrdenJs}')">
                                     <i class="fas fa-check"></i> Confirmar
                                 </button>
                             ` : ''}
                             ${orden.estado === 'confirmada' ? `
-                                <button class="btn-action-mini btn-notify-mini" onclick="notificarPorWhatsapp('${orden.numero_orden}', '${orden.nombre_cliente || 'Cliente'}', '${orden.telefono_cliente || ''}', ${orden.cantidad_boletos || 0})" title="Notificar por WhatsApp">
+                                <button class="btn-action-mini btn-notify-mini" onclick="notificarPorWhatsapp('${numeroOrdenJs}', '${nombreClienteJs}', '${telefonoClienteJs}', ${orden.cantidad_boletos || 0}, '${estadoClienteJs}')" title="Notificar por WhatsApp">
                                     <i class="fab fa-whatsapp"></i> Notificar
                                 </button>
                             ` : ''}
                             ${orden.estado === 'confirmada' || orden.estado === 'cancelada' ? `
-                                <button class="btn-action-mini btn-edit-mini" onclick="abrirModalEditar('${orden.numero_orden}')" title="Revertir estado: ${orden.estado === 'confirmada' ? 'Cancelar' : 'Confirmar'}">
+                                <button class="btn-action-mini btn-edit-mini ${orden.estado === 'confirmada' ? 'btn-edit-cancel-mini' : 'btn-edit-restore-mini'}" onclick="abrirModalEditar('${numeroOrdenJs}')" title="Revertir estado: ${orden.estado === 'confirmada' ? 'Cancelar' : 'Confirmar'}">
                                     <i class="fas fa-${orden.estado === 'confirmada' ? 'times' : 'check'}"></i> ${orden.estado === 'confirmada' ? 'Cancelar' : 'Confirmar'}
                                 </button>
                             ` : ''}
                             ${orden.estado !== 'cancelada' && orden.estado !== 'confirmada' ? `
-                                <button class="btn-action-mini btn-reject-mini" onclick="rechazarOrden('${orden.numero_orden}')">
+                                <button class="btn-action-mini btn-reject-mini" onclick="rechazarOrden('${numeroOrdenJs}')">
                                     <i class="fas fa-times"></i> Rechazar
                                 </button>
                             ` : ''}
@@ -1415,7 +2046,7 @@
             }
 
             // Actualizar resumen compacto
-            if (typeof updateSummary === 'function') updateSummary(filteredOrdenes);
+            if (typeof updateSummary === 'function') updateSummary();
         }
 
         // ===== SEARCH & FILTERS =====
@@ -1431,6 +2062,11 @@
                 const el = document.getElementById(id);
                 if (el) el.addEventListener('keypress', (e) => { if (e.key === 'Enter') aplicarFiltros(); });
             });
+
+            ['filterFechaDesde', 'filterFechaHasta'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('change', () => aplicarFiltros());
+            });
             
             const filterEstado = document.getElementById('filterEstado');
             if (filterEstado) filterEstado.addEventListener('change', aplicarFiltros);
@@ -1443,30 +2079,31 @@
         });
 
         // Summary updater
-        function updateSummary(list) {
-            const arr = list || filteredOrdenes || allOrdenes || [];
-            const counts = { pendiente:0, comprobante_recibido:0, confirmada:0, cancelada:0 };
-            let totalBoletos = 0;
-            arr.forEach(o => {
-                const st = o.estado || 'pendiente';
-                if (counts.hasOwnProperty(st)) counts[st]++;
-                totalBoletos += Number(o.cantidad_boletos || (Array.isArray(o.boletos)? o.boletos.length:0)) || 0;
-            });
-            
-            // Las órdenes pendientes incluyen: sin comprobante + con comprobante pero sin confirmar
-            const totalPendientes = counts.pendiente + counts.comprobante_recibido;
-            
-            document.getElementById('sumPendiente').textContent = `Pendiente: ${totalPendientes}`;
-            document.getElementById('sumComprobante').textContent = `Comprobante: ${counts.comprobante_recibido}`;
-            document.getElementById('sumConfirmada').textContent = `Confirmada: ${counts.confirmada}`;
-            document.getElementById('sumCancelada').textContent = `Cancelada: ${counts.cancelada}`;
-            document.getElementById('sumTotal').textContent = `Total: ${arr.length} · Boletos: ${totalBoletos}`;
+        function updateSummary() {
+            const counts = resumenOrdenesActual || {};
+            document.getElementById('sumPendiente').textContent = `Pendiente: ${counts.pendienteTotal || 0}`;
+            document.getElementById('sumComprobante').textContent = `Comprobante: ${counts.comprobante_recibido || 0}`;
+            document.getElementById('sumConfirmada').textContent = `Confirmada: ${counts.confirmada || 0}`;
+            document.getElementById('sumCancelada').textContent = `Cancelada: ${counts.cancelada || 0}`;
+            document.getElementById('sumTotal').textContent = `Total: ${totalOrdenesServidor.toLocaleString()} · Boletos: ${(counts.totalBoletos || 0).toLocaleString()}`;
         }
 
         // Export filtered orders to Excel using SheetJS
-        function exportFilteredToExcel() {
+        async function exportFilteredToExcel() {
             try {
-                const data = filteredOrdenes.map(o => {
+                const lotes = [];
+                const totalPaginasExport = Math.max(1, Math.ceil(totalOrdenesServidor / 500));
+
+                actualizarInfoCarga('Preparando exportación...', true);
+
+                for (let page = 1; page <= totalPaginasExport; page++) {
+                    const dataPage = await fetchOrdenesPage(page, 500);
+                    const rows = Array.isArray(dataPage.data) ? dataPage.data : [];
+                    lotes.push(...rows);
+                    actualizarInfoCarga(`Preparando exportación... ${Math.min(page * 500, totalOrdenesServidor).toLocaleString()}/${totalOrdenesServidor.toLocaleString()}`, true);
+                }
+
+                const data = lotes.map(o => {
                     // Limitar boletos a 32,000 caracteres para evitar límite de Excel
                     let boletoStr = Array.isArray(o.boletos) ? o.boletos.join(',') : (o.boletos || '');
                     if (boletoStr.length > 32000) {
@@ -1489,126 +2126,36 @@
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, 'Órdenes');
                 XLSX.writeFile(wb, `ordenes_export_${new Date().toISOString().slice(0,10)}.xlsx`);
+                actualizarInfoCarga(`${totalOrdenesServidor.toLocaleString()} resultado(s) · página ${currentPage} de ${totalPaginasServidor}`, false);
             } catch (err) {
                 console.error('Export error:', err);
+                actualizarInfoCarga('No se pudo exportar', false);
                 showError('Error al exportar a Excel');
             }
         }
 
         // ===== CLEAR FILTERS =====
         function limpiarFiltros() {
-            // Limpiar inputs
-            document.getElementById('searchId').value = '';
-            document.getElementById('searchNombre').value = '';
-            document.getElementById('searchWhatsapp').value = '';
-            document.getElementById('filterEstado').value = '';
-            document.getElementById('filterFechaDesde').value = '';
-            document.getElementById('filterFechaHasta').value = '';
-            document.getElementById('sortBy').value = 'fecha-desc';
+            const campos = ['searchId', 'searchNombre', 'searchWhatsapp', 'filterEstado', 
+                           'filterFechaDesde', 'filterFechaHasta'];
+            
+            campos.forEach(id => {
+                const elemento = document.getElementById(id);
+                if (elemento) {
+                    elemento.value = '';
+                }
+            });
+            
+            // Sorteo especial (solo si existe)
+            const sortBy = document.getElementById('sortBy');
+            if (sortBy) {
+                sortBy.value = 'fecha-desc';
+            }
             
             // Limpiar localStorage
             localStorage.removeItem('ordenes_filters');
             
-            // Restaurar todas las órdenes
-            filteredOrdenes = [...allOrdenes];
-            currentPage = 1;
-            renderOrdenes();
-        }
-
-        function aplicarFiltros() {
-            const searchId = (document.getElementById('searchId')?.value || '').toLowerCase().trim();
-            const searchNombre = (document.getElementById('searchNombre')?.value || '').toLowerCase().trim();
-            const searchWhatsapp = (document.getElementById('searchWhatsapp')?.value || '').toLowerCase().trim();
-            const estado = document.getElementById('filterEstado')?.value || '';
-            const fechaDesde = document.getElementById('filterFechaDesde')?.value || '';
-            const fechaHasta = document.getElementById('filterFechaHasta')?.value || '';
-            const sortBy = document.getElementById('sortBy')?.value || 'fecha-desc';
-
-            // 💾 Guardar filtros en localStorage
-            localStorage.setItem('ordenes_filters', JSON.stringify({
-                searchId, searchNombre, searchWhatsapp, estado, fechaDesde, fechaHasta, sortBy
-            }));
-
-            // Función auxiliar para convertir cualquier fecha a timestamp
-            const toTimestamp = (dateValue) => {
-                if (!dateValue) return 0;
-                if (typeof dateValue === 'number') return dateValue;
-                return new Date(dateValue).getTime();
-            };
-
-            // Filtrar órdenes
-            filteredOrdenes = allOrdenes.filter(orden => {
-                // ID filter - búsqueda flexible
-                if (searchId && !(orden.numero_orden || '').toLowerCase().includes(searchId)) {
-                    return false;
-                }
-
-                // Nombre filter - búsqueda flexible
-                if (searchNombre && !(orden.nombre_cliente || '').toLowerCase().includes(searchNombre)) {
-                    return false;
-                }
-
-                // WhatsApp filter - buscar solo números
-                if (searchWhatsapp) {
-                    const telefonoLimpio = (orden.telefono_cliente || '').replace(/[^0-9]/g, '');
-                    const busquedaLimpia = searchWhatsapp.replace(/[^0-9]/g, '');
-                    if (!telefonoLimpio.includes(busquedaLimpia)) {
-                        return false;
-                    }
-                }
-
-                // Estado filter - solo filtrar si NO es vacío
-                if (estado && estado !== '' && orden.estado !== estado) {
-                    return false;
-                }
-
-                // Fecha desde
-                if (fechaDesde) {
-                    const desde = new Date(fechaDesde);
-                    desde.setHours(0, 0, 0, 0);
-                    if (toTimestamp(orden.created_at) < desde.getTime()) {
-                        return false;
-                    }
-                }
-
-                // Fecha hasta
-                if (fechaHasta) {
-                    const hasta = new Date(fechaHasta);
-                    hasta.setHours(23, 59, 59, 999);
-                    if (toTimestamp(orden.created_at) > hasta.getTime()) {
-                        return false;
-                    }
-                }
-
-                return true;
-            });
-
-            // Aplicar ordenamiento
-            filteredOrdenes.sort((a, b) => {
-                const aTime = toTimestamp(a.created_at);
-                const bTime = toTimestamp(b.created_at);
-                
-                switch(sortBy) {
-                    case 'fecha-asc':
-                        return aTime - bTime;  // Ascendente: antiguo primero
-                    case 'nombre-asc':
-                        return (a.nombre_cliente || '').localeCompare(b.nombre_cliente || '', 'es');
-                    case 'nombre-desc':
-                        return (b.nombre_cliente || '').localeCompare(a.nombre_cliente || '', 'es');
-                    case 'estado':
-                        return (a.estado || '').localeCompare(b.estado || '', 'es');
-                    case 'total-desc':
-                        return (b.total || 0) - (a.total || 0);
-                    case 'total-asc':
-                        return (a.total || 0) - (b.total || 0);
-                    case 'fecha-desc':
-                    default:
-                        return bTime - aTime;  // Descendente: reciente primero (DEFAULT)
-                }
-            });
-
-            currentPage = 1;
-            renderOrdenes();
+            aplicarFiltros();
         }
 
         // Función para filtrar por estado desde las cards del resumen
@@ -1620,43 +2167,6 @@
             }
         }
 
-        // Event listener para limpiar filtros
-        document.addEventListener('DOMContentLoaded', () => {
-            const btnClear = document.getElementById('btnClear');
-            if (btnClear) {
-                btnClear.addEventListener('click', () => {
-                    const searchId = document.getElementById('searchId');
-                    const searchNombre = document.getElementById('searchNombre');
-                    const searchWhatsapp = document.getElementById('searchWhatsapp');
-                    const filterEstado = document.getElementById('filterEstado');
-                    const filterFechaDesde = document.getElementById('filterFechaDesde');
-                    const filterFechaHasta = document.getElementById('filterFechaHasta');
-                    const sortBy = document.getElementById('sortBy');
-                    
-                    if (searchId) searchId.value = '';
-                    if (searchNombre) searchNombre.value = '';
-                    if (searchWhatsapp) searchWhatsapp.value = '';
-                    if (filterEstado) filterEstado.value = '';  // Vacío = mostrar todos
-                    if (filterFechaDesde) filterFechaDesde.value = '';
-                    if (filterFechaHasta) filterFechaHasta.value = '';
-                    if (sortBy) sortBy.value = 'fecha-desc';
-                    
-                    // Reordenar por más reciente primero
-                    const toTimestamp = (dateValue) => {
-                        if (!dateValue) return 0;
-                        if (typeof dateValue === 'number') return dateValue;
-                        return new Date(dateValue).getTime();
-                    };
-                    
-                    filteredOrdenes = [...allOrdenes].sort((a, b) => {
-                        return toTimestamp(b.created_at) - toTimestamp(a.created_at);
-                    });
-                    currentPage = 1;
-                    renderOrdenes();
-                });
-            }
-        });
-
         // ===== PAGINATION =====
         document.addEventListener('DOMContentLoaded', () => {
             const btnPrev = document.getElementById('btnPrev');
@@ -1664,7 +2174,7 @@
                 btnPrev.addEventListener('click', () => {
                     if (currentPage > 1) {
                         currentPage--;
-                        renderOrdenes();
+                        loadOrdenes({ preservePage: true });
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                     }
                 });
@@ -1675,10 +2185,10 @@
             const btnNext = document.getElementById('btnNext');
             if (btnNext) {
                 btnNext.addEventListener('click', () => {
-                    const totalPages = Math.ceil(filteredOrdenes.length / ITEMS_PER_PAGE);
+                    const totalPages = totalPaginasServidor;
                     if (currentPage < totalPages) {
                         currentPage++;
-                        renderOrdenes();
+                        loadOrdenes({ preservePage: true });
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                     }
                 });
@@ -1730,6 +2240,28 @@
             }
         }
 
+        async function sincronizarOrdenTrasCambio(ordenId, nuevoEstado) {
+            actualizarOrdenLocal(ordenId, { estado: nuevoEstado });
+            await loadOrdenes({ preservePage: true });
+            refrescarModalOrdenSiEstaAbierto(ordenId);
+        }
+
+        function refrescarModalOrdenSiEstaAbierto(ordenId) {
+            const modal = document.getElementById('ordenModal');
+            if (!modal || modal.style.display !== 'flex' || numeroOrdenModalActual !== ordenId) {
+                return;
+            }
+
+            const ordenVisible = allOrdenes.find(o => o.numero_orden === ordenId);
+            if (!ordenVisible) {
+                cerrarModalOrden();
+                return;
+            }
+
+            requestManager.cleanup(ordenId);
+            abrirModalOrden(ordenId);
+        }
+
         async function confirmarOrden(ordenId) {
             if (!confirm('¿Confirmar esta orden?')) return;
             mostrarProcesamiento('Confirmando orden', 'Se está confirmando la orden y actualizando el estado...');
@@ -1746,8 +2278,8 @@
                 const data = await response.json();
                 if (!data.success) throw new Error(data.message);
                 ocultarProcesamiento();
+                await sincronizarOrdenTrasCambio(ordenId, 'confirmada');
                 showSuccess('Orden confirmada');
-                loadOrdenes();
             } catch (error) {
                 ocultarProcesamiento();
                 showError('Error: ' + error.message);
@@ -1770,24 +2302,57 @@
                 const data = await response.json();
                 if (!data.success) throw new Error(data.message);
                 ocultarProcesamiento();
+                await sincronizarOrdenTrasCambio(ordenId, 'cancelada');
                 showSuccess('Orden rechazada');
-                loadOrdenes();
             } catch (error) {
                 ocultarProcesamiento();
                 showError('Error: ' + error.message);
             }
         }
 
-        function notificarPorWhatsapp(ordenId, nombreCliente, telefonoCliente, cantidadBoletos) {
+        function normalizarTextoEstadoWhatsapp(estadoCliente) {
+            return String(estadoCliente || '')
+                .trim()
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '');
+        }
+
+        function obtenerPrefijoWhatsappPorEstado(estadoCliente) {
+            const estado = normalizarTextoEstadoWhatsapp(estadoCliente);
+            if (estado === 'estados unidos') return '1';
+            return '52';
+        }
+
+        function construirWhatsappUrl(telefonoCliente, estadoCliente, mensaje = '') {
+            let telefono = String(telefonoCliente || '').trim().replace(/\D/g, '');
+
+            if (!telefono) return '';
+
+            if (telefono.startsWith('521') && telefono.length >= 13) {
+                telefono = `52${telefono.slice(-10)}`;
+            } else if (telefono.startsWith('52') && telefono.length >= 12) {
+                telefono = `52${telefono.slice(-10)}`;
+            } else if (telefono.startsWith('1') && telefono.length === 11) {
+                telefono = `1${telefono.slice(-10)}`;
+            } else if (telefono.length === 10) {
+                telefono = `${obtenerPrefijoWhatsappPorEstado(estadoCliente)}${telefono}`;
+            }
+
+            const query = mensaje ? `?text=${encodeURIComponent(mensaje)}` : '';
+            return `https://wa.me/${telefono}${query}`;
+        }
+
+        function notificarPorWhatsapp(ordenId, nombreCliente, telefonoCliente, cantidadBoletos, estadoCliente = '') {
             try {
-                // Obtener fecha del sorteo desde config
-                const fechaSorteo = window.SORTEO_CONFIG?.fecha_sorteo || 'Próximamente';
-                const horaSorteo = window.SORTEO_CONFIG?.hora_sorteo || '';
+                const fechaSorteo = window.rifaplusConfig?.obtenerFechaSorteoFormato?.()
+                    || window.rifaplusConfig?.rifa?.fechaSorteoFormato
+                    || 'Próximamente';
+                const horaSorteo = window.rifaplusConfig?.rifa?.horaSorteo || '';
                 const fechaHoraFormato = horaSorteo ? `${fechaSorteo} a las ${horaSorteo}` : fechaSorteo;
                 
-                // Limpiar teléfono (solo números)
-                const telefonoLimpio = telefonoCliente?.replace(/\D/g, '') || '';
-                if (!telefonoLimpio) {
+                const telefonoNormalizado = String(telefonoCliente || '').replace(/\D/g, '');
+                if (!telefonoNormalizado) {
                     showError('No hay número de WhatsApp registrado para este cliente');
                     return;
                 }
@@ -1828,7 +2393,11 @@ ${window.location.origin}/mis-boletos.html
 ¡Mucha suerte! 🎱`;
 
                 // Crear URL de WhatsApp con mensaje
-                const urlWhatsapp = `https://wa.me/${telefonoLimpio}?text=${encodeURIComponent(mensaje)}`;
+                const urlWhatsapp = construirWhatsappUrl(telefonoCliente, estadoCliente, mensaje);
+                if (!urlWhatsapp) {
+                    showError('No se pudo construir el enlace de WhatsApp para este cliente');
+                    return;
+                }
                 
                 // Abrir WhatsApp
                 window.open(urlWhatsapp, '_blank');
@@ -1870,36 +2439,22 @@ ${window.location.origin}/mis-boletos.html
             let boton = '';
             let puedeConfirmar = true;
             let mensajeError = '';
+            const numeroOrdenSeguro = escapeHtmlAdmin(numeroOrden);
+            const numeroOrdenJs = escapeJsSingleQuote(numeroOrden);
 
             if (orden.estado === 'confirmada') {
-                mensaje = `¿Deseas CANCELAR la orden <strong>${numeroOrden}</strong>?<br><br>
+                mensaje = `¿Deseas CANCELAR la orden <strong>${numeroOrdenSeguro}</strong>?<br><br>
                     <strong style="color: #E4163A;">⚠️ Esto marcará la orden como CANCELADA</strong><br>
                     <strong style="color: #E4163A;">Los boletos volverán a estar DISPONIBLES</strong>`;
                 nuevoEstado = 'cancelada';
                 boton = 'Sí, Cancelar Orden';
             } else if (orden.estado === 'cancelada') {
-                // Verificar si los boletos de esta orden están en otra orden activa
-                const boletosCancelada = orden.boletos || [];
-                const boletosEnOtraOrden = allOrdenes.filter(o => 
-                    o.numero_orden !== numeroOrden && 
-                    (o.estado === 'pendiente' || o.estado === 'comprobante_recibido' || o.estado === 'confirmada')
-                ).some(o => {
-                    const boletosOtra = o.boletos || [];
-                    return boletosCancelada.some(b => boletosOtra.includes(b));
-                });
-
-                if (boletosEnOtraOrden) {
-                    puedeConfirmar = false;
-                    mensajeError = `❌ No se puede confirmar esta orden<br><br>
-                        Uno o más boletos ya están asignados en otra orden activa.<br>
-                        Debes liberar los boletos de esa otra orden primero.`;
-                } else {
-                    mensaje = `¿Deseas CONFIRMAR la orden <strong>${numeroOrden}</strong>?<br><br>
-                        <strong style="color: #31A24C;">✓ Esto marcará la orden como CONFIRMADA</strong><br>
-                        <strong style="color: #31A24C;">Los boletos pasarán a estar VENDIDOS</strong>`;
-                    nuevoEstado = 'confirmada';
-                    boton = 'Sí, Confirmar Orden';
-                }
+                mensaje = `¿Deseas CONFIRMAR la orden <strong>${numeroOrdenSeguro}</strong>?<br><br>
+                    <strong style="color: #31A24C;">✓ Esto marcará la orden como CONFIRMADA</strong><br>
+                    <strong style="color: #31A24C;">Los boletos pasarán a estar VENDIDOS</strong><br><br>
+                    <span style="color:#667085;">La validación final de conflictos se realizará en el servidor.</span>`;
+                nuevoEstado = 'confirmada';
+                boton = 'Sí, Confirmar Orden';
             }
 
             modal.innerHTML = `
@@ -1918,7 +2473,7 @@ ${window.location.origin}/mis-boletos.html
                             ${puedeConfirmar ? 'No, Cancelar' : 'Entendido'}
                         </button>
                         ${puedeConfirmar ? `
-                            <button onclick="cambiarEstadoOrden('${numeroOrden}', '${nuevoEstado}')" class="btn btn-confirm" style="flex: 1; padding: 0.75rem 1rem; border: none; border-radius: 0.375rem; background: ${nuevoEstado === 'confirmada' ? '#31A24C' : '#E4163A'}; color: white; font-weight: 600; cursor: pointer; transition: all 0.2s ease; font-size: 0.9rem;">
+                            <button onclick="cambiarEstadoOrden('${numeroOrdenJs}', '${nuevoEstado}')" class="btn btn-confirm" style="flex: 1; padding: 0.75rem 1rem; border: none; border-radius: 0.375rem; background: ${nuevoEstado === 'confirmada' ? '#31A24C' : '#E4163A'}; color: white; font-weight: 600; cursor: pointer; transition: all 0.2s ease; font-size: 0.9rem;">
                                 ${boton}
                             </button>
                         ` : ''}
@@ -1950,9 +2505,9 @@ ${window.location.origin}/mis-boletos.html
                 if (!data.success) throw new Error(data.message);
                 
                 const estadoTexto = nuevoEstado === 'confirmada' ? 'confirmada' : 'cancelada';
+                await sincronizarOrdenTrasCambio(numeroOrden, nuevoEstado);
                 showSuccess(`Orden ${estadoTexto} correctamente`);
                 document.getElementById('editarEstadoModal').style.display = 'none';
-                loadOrdenes();
             } catch (error) {
                 showError('Error: ' + error.message);
             }
@@ -1961,6 +2516,9 @@ ${window.location.origin}/mis-boletos.html
         function verComprobanteModal(path) {
             const fullPath = path.startsWith('http') ? path : `${API_BASE}/public/${path}`;
             const fileName = path.split('/').pop();
+            const fullPathSeguro = escapeJsSingleQuote(fullPath);
+            const fullPathHtml = escapeHtmlAdmin(fullPath);
+            const fileNameSeguro = escapeJsSingleQuote(fileName || 'comprobante');
             
             // Crear modal si no existe
             let modal = document.getElementById('comprobanteViewModal');
@@ -1989,18 +2547,18 @@ ${window.location.origin}/mis-boletos.html
                 ? `<div style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1rem;">
                     <i class="fas fa-file-pdf" style="font-size: 4rem; color: #E4163A;"></i>
                     <p style="color: var(--text-dark); font-weight: 500; margin: 0;">Los PDFs se abren en una nueva ventana por razones de seguridad</p>
-                    <button onclick="window.open('${fullPath}', '_blank')" class="btn btn-primary" style="padding: 0.75rem 1.5rem; border: none; border-radius: 0.375rem; background: var(--primary); color: white; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.2s ease;">
+                    <button onclick="window.open('${fullPathSeguro}', '_blank', 'noopener,noreferrer')" class="btn btn-primary" style="padding: 0.75rem 1.5rem; border: none; border-radius: 0.375rem; background: var(--primary); color: white; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.2s ease;">
                         <i class="fas fa-external-link-alt"></i> Abrir en nueva ventana
                     </button>
                   </div>`
-                : `<img src="${fullPath}" alt="Comprobante" crossorigin="anonymous" style="max-width: 100%; max-height: 100%; object-fit: contain;">`;
+                : `<img src="${fullPathHtml}" alt="Comprobante" crossorigin="anonymous" referrerpolicy="no-referrer" style="max-width: 100%; max-height: 100%; object-fit: contain;">`;
 
             modal.innerHTML = `
                 <div style="background: white; border-radius: 0.5rem; width: 100%; max-width: 90vw; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);">
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid #CED0D4;">
                         <h2 style="margin: 0; font-size: 1.2rem;">Comprobante de Pago</h2>
                         <div style="display: flex; gap: 0.5rem;">
-                            <button onclick="descargarComprobante('${fullPath}', '${fileName}')" class="btn btn-success" style="padding: 0.5rem 1rem; border: none; border-radius: 0.375rem; background: #31A24C; color: white; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s ease;">
+                            <button onclick="descargarComprobante('${fullPathSeguro}', '${fileNameSeguro}')" class="btn btn-success" style="padding: 0.5rem 1rem; border: none; border-radius: 0.375rem; background: #31A24C; color: white; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s ease;">
                                 <i class="fas fa-download"></i> Descargar
                             </button>
                             <button onclick="document.getElementById('comprobanteViewModal').style.display='none'" class="btn" style="padding: 0.5rem 1rem; border: 1px solid #CED0D4; border-radius: 0.375rem; background: white; color: var(--text-dark); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s ease;">
@@ -2096,6 +2654,90 @@ ${window.location.origin}/mis-boletos.html
             }
         }
 
+        // ✅ Función para determinar si una orden debe mostrar el badge PROMO
+        function debeeMostrarBadgePromo(orden) {
+            const totalesNormalizados = normalizarTotalesOrdenAdmin(orden);
+
+            // Validación 1: Si la orden tiene descuento real guardado
+            if (totalesNormalizados.descuento > 0) {
+                return true;
+            }
+
+            // Validación 2: Si la orden fue creada DURANTE el rango de promoción por tiempo
+            const promoTiempo = window.rifaplusConfig?.rifa?.promocionPorTiempo;
+            if (promoTiempo && promoTiempo.enabled && orden.created_at) {
+                try {
+                    const ordenTime = new Date(orden.created_at).getTime();
+                    const inicioTime = new Date(promoTiempo.fechaInicio).getTime();
+                    const finTime = new Date(promoTiempo.fechaFin).getTime();
+                    
+                    // Si la orden se creó dentro del rango de promoción
+                    if (ordenTime >= inicioTime && ordenTime <= finTime) {
+                        return true;
+                    }
+                } catch (e) {
+                    console.warn('Error validando fecha de promoción por tiempo:', e);
+                }
+            }
+
+            // Validación 3: Si la orden fue creada DURANTE el rango de descuento por porcentaje
+            const descuentoPorcentaje = window.rifaplusConfig?.rifa?.descuentoPorcentaje;
+            if (descuentoPorcentaje && descuentoPorcentaje.enabled && orden.created_at) {
+                try {
+                    const ordenTime = new Date(orden.created_at).getTime();
+                    const inicioTime = new Date(descuentoPorcentaje.fechaInicio).getTime();
+                    const finTime = new Date(descuentoPorcentaje.fechaFin).getTime();
+                    
+                    // Si la orden se creó dentro del rango de descuento
+                    if (ordenTime >= inicioTime && ordenTime <= finTime) {
+                        return true;
+                    }
+                } catch (e) {
+                    console.warn('Error validando fecha de descuento por porcentaje:', e);
+                }
+            }
+
+            return false;
+        }
+
+        function normalizarTotalesOrdenAdmin(orden) {
+            const subtotalBase = Number(
+                orden?.subtotal
+                ?? orden?.totales?.subtotal
+                ?? 0
+            );
+            const totalBase = Number(
+                orden?.total
+                ?? orden?.totalFinal
+                ?? orden?.totales?.totalFinal
+                ?? orden?.totales?.total
+                ?? 0
+            );
+            const descuentoBase = Number(
+                orden?.descuento
+                ?? orden?.descuentoMonto
+                ?? orden?.totales?.descuento
+                ?? orden?.totales?.descuentoMonto
+                ?? 0
+            );
+
+            const subtotal = subtotalBase > 0 ? subtotalBase : 0;
+            const descuento = descuentoBase > 0
+                ? descuentoBase
+                : (subtotal > 0 && totalBase >= 0 ? Math.max(0, subtotal - totalBase) : 0);
+            const total = totalBase > 0
+                ? totalBase
+                : Math.max(0, subtotal - descuento);
+            const tieneDescuento = descuento > 0;
+
+            return {
+                subtotal,
+                descuento,
+                total,
+                tieneDescuento
+            };
+        }
+
         function formatEstado(estado) {
             const estados = {
                 'pendiente': 'Pendiente',
@@ -2168,7 +2810,168 @@ ${window.location.origin}/mis-boletos.html
             }
         }
 
-        function abrirModalOrden(numeroOrden) {
+        // ============================================================
+        // 🔥 SISTEMA PROFESIONAL DE GESTIÓN DE REQUESTS
+        // ============================================================
+        let numeroOrdenModalActual = null;  // Track current modal orden
+        
+        const requestManager = {
+            // Pool de requests activos por modal
+            activeRequests: new Map(),
+            
+            // Cola de requests esperando turno
+            requestQueue: [],
+            
+            // Máximo de requests simultáneos
+            MAX_CONCURRENT: 3,
+            
+            // Requests en progreso
+            activeCount: 0,
+
+            /**
+             * Registra un nuevo AbortController para una orden
+             */
+            registerController(numeroOrden, controller) {
+                // Si ya existe uno activo, abortarlo (evita duplicados)
+                if (this.activeRequests.has(numeroOrden)) {
+                    this.activeRequests.get(numeroOrden).abort();
+                }
+                this.activeRequests.set(numeroOrden, controller);
+            },
+
+            /**
+             * Ejecuta una función respetando límite de concurrencia
+             */
+            async execute(numeroOrden, fn) {
+                // Si ya hay 3 requests activos, esperar
+                while (this.activeCount >= this.MAX_CONCURRENT) {
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                }
+
+                this.activeCount++;
+                try {
+                    return await fn();
+                } finally {
+                    this.activeCount--;
+                }
+            },
+
+            /**
+             * Limpia el controller cuando se cierra modal
+             */
+            cleanup(numeroOrden) {
+                if (this.activeRequests.has(numeroOrden)) {
+                    const controller = this.activeRequests.get(numeroOrden);
+                    controller.abort();
+                    this.activeRequests.delete(numeroOrden);
+                }
+            }
+        };
+
+        function obtenerTrackingOrden(orden) {
+            if (orden.confirmado_en && orden.confirmado_por_nombre) {
+                return `Confirmada por ${escapeHtmlAdmin(orden.confirmado_por_nombre)} el ${escapeHtmlAdmin(formatFechaLocalConOffset(orden.confirmado_en))}`;
+            }
+
+            if (orden.cancelado_en && orden.cancelado_por_nombre) {
+                return `Cancelada por ${escapeHtmlAdmin(orden.cancelado_por_nombre)} el ${escapeHtmlAdmin(formatFechaLocalConOffset(orden.cancelado_en))}`;
+            }
+
+            return 'Sin movimiento administrativo registrado';
+        }
+
+        function renderizarChipsOrden(numeros, extraClass = '') {
+            if (!Array.isArray(numeros) || numeros.length === 0) {
+                return '<div class="orden-modal-info-value subtle">-</div>';
+            }
+
+            return `
+                <div class="orden-modal-chips">
+                    ${numeros.map(numero => {
+                        const formateado = window.rifaplusConfig?.formatearNumeroBoleto
+                            ? window.rifaplusConfig.formatearNumeroBoleto(numero)
+                            : String(numero).padStart(6, '0');
+                        return `<div class="orden-modal-chip ${extraClass}">${formateado}</div>`;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function renderizarAccionesModalOrden(orden) {
+            const acciones = [];
+            const urlWhatsapp = construirWhatsappUrl(orden.telefono_cliente, orden.estado_cliente);
+
+            if (orden.comprobante_path) {
+                const comprobantePathJs = escapeJsSingleQuote(orden.comprobante_path);
+                acciones.push(`
+                    <button onclick="verComprobanteModal('${comprobantePathJs}')" class="orden-modal-action-btn primary">
+                        <i class="fas fa-file-image"></i>
+                        <span>Ver comprobante</span>
+                    </button>
+                `);
+            }
+
+            if (urlWhatsapp) {
+                acciones.push(`
+                    <a href="${urlWhatsapp}" target="_blank" rel="noopener noreferrer" class="orden-modal-action-btn neutral">
+                        <i class="fab fa-whatsapp"></i>
+                        <span>Abrir WhatsApp</span>
+                    </a>
+                `);
+            }
+
+            if (orden.estado !== 'confirmada' && orden.estado !== 'cancelada') {
+                acciones.push(`
+                    <button onclick="confirmarOrden('${escapeJsSingleQuote(orden.numero_orden)}')" class="orden-modal-action-btn success">
+                        <i class="fas fa-check"></i>
+                        <span>Confirmar orden</span>
+                    </button>
+                `);
+                acciones.push(`
+                    <button onclick="rechazarOrden('${escapeJsSingleQuote(orden.numero_orden)}')" class="orden-modal-action-btn danger">
+                        <i class="fas fa-times"></i>
+                        <span>Rechazar orden</span>
+                    </button>
+                `);
+            } else if (orden.estado === 'confirmada') {
+                acciones.push(`
+                    <button onclick="notificarPorWhatsapp('${escapeJsSingleQuote(orden.numero_orden)}', '${escapeJsSingleQuote(orden.nombre_cliente || 'Cliente')}', '${escapeJsSingleQuote(orden.telefono_cliente || '')}', ${orden.cantidad_boletos || 0}, '${escapeJsSingleQuote(orden.estado_cliente || '')}')" class="orden-modal-action-btn success">
+                        <i class="fab fa-whatsapp"></i>
+                        <span>Notificar cliente</span>
+                    </button>
+                `);
+                acciones.push(`
+                    <button onclick="abrirModalEditar('${escapeJsSingleQuote(orden.numero_orden)}')" class="orden-modal-action-btn neutral">
+                        <i class="fas fa-times"></i>
+                        <span>Cancelar orden</span>
+                    </button>
+                `);
+            } else if (orden.estado === 'cancelada') {
+                acciones.push(`
+                    <button onclick="abrirModalEditar('${escapeJsSingleQuote(orden.numero_orden)}')" class="orden-modal-action-btn neutral">
+                        <i class="fas fa-check"></i>
+                        <span>Reactivar orden</span>
+                    </button>
+                `);
+            }
+
+            if (acciones.length === 0) return '';
+
+            return `
+                <div class="orden-modal-section">
+                    <div class="orden-modal-section-title">
+                        <i class="fas fa-bolt"></i>
+                        <span>Acciones rápidas</span>
+                    </div>
+                    <div class="orden-modal-actions">
+                        ${acciones.join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function abrirModalOrden(numeroOrden) {
+            numeroOrdenModalActual = numeroOrden;  // ✅ Guardar para cuando se cierre
             const orden = allOrdenes.find(o => o.numero_orden === numeroOrden);
             if (!orden) {
                 showError('Orden no encontrada');
@@ -2181,134 +2984,272 @@ ${window.location.origin}/mis-boletos.html
                 modal.id = 'ordenModal';
                 modal.className = 'modal';
                 modal.innerHTML = `
-                    <div class="modal-content" style="max-width: 500px;">
-                        <div class="modal-header">
-                            <h3 style="margin: 0; font-size: 1.1rem;">Información de Orden</h3>
-                            <button onclick="document.getElementById('ordenModal').style.display='none'" class="close-btn">
+                    <div class="modal-content orden-modal-content">
+                        <div class="modal-header orden-modal-header">
+                            <div>
+                                <h3 class="orden-modal-title">
+                                    <span class="orden-modal-title-icon"><i class="fas fa-receipt"></i></span>
+                                    <span>Detalle de orden</span>
+                                </h3>
+                                <p class="orden-modal-subtitle">Consulta rápidamente el estado, el pago y las acciones disponibles.</p>
+                            </div>
+                            <button onclick="cerrarModalOrden()" class="close-btn">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
-                        <div id="ordenModalBody" class="modal-body"></div>
+                        <div id="ordenModalBody" class="modal-body orden-modal-body"></div>
                     </div>
                 `;
                 document.body.appendChild(modal);
             }
 
             const body = document.getElementById('ordenModalBody');
-            const boletosDisplay = orden.boletos && Array.isArray(orden.boletos) 
-                ? orden.boletos.join(', ') 
-                : '-';
-            
-            // Oportunidades - obtener del campo oportunidades de la orden o de un API
-            const oportunidadesDisplay = orden.oportunidades && Array.isArray(orden.oportunidades) 
-                ? orden.oportunidades.join(', ') 
-                : '-';
-            
-            // Verificar si hay modalidad de oportunidades habilitada (buscar en config o en la orden)
-            const tieneOportunidades = orden.oportunidades && orden.oportunidades.length > 0;
+            const cantidadBoletos = orden.cantidad_boletos || orden.boletos?.length || 0;
+            const totalesOrden = normalizarTotalesOrdenAdmin(orden);
+            const totalOriginal = totalesOrden.subtotal > 0
+                ? totalesOrden.subtotal
+                : parseFloat((cantidadBoletos || 0) * (window.rifaplusConfig?.rifa?.precioBoleto || 0));
+            const totalActual = totalesOrden.total;
+            const descuentoActual = totalesOrden.descuento;
+            const trackingOrden = obtenerTrackingOrden(orden);
+            const fechaComprobante = orden.comprobante_path
+                ? formatFechaLocalConOffset(orden.comprobante_fecha || orden.updated_at || orden.created_at)
+                : null;
+            const estadoCss = sanitizeStatusClass(orden.estado);
+            const clienteSeguro = escapeHtmlAdmin(orden.nombre_cliente || '-');
+            const telefonoVisibleSeguro = escapeHtmlAdmin(`••••••••${orden.telefono_cliente?.slice(-2) || '--'}`);
+            const telefonoSeguro = escapeHtmlAdmin(orden.telefono_cliente || '-');
+            const ciudadSegura = escapeHtmlAdmin(orden.ciudad_cliente || '-');
+            const estadoClienteSeguro = escapeHtmlAdmin(orden.estado_cliente || '-');
+            const numeroOrdenSeguro = escapeHtmlAdmin(orden.numero_orden || '-');
+            const whatsappHrefSeguro = escapeHtmlAdmin(construirWhatsappUrl(orden.telefono_cliente, orden.estado_cliente));
+            const fechaCreacionSegura = escapeHtmlAdmin(formatFechaLocalConOffset(orden.created_at));
+            const fechaComprobanteSegura = fechaComprobante ? escapeHtmlAdmin(fechaComprobante) : null;
+            const estadoLabel = escapeHtmlAdmin(formatEstado(orden.estado));
 
             body.innerHTML = `
-                <div style="display: grid; gap: 0.75rem; font-size: 0.9rem;">
-                    <div style="border-bottom: 1px solid #CED0D4; padding-bottom: 0.75rem;">
-                        <div style="color: var(--text-light); font-weight: 500; margin-bottom: 0.3rem;">ID de Orden</div>
-                        <div style="font-weight: 600; color: var(--primary); font-size: 1rem;">${orden.numero_orden}</div>
+                <div class="orden-modal-section">
+                    <div class="orden-modal-section-title">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Resumen</span>
                     </div>
-
-                    <div style="border-bottom: 1px solid #CED0D4; padding-bottom: 0.75rem;">
-                        <div style="color: var(--text-light); font-weight: 500; margin-bottom: 0.3rem;">Cliente</div>
-                        <div style="font-weight: 600;">${orden.nombre_cliente}</div>
-                    </div>
-
-                    <div style="border-bottom: 1px solid #CED0D4; padding-bottom: 0.75rem;">
-                        <div style="color: var(--text-light); font-weight: 500; margin-bottom: 0.3rem;">WhatsApp</div>
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <div style="flex: 1; display: flex; align-items: center; gap: 0.5rem;">
-                                <i class="fab fa-whatsapp" style="color: var(--primary); font-size: 1.2rem;"></i>
-                                <div style="flex: 1;">
-                                    <div id="whatsappDisplay" style="color: var(--primary); font-weight: 600; letter-spacing: 0.15rem;">••••••••${orden.telefono_cliente?.slice(-2)}</div>
-                                    <div id="whatsappLink" style="display: none;">
-                                        <a href="https://wa.me/${orden.telefono_cliente?.replace(/\D/g, '')}" target="_blank" style="color: var(--primary); text-decoration: none; font-weight: 600;">
-                                            ${orden.telefono_cliente}
-                                        </a>
-                                    </div>
-                                </div>
+                    <div class="orden-modal-summary-grid">
+                        <div class="orden-modal-summary-item">
+                            <span class="orden-modal-info-label">Estado</span>
+                            <div class="orden-modal-info-value">
+                                <span class="order-status status-${estadoCss}">${estadoLabel}</span>
                             </div>
-                            <button id="toggleWhatsapp" onclick="toggleWhatsappVisibility()" style="background: var(--primary); color: white; border: none; padding: 0.35rem 0.5rem; border-radius: 0.25rem; cursor: pointer; font-size: 0.9rem; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <i class="fas fa-eye"></i>
-                            </button>
+                        </div>
+                        <div class="orden-modal-summary-item">
+                            <span class="orden-modal-info-label">Total</span>
+                            <div class="orden-modal-accent">
+                                <div class="orden-modal-info-value" style="color: var(--primary);">$${totalActual.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                ${debeeMostrarBadgePromo(orden) ? '<span class="orden-modal-promo">Promo</span>' : ''}
+                            </div>
+                        </div>
+                        <div class="orden-modal-summary-item">
+                            <span class="orden-modal-info-label">Fecha</span>
+                            <div class="orden-modal-info-value">${fechaCreacionSegura}</div>
                         </div>
                     </div>
-
-                    <div style="border-bottom: 1px solid #CED0D4; padding-bottom: 0.75rem;">
-                        <div style="color: var(--text-light); font-weight: 500; margin-bottom: 0.3rem;">Ubicación</div>
-                        <div>
-                            <div style="font-weight: 500;">${orden.ciudad_cliente || '-'}</div>
-                            <div style="color: var(--text-light); font-size: 0.85rem;">${orden.estado_cliente || '-'}</div>
-                        </div>
-                    </div>
-
-                    <div style="border-bottom: 1px solid #CED0D4; padding-bottom: 0.75rem;">
-                        <div style="color: var(--text-light); font-weight: 500; margin-bottom: 0.3rem;">Boletos (${orden.cantidad_boletos || orden.boletos?.length || 0})</div>
-                        <div style="font-family: 'Courier New', monospace; background: #F0F2F5; padding: 0.5rem; border-radius: 0.3rem; word-break: break-all;">
-                            ${boletosDisplay}
-                        </div>
-                    </div>
-
-                    ${tieneOportunidades ? `
-                    <div style="border-bottom: 1px solid #CED0D4; padding-bottom: 0.75rem;">
-                        <div style="color: var(--text-light); font-weight: 500; margin-bottom: 0.3rem;">Oportunidades (${orden.oportunidades?.length || 0})</div>
-                        <div style="font-family: 'Courier New', monospace; background: #F0F2F5; padding: 0.5rem; border-radius: 0.3rem; word-break: break-all;">
-                            ${oportunidadesDisplay}
-                        </div>
-                    </div>
-                    ` : ''}
-
-                    <div style="border-bottom: 1px solid #CED0D4; padding-bottom: 0.75rem;">
-                        <div style="color: var(--text-light); font-weight: 500; margin-bottom: 0.3rem;">Total</div>
-                        <div style="font-weight: 700; color: var(--primary); font-size: 1.1rem;">$${parseFloat(orden.total || 0).toLocaleString('es-MX', { maximumFractionDigits: 0 })}</div>
-                    </div>
-
-                    <div style="border-bottom: 1px solid #CED0D4; padding-bottom: 0.75rem;">
-                        <div style="color: var(--text-light); font-weight: 500; margin-bottom: 0.3rem;">Estado</div>
-                        <div class="order-status status-${orden.estado}" style="display: inline-block;">
-                            ${formatEstado(orden.estado)}
-                        </div>
-                    </div>
-
-                    <div style="border-bottom: 1px solid #CED0D4; padding-bottom: 0.75rem;">
-                        <div style="color: var(--text-light); font-weight: 500; margin-bottom: 0.3rem;">Fecha</div>
-                        <div>${formatFechaLocalConOffset(orden.created_at)}</div>
-                    </div>
-
-                    ${orden.comprobante_path ? `
-                        <div style="border-bottom: 1px solid #CED0D4; padding-bottom: 0.75rem;">
-                            <div style="color: var(--text-light); font-weight: 500; margin-bottom: 0.3rem;">Comprobante Subido</div>
-                            <div style="font-size: 0.85rem;">${formatFechaLocalConOffset(orden.comprobante_fecha || orden.updated_at || orden.created_at)}</div>
-                        </div>
-                    ` : ''}
-
-                    ${orden.comprobante_path ? `
-                        <div style="padding-top: 0.5rem;">
-                            <button onclick="verComprobanteModal('${orden.comprobante_path}')" class="btn btn-primary" style="width: 100%; padding: 0.75rem; border: none; border-radius: 0.375rem; background: var(--primary); color: white; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.2s ease;">
-                                <i class="fas fa-file-image"></i> Ver Comprobante de Pago
-                            </button>
+                    <div class="orden-modal-hero-meta" style="margin-top: 0.55rem;">${trackingOrden}</div>
+                    ${descuentoActual > 0 ? `
+                        <div class="orden-modal-info-list" style="margin-top: 0.9rem;">
+                            <div class="orden-modal-info-item">
+                                <span class="orden-modal-info-label">Subtotal</span>
+                                <div class="orden-modal-info-value">$${totalOriginal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                            </div>
+                            <div class="orden-modal-info-item">
+                                <span class="orden-modal-info-label">Descuento aplicado</span>
+                                <div class="orden-modal-info-value" style="color: #15803d;">-$${descuentoActual.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                            </div>
                         </div>
                     ` : ''}
                 </div>
+
+                <div class="orden-modal-grid">
+                    <div class="orden-modal-section">
+                        <div class="orden-modal-section-title">
+                            <i class="fas fa-user"></i>
+                            <span>Cliente y contacto</span>
+                        </div>
+                        <div class="orden-modal-info-list">
+                            <div class="orden-modal-info-item">
+                                <span class="orden-modal-info-label">Cliente</span>
+                                <div class="orden-modal-info-value">${clienteSeguro}</div>
+                            </div>
+                            <div class="orden-modal-info-item">
+                                <span class="orden-modal-info-label">WhatsApp</span>
+                                <div class="orden-modal-whatsapp-row">
+                                    <span class="orden-modal-whatsapp-chip"><i class="fab fa-whatsapp"></i></span>
+                                    <div style="flex:1; min-width:0;">
+                                        <div id="whatsappDisplay" class="orden-modal-info-value" style="color: var(--primary); letter-spacing: 0.15rem;">${telefonoVisibleSeguro}</div>
+                                        <div id="whatsappLink" style="display:none;">
+                                            <a href="${whatsappHrefSeguro}" target="_blank" class="orden-modal-info-value" style="color: var(--primary); text-decoration: none;">
+                                                ${telefonoSeguro}
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <button id="toggleWhatsapp" onclick="toggleWhatsappVisibility()" class="orden-modal-toggle-btn">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="orden-modal-info-item">
+                                <span class="orden-modal-info-label">Ubicación</span>
+                                <div class="orden-modal-info-value">${ciudadSegura}</div>
+                                <div class="orden-modal-info-value subtle">${estadoClienteSeguro}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="orden-modal-section">
+                        <div class="orden-modal-section-title">
+                            <i class="fas fa-credit-card"></i>
+                            <span>Pago</span>
+                        </div>
+                        <div class="orden-modal-info-list">
+                            <div class="orden-modal-info-item">
+                                <span class="orden-modal-info-label">Referencia</span>
+                                <div class="orden-modal-info-value">${numeroOrdenSeguro}</div>
+                            </div>
+                            ${fechaComprobante ? `
+                                <div class="orden-modal-info-item">
+                                    <span class="orden-modal-info-label">Comprobante recibido</span>
+                                    <div class="orden-modal-info-value">${fechaComprobanteSegura}</div>
+                                </div>
+                            ` : `
+                                <div class="orden-modal-info-item">
+                                    <span class="orden-modal-info-label">Comprobante</span>
+                                    <div class="orden-modal-info-value subtle">Aún no registrado</div>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="orden-modal-section">
+                    <div class="orden-modal-section-title">
+                        <i class="fas fa-ticket-alt"></i>
+                        <span>Boletos (${cantidadBoletos})</span>
+                    </div>
+                    ${debeeMostrarBadgePromo(orden) ? `<div class="orden-modal-hero-meta" style="margin-bottom: 0.6rem;">Promoción aplicada${descuentoActual > 0 ? ` · descuento $${descuentoActual.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : (totalOriginal > totalActual ? ` · antes $${totalOriginal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '')}</div>` : ''}
+                    ${renderizarChipsOrden(orden.boletos)}
+                </div>
+
+                <div id="oportunidadesSection" class="orden-modal-section" style="display: none;">
+                    <div class="orden-modal-section-title">
+                        <i class="fas fa-gift"></i>
+                        <span>Oportunidades (<span id="oportunidadesCount">0</span>)</span>
+                    </div>
+                    <div id="oportunidadesDisplay" class="orden-modal-chips">
+                        <div class="orden-modal-info-value subtle">Cargando...</div>
+                    </div>
+                </div>
+
+                ${renderizarAccionesModalOrden(orden)}
             `;
 
             modal.style.display = 'flex';
+            
+            // ✅ Cargar oportunidades con control de concurrencia
+            cargarOportunidadesModalOrden(numeroOrden);
+        }
+
+        /**
+         * Cerrar modal con limpieza profesional
+         */
+        function cerrarModalOrden() {
+            const modal = document.getElementById('ordenModal');
+            if (modal) {
+                modal.style.display = 'none';
+                
+                // 🔴 CRÍTICO: Cancelar requests en progreso
+                if (numeroOrdenModalActual) {
+                    requestManager.cleanup(numeroOrdenModalActual);
+                    numeroOrdenModalActual = null;
+                }
+            }
+        }
+
+        /**
+         * Cargar oportunidades con concurrencia limitada y AbortController
+         */
+        async function cargarOportunidadesModalOrden(numeroOrden) {
+            // Crear AbortController para este modal
+            const controller = new AbortController();
+            requestManager.registerController(numeroOrden, controller);
+
+            await requestManager.execute(numeroOrden, async () => {
+                try {
+                    const apiBase = (window.rifaplusConfig?.backend?.apiBase)
+                        || window.rifaplusConfig?.obtenerApiBase?.()
+                        || window.location.origin;
+                    const token = localStorage.getItem('rifaplus_admin_token') || localStorage.getItem('admin_token') || '';
+                    
+                    const response = await fetch(`${apiBase}/api/ordenes/${numeroOrden}/oportunidades`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        signal: controller.signal  // ✅ CLAVE: Permite cancelar si se cierra modal
+                    });
+                    
+                    // Si fue abortado, no continuar
+                    if (controller.signal.aborted) {
+                        console.debug(`[OportunidadesModal] Request abortado para ${numeroOrden}`);
+                        return;
+                    }
+                    
+                    if (!response.ok) {
+                        throw new Error('No se pudieron cargar las oportunidades');
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Verificar de nuevo si fue abortado antes de actualizar DOM
+                    if (controller.signal.aborted) return;
+                    
+                    if (data.success && data.oportunidades.length > 0) {
+                        const oportunidadesSection = document.getElementById('oportunidadesSection');
+                        const oportunidadesDisplay = document.getElementById('oportunidadesDisplay');
+                        const oportunidadesCount = document.getElementById('oportunidadesCount');
+                        
+                        if (oportunidadesSection) {
+                            oportunidadesSection.style.display = 'block';
+                            oportunidadesDisplay.innerHTML = data.oportunidades.map(o => {
+                                const formateado = window.rifaplusConfig?.formatearNumeroBoleto ? window.rifaplusConfig.formatearNumeroBoleto(o) : String(o).padStart(6, '0');
+                                return `<div class="orden-modal-chip opportunity">${formateado}</div>`;
+                            }).join('');
+                            oportunidadesCount.textContent = data.cantidad;
+                        }
+                    }
+                } catch (error) {
+                    // Ignorar errores de AbortController
+                    if (error.name === 'AbortError') {
+                        console.debug(`[OportunidadesModal] Request cancelado para ${numeroOrden}`);
+                        return;
+                    }
+                    
+                    console.warn('Error cargando oportunidades de orden:', error.message);
+                    const oportunidadesSection = document.getElementById('oportunidadesSection');
+                    if (oportunidadesSection) {
+                        oportunidadesSection.style.display = 'none';
+                    }
+                } finally {
+                    // Limpiar controller al terminar
+                    requestManager.cleanup(numeroOrden);
+                }
+            });
         }
 
         // ===== ON LOAD =====
-        window.addEventListener('load', () => {
+
+        window.addEventListener('load', async () => {
             initializeConfig();
             
-            // Buscar token de múltiples fuentes
-            const savedToken = localStorage.getItem('rifaplus_token') || 
-                               localStorage.getItem('rifaplus_admin_token') ||
-                               localStorage.getItem('admin_token') ||
-                               localStorage.getItem('token');
+            const savedToken = await ADMIN_LAYOUT.esperarAutenticacion();
             
             if (savedToken) {
                 token = savedToken;
@@ -2318,6 +3259,9 @@ ${window.location.origin}/mis-boletos.html
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('page').classList.add('active');
                 loadOrdenes();
+            } else {
+                document.getElementById('loginScreen').style.display = 'flex';
+                document.getElementById('page').classList.remove('active');
             }
         });
 
@@ -2335,5 +3279,8 @@ ${window.location.origin}/mis-boletos.html
         `;
         document.head.appendChild(style);
     </script>
+
+    <!-- ✅ Admin Header User Info - Mostrar usuario en header -->
+    <script src="js/admin-header-user.js"></script>
 </body>
 </html>

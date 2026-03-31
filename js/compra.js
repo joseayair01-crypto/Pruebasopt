@@ -13,8 +13,28 @@
 /* ============================================================ */
 
 // Función para obtener precio dinámico desde config (robusta)
+// ✅ ACTUALIZADO: Verifica promoción por tiempo
 function obtenerPrecioDinamico() {
     const cfg = window.rifaplusConfig || {};
+    const ahora = new Date();
+    
+    // Verificar si hay promoción por tiempo activa
+    const promo = cfg.rifa?.promocionPorTiempo;
+    if (promo && promo.enabled && promo.precioProvisional) {
+        const inicio = new Date(promo.fechaInicio);
+        const fin = new Date(promo.fechaFin);
+        
+        // Si estamos dentro del rango de permitidas, usar precio provisional
+        if (ahora >= inicio && ahora <= fin) {
+            const precioProvisional = Number(promo.precioProvisional);
+            if (!Number.isNaN(precioProvisional) && isFinite(precioProvisional) && precioProvisional > 0) {
+                console.log(`💰 [Promoción Activa] Usando precio provisional: $${precioProvisional.toFixed(2)}`);
+                return precioProvisional;
+            }
+        }
+    }
+    
+    // Si no hay promoción activa, usar precio normal
     const price = Number(cfg && cfg.rifa && cfg.rifa.precioBoleto);
     return (!Number.isNaN(price) && isFinite(price) && price > 0) ? price : 0;
 }
@@ -29,11 +49,19 @@ var filtroDisponiblesActivo = false;
 // Previene race conditions donde el Web Worker aún está procesando
 var window_rifaplusBoletosDatosActualizados = false;
 
+// Inicializar arrays de boletos vendidos/apartados (se llenan después desde API)
+if (!window.rifaplusSoldNumbers) window.rifaplusSoldNumbers = [];
+if (!window.rifaplusReservedNumbers) window.rifaplusReservedNumbers = [];
+
+// 🚀 INICIALIZAR MAQUINA COMO HABILITADA DESDE EL PRINCIPIO
+// Permite que funcione incluso si el backend es lento o falla
+window.rifaplusBoletosLoaded = true;
+
 /* ============================================================ */
 /* INFINITE SCROLL STATE */
 /* ============================================================ */
 var infiniteScrollState = {
-    rangoActual: { inicio: 1, fin: 100 },
+    rangoActual: { inicio: 0, fin: 99 },
     boletosCargados: 0,
     BOLETOS_POR_CARGA: 500,  // ⭐ OPTIMIZACIÓN: Reducido de 1000 a 500 para mejor performance
     isLoading: false,
@@ -42,6 +70,222 @@ var infiniteScrollState = {
     lastRenderTime: 0,  // ⭐ Para debounce
     renderDebounceMs: 300  // ⭐ Debounce render calls
 };
+
+var rifaplusEstadoRangoActual = {
+    inicio: null,
+    fin: null,
+    cargado: false,
+    requestId: 0,
+    endpoint: ''
+};
+
+function obtenerApiBaseCompra() {
+    let endpoint = (window.rifaplusConfig && window.rifaplusConfig.backend && window.rifaplusConfig.backend.apiBase)
+        ? window.rifaplusConfig.backend.apiBase
+        : 'http://localhost:3000';
+    return String(endpoint).replace(/\/+$/, '');
+}
+
+function obtenerRangoVisibleInicial() {
+    const totalTickets = window.rifaplusConfig?.rifa?.totalBoletos || 100;
+    const oportunidadesConfig = window.rifaplusConfig?.rifa?.oportunidades;
+
+    if (oportunidadesConfig && oportunidadesConfig.enabled && oportunidadesConfig.rango_visible) {
+        const inicioVisible = parseInt(oportunidadesConfig.rango_visible.inicio, 10);
+        const finVisible = parseInt(oportunidadesConfig.rango_visible.fin, 10);
+        return {
+            inicio: Number.isInteger(inicioVisible) ? inicioVisible : 0,
+            fin: Number.isInteger(finVisible) ? finVisible : Math.max(0, totalTickets - 1)
+        };
+    }
+
+    return {
+        inicio: 0,
+        fin: Math.max(0, totalTickets - 1)
+    };
+}
+
+function obtenerEstadoLocalBoletos() {
+    const sold = Array.isArray(window.rifaplusSoldNumbers) ? window.rifaplusSoldNumbers : [];
+    const reserved = Array.isArray(window.rifaplusReservedNumbers) ? window.rifaplusReservedNumbers : [];
+
+    return {
+        sold,
+        reserved,
+        soldSet: new Set(sold),
+        reservedSet: new Set(reserved)
+    };
+}
+
+function numeroEnRangoActual(numero) {
+    const rango = infiniteScrollState.rangoActual || {};
+    return Number.isInteger(numero) &&
+        Number.isInteger(rango.inicio) &&
+        Number.isInteger(rango.fin) &&
+        numero >= rango.inicio &&
+        numero <= rango.fin;
+}
+
+async function verificarBoletosEnServidor(numeros) {
+    const endpoint = obtenerApiBaseCompra();
+    const respuesta = await fetch(`${endpoint}/api/boletos/verificar`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ numeros })
+    });
+
+    if (!respuesta.ok) {
+        throw new Error(`No se pudo verificar disponibilidad (${respuesta.status})`);
+    }
+
+    const json = await respuesta.json();
+    if (!json?.success) {
+        throw new Error(json?.message || 'No se pudo verificar disponibilidad');
+    }
+
+    return json;
+}
+
+async function verificarEstadoBoletoEnServidor(numero) {
+    const resultado = await verificarBoletosEnServidor([numero]);
+    const conflictos = Array.isArray(resultado.conflictos) ? resultado.conflictos : [];
+    const conflicto = conflictos.find(item => Number(item?.numero) === Number(numero));
+
+    if (conflicto) {
+        return {
+            vendido: conflicto.estado === 'vendido',
+            apartado: conflicto.estado === 'apartado'
+        };
+    }
+
+    return {
+        vendido: false,
+        apartado: false
+    };
+}
+
+async function generarNumerosVerificadosEnServidor(cantidad) {
+    const numerosConfirmados = [];
+    const numerosDescartados = new Set();
+    let reintentos = 0;
+
+    while (numerosConfirmados.length < cantidad && reintentos < 5) {
+        const faltantes = cantidad - numerosConfirmados.length;
+        const baseDisponibles = obtenerNumerosDisponibles().filter((numero) => {
+            return !numerosConfirmados.includes(numero) && !numerosDescartados.has(numero);
+        });
+
+        if (baseDisponibles.length < faltantes) {
+            console.warn(`⚠️ [Maquina] No hay suficientes candidatos locales (${baseDisponibles.length}) para completar ${faltantes}. Refrescando...`);
+            await cargarBoletosPublicos();
+        }
+
+        const candidatos = [];
+        const disponiblesCopia = [...baseDisponibles];
+        const cantidadARobar = Math.min(faltantes, disponiblesCopia.length);
+
+        for (let i = 0; i < cantidadARobar; i++) {
+            const randomIndex = Math.floor(Math.random() * disponiblesCopia.length);
+            const numero = disponiblesCopia.splice(randomIndex, 1)[0];
+            candidatos.push(numero);
+        }
+
+        if (candidatos.length === 0) {
+            break;
+        }
+
+        const verificacion = await verificarBoletosEnServidor(candidatos);
+        const disponiblesServidor = Array.isArray(verificacion?.disponibles) ? verificacion.disponibles : [];
+        const conflictosServidor = Array.isArray(verificacion?.conflictos) ? verificacion.conflictos : [];
+
+        disponiblesServidor.forEach((numero) => {
+            const normalizado = Number(numero);
+            if (!Number.isNaN(normalizado) && !numerosConfirmados.includes(normalizado)) {
+                numerosConfirmados.push(normalizado);
+            }
+        });
+
+        conflictosServidor.forEach((conflicto) => {
+            const numero = Number(conflicto?.numero);
+            if (!Number.isNaN(numero)) {
+                numerosDescartados.add(numero);
+            }
+        });
+
+        if (conflictosServidor.length > 0) {
+            console.warn(`⚠️ [Maquina] ${conflictosServidor.length} boleto(s) chocaron con el servidor durante la generación. Reintentando...`);
+            await cargarBoletosPublicos();
+        }
+
+        reintentos++;
+    }
+
+    return numerosConfirmados.slice(0, cantidad);
+}
+
+async function cargarEstadoRangoVisibleEnBackground(endpoint, inicio, fin) {
+    const rangoInicio = parseInt(inicio, 10);
+    const rangoFin = parseInt(fin, 10);
+
+    if (!Number.isInteger(rangoInicio) || !Number.isInteger(rangoFin)) {
+        return false;
+    }
+
+    if (
+        rifaplusEstadoRangoActual.cargado &&
+        rifaplusEstadoRangoActual.inicio === rangoInicio &&
+        rifaplusEstadoRangoActual.fin === rangoFin &&
+        rifaplusEstadoRangoActual.endpoint === endpoint
+    ) {
+        return true;
+    }
+
+    const requestId = ++rifaplusEstadoRangoActual.requestId;
+    rifaplusEstadoRangoActual.inicio = rangoInicio;
+    rifaplusEstadoRangoActual.fin = rangoFin;
+    rifaplusEstadoRangoActual.endpoint = endpoint;
+    rifaplusEstadoRangoActual.cargado = false;
+
+    try {
+        const respuesta = await fetch(
+            `${endpoint}/api/public/boletos?inicio=${encodeURIComponent(rangoInicio)}&fin=${encodeURIComponent(rangoFin)}`,
+            {
+                cache: 'no-store',
+                priority: 'low'
+            }
+        );
+
+        if (!respuesta.ok) {
+            throw new Error(`Rango ${rangoInicio}-${rangoFin}: ${respuesta.status}`);
+        }
+
+        const json = await respuesta.json();
+        const sold = Array.isArray(json?.data?.sold) ? json.data.sold : [];
+        const reserved = Array.isArray(json?.data?.reserved) ? json.data.reserved : [];
+
+        if (requestId !== rifaplusEstadoRangoActual.requestId) {
+            return false;
+        }
+
+        procesarBoletosEnBackground(sold, reserved);
+        rifaplusEstadoRangoActual.cargado = true;
+        return true;
+    } catch (error) {
+        console.warn(`⚠️ Error cargando rango ${rangoInicio}-${rangoFin}:`, error.message);
+
+        if (requestId !== rifaplusEstadoRangoActual.requestId) {
+            return false;
+        }
+
+        // Evitar bajar la lista completa cuando falla un rango individual.
+        // Dejamos que el backoff normal reprograme la carga y preservamos la UX
+        // con stats/resumen mientras el endpoint vuelve a responder.
+        rifaplusEstadoRangoActual.cargado = false;
+        return false;
+    }
+}
 
 // Fallback defensivo para utilidades (evitar crash si main.js no se cargó correctamente)
 if (!window.rifaplusUtils) {
@@ -56,54 +300,13 @@ if (!window.rifaplusUtils) {
             console.log('[rifaplusUtils.showFeedback]', tipo, mensaje);
         },
         /**
-         * Calcular descuentos por cantidad de boletos
-         * Lee promociones dinámicamente desde config.js
+         * Calcula el total con descuentos sincronizados
          * @param {number} cantidad - Cantidad de boletos
-         * @param {number} precioUnitario - Precio por unidad
+         * @param {number} precioUnitario - Precio por unidad (opcional)
          * @returns {Object} Datos de cálculo (subtotal, descuento, total)
          */
         calcularDescuento: function(cantidad, precioUnitario = null) {
-            if (!precioUnitario) {
-                // Obtener precio dinámico si no se proporciona
-                    precioUnitario = obtenerPrecioDinamico();
-            }
-            let precioTotal = 0;
-            let montoDescuento = 0;
-            let boletosRestantes = cantidad;
-
-            // Obtener promociones de config.js y ordenarlas por cantidad (descendente)
-            const promociones = (window.rifaplusConfig && window.rifaplusConfig.rifa && window.rifaplusConfig.rifa.promociones) 
-                ? [...window.rifaplusConfig.rifa.promociones].sort((a, b) => b.cantidad - a.cantidad) 
-                : [];
-
-            // Aplicar cada promoción de mayor a menor cantidad
-            for (const promo of promociones) {
-                if (boletosRestantes >= promo.cantidad) {
-                    // Calcular cuántas promociones de este tipo caben
-                    const cantidadPromos = Math.floor(boletosRestantes / promo.cantidad);
-                    // Agregar precio de promociones aplicadas
-                    precioTotal += cantidadPromos * promo.precio;
-                    // Calcular descuento: precio normal vs precio promociónado
-                    montoDescuento += cantidadPromos * (promo.cantidad * precioUnitario - promo.precio);
-                    // Descontar boletos ya contabilizados
-                    boletosRestantes -= cantidadPromos * promo.cantidad;
-                }
-            }
-
-            // Agregar boletos sueltos a precio normal
-            precioTotal += boletosRestantes * precioUnitario;
-
-            const subtotal = cantidad * precioUnitario;
-            return {
-                cantidadBoletos: cantidad,
-                precioUnitario: precioUnitario,
-                subtotal: subtotal,
-                descuentoMonto: montoDescuento,
-                descuentoPorcentaje: montoDescuento > 0 
-                    ? ((montoDescuento / subtotal) * 100).toFixed(2)
-                    : 0,
-                totalFinal: precioTotal
-            };
+            return calcularTotalConPromociones(cantidad, precioUnitario);
         },
         /**
          * Alias para mostrarFeedback (compatibilidad)
@@ -159,7 +362,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Actualizar resumen poco después de cargar la página
     setTimeout(actualizarResumenCompra, 100);
+    
+    // ✅ LISTENER: Si la configuración se sincroniza desde el backend, reinicializar rangos
+    window.addEventListener('configuracionActualizada', function() {
+        console.log('🔄 [Compra] Configuración actualizada - reiniciando rangos...');
+        inicializarRangoDefault();
+    });
 });
+
 
 /* ============================================================ */
 /* SECCIÓN 3: INICIALIZACIÓN DEL SISTEMA DE COMPRA                */
@@ -214,6 +424,16 @@ async function inicializarSistemaCompra() {
             const checkboxFiltro = document.getElementById('filtroDisponibles');
             if (checkboxFiltro) {
                 checkboxFiltro.checked = filtroDisponiblesActivo;
+                // ⭐ CRÍTICO: Si el filtro estaba activado, reaplicarlo cuando carguen los boletos
+                if (filtroDisponiblesActivo) {
+                    // Esperar a que los elementos '.numero-btn' estén en el DOM
+                    const esperar = setInterval(() => {
+                        if (document.querySelector('.numero-btn')) {
+                            clearInterval(esperar);
+                            aplicarFiltroDisponibles(true);
+                        }
+                    }, 50);
+                }
             }
         } catch (error) {
             console.error('Error al restaurar estado del filtro:', error);
@@ -234,9 +454,6 @@ async function inicializarSistemaCompra() {
     
     // La función `cargarBoletosPublicos` se encarga ahora de programar su siguiente ejecución
     // usando setTimeout + backoff para evitar solapamientos que causan 429.
-    
-    // 🔄 INICIAR ACTUALIZACIÓN PERIÓDICA: Detectar órdenes canceladas por expiración
-    iniciarActualizacionPeriodicaBoletos();
 }
 
 /* ============================================================ */
@@ -249,20 +466,27 @@ async function inicializarSistemaCompra() {
  * Stage 2 (background) continúa sin bloquear
  */
 function startCargarBoletosPublicosConIntentos() {
-    // ⚡ LLAMAR DIRECTAMENTE - Sin delays
-    // cargarBoletosPublicos() manejará todo asincronamente en background
-    cargarBoletosPublicos().catch(e => {
-        console.warn('❌ Error crítico en carga inicial de boletos:', e.message);
-    });
-    
-    // 🆕 TAMBIÉN CARGAR OPORTUNIDADES FRESCAS DEL BACKEND al mismo tiempo
-    // Esto asegura que window.rifaplusOportunidadesDisponiblesReal esté poblado para calcularYLlenarOportunidades()
-    if (window.cargarOportunidadesDisponiblesDelBackend) {
-        cargarOportunidadesDisponiblesDelBackend().catch(e => {
-            console.warn('⚠️  Error cargando oportunidades frescos:', e.message);
+    try {
+        console.debug('📊 Iniciando carga de boletos...');
+        cargarBoletosPublicos().catch(e => {
+            console.warn('❌ Error crítico en carga inicial de boletos:', e.message);
         });
+    } catch (err) {
+        console.error('❌ Error en startCargarBoletosPublicosConIntentos:', err);
     }
+    
+    // 🗑️  Removido: cargarOportunidadesDisponiblesDelBackend() - sistema antiguo reemplazado
+    // Ahora se usa asignación pre-determinada en backend (3 oportunidades por boleto)
 }
+
+window.addEventListener('boletosListos', function() {
+    if (typeof actualizarEstadoBotonGenerar === 'function') {
+        actualizarEstadoBotonGenerar();
+    }
+    if (typeof actualizarNotaDisponibilidad === 'function') {
+        actualizarNotaDisponibilidad();
+    }
+});
 
 /* ============================================================ */
 /* SECCIÓN 3.5: ACTUALIZACIÓN PERIÓDICA - DETECTAR ÓRDENES CANCELADAS */
@@ -276,62 +500,7 @@ function startCargarBoletosPublicosConIntentos() {
  * OPTIMIZACIÓN: Solo recarga /boletos si /stats muestra cambio de disponibles
  */
 
-function iniciarActualizacionPeriodicaBoletos() {
-    let ultimosDisponibles = window.rifaplusConfig?.estado?.boletosDisponibles || 0;
-    let ultimasOportunidades = 0;
-    
-    // Verificar RÁPIDAMENTE cada 15 segundos llamando a /stats (ultra rápido)
-    setInterval(async () => {
-        try {
-            let endpoint = (window.rifaplusConfig?.backend?.apiBase) ? window.rifaplusConfig.backend.apiBase : 'http://localhost:3000';
-            endpoint = String(endpoint).replace(/\/+$/, '');
 
-            // Llamada rápida a /stats solo para chequear disponibles
-            const statsResponse = await fetch(`${endpoint}/api/public/boletos/stats?t=${Date.now()}`, {
-                signal: AbortSignal.timeout(3000),
-                cache: 'no-store'
-            });
-
-            if (!statsResponse.ok) return;
-
-            const statsData = await statsResponse.json();
-            const disponiblesNuevo = statsData.data?.disponibles || 0;
-
-            // Si cambió el número de disponibles, recargar TODO
-            if (disponiblesNuevo !== ultimosDisponibles) {
-                console.log(`🔄 [PeriodicUpdate] Cambio detectado: ${ultimosDisponibles} → ${disponiblesNuevo} disponibles`);
-                ultimosDisponibles = disponiblesNuevo;
-
-                // Recargar datos completos
-                await cargarBoletosPublicos();
-                // TAMBIÉN recargar oportunidades por si hubo cambios
-                await cargarOportunidadesDisponiblesDelBackend();
-            }
-            
-            // 🆕 TAMBIÉN verificar cambios en oportunidades periodicamente
-            const oppResponse = await fetch(`${endpoint}/api/public/oportunidades/disponibles?t=${Date.now()}`, {
-                signal: AbortSignal.timeout(3000),
-                cache: 'no-store'
-            });
-            
-            if (oppResponse.ok) {
-                const oppData = await oppResponse.json();
-                const cantOportunidades = oppData.cantidad || 0;
-                
-                if (cantOportunidades !== ultimasOportunidades) {
-                    console.log(`🔄 [PeriodicUpdate] Oportunidades: ${ultimasOportunidades} → ${cantOportunidades}`);
-                    ultimasOportunidades = cantOportunidades;
-                    // Actualizar la variable global
-                    window.rifaplusOportunidadesDisponiblesReal = oppData.disponibles || [];
-                }
-            }
-        } catch (error) {
-            console.debug(`[PeriodicUpdate] Check rápido failed:`, error.message);
-        }
-    }, 15000); // Cada 15 segundos chequear /stats (muy rápido)
-
-    console.log(`✅ [PeriodicUpdate] Sistema de actualización periódica iniciado (verifica cada 15s)`);
-}
 
 /* ============================================================ */
 /* SECCIÓN 4: CARGA DE BOLETOS DESDE API PÚBLICA                 */
@@ -345,107 +514,64 @@ function iniciarActualizacionPeriodicaBoletos() {
  * 
  * Sincroniza disponibilidad en tiempo real
  */
+/**
+ * Wrapper para /stats con caché local agresivo
+ * Reduce llamadas innecesarias al backend
+ */
+
+
+/**
+ * Fetch de boletos vendidos/apartados desde backend público
+ * OPTIMIZADO: 2-STAGE LOADING
+ * Stage 1: Ultra-rápido /api/public/boletos/stats (< 50ms) - muestra conteo
+ * Stage 2: Background /api/public/boletos - carga grid sin bloquear
+ * 
+ * Sincroniza disponibilidad en tiempo real
+ */
 async function cargarBoletosPublicos() {
     try {
-        let endpoint = (window.rifaplusConfig && window.rifaplusConfig.backend && window.rifaplusConfig.backend.apiBase) ? window.rifaplusConfig.backend.apiBase : 'http://localhost:3000';
-        // Normalizar endpoint para evitar segmentos duplicados como `/api/api/...`
-        endpoint = String(endpoint).replace(/\/+$/,''); // Remover slashes finales
-
-        // ⚡ STAGE 1: ULTRA-RÁPIDO STATS (< 50ms)
-        // Mostrar disponibilidad INSTANTÁNEAMENTE
-        const stageStartTime = performance.now();
+        const endpoint = obtenerApiBaseCompra();
+        
         console.debug('📊 Cargando stats de disponibilidad...');
+        
+        // ⚡ STAGE 1: Timing para medir velocidad
+        const stageStartTime = performance.now();
         
         // ⚠️ MARCAR DATOS COMO OBSOLETOS al iniciar la carga
         // Esto previene que calcularYLlenarOportunidades use datos viejos
         window.rifaplusBoletosDatosActualizados = false;
         
         try {
-            const statsController = new AbortController();
-            // ⏱️ TIMEOUT AGRESIVO: Si /stats tarda > 3s, es un problema en el backend
-            const statsTimeoutId = setTimeout(() => statsController.abort(), 3000);
-            
+            // Fetch de stats desde backend
             const statsResponse = await fetch(`${endpoint}/api/public/boletos/stats`, {
-                signal: statsController.signal // Compatible con iPhone X
+                cache: 'no-store'
             });
             
-            clearTimeout(statsTimeoutId);
             const stageElapsed = Math.round(performance.now() - stageStartTime);
-            console.debug(`✅ /stats respondió en ${stageElapsed}ms`);
             
             if (statsResponse.ok) {
-                const statsData = await statsResponse.json();
+                const statsJson = await statsResponse.json();
+                const data = statsJson.data || statsJson;
+                console.debug(`✅ /stats respondió en ${stageElapsed}ms`);
                 
-                if (statsData.success) {
-                    // Soportar ambos formatos: con y sin wrapper 'data'
-                    const data = statsData.data || statsData;
-                    
-                    // ✅ Calcular disponibles SOLO en rango visible (si oportunidades habilitadas)
-                    const oportunidadesConfig = window.rifaplusConfig && window.rifaplusConfig.rifa && window.rifaplusConfig.rifa.oportunidades;
-                    
-                    let disponiblesEnRango = data.disponibles;
-                    if (oportunidadesConfig && oportunidadesConfig.enabled && oportunidadesConfig.rango_visible) {
-                        const rangoVisible = oportunidadesConfig.rango_visible;
-                        
-                        // Contar solo boletos vendidos/apartados que están en el rango visible
-                        const sold = (window.rifaplusSoldNumbers && Array.isArray(window.rifaplusSoldNumbers)) ? window.rifaplusSoldNumbers : [];
-                        const reserved = (window.rifaplusReservedNumbers && Array.isArray(window.rifaplusReservedNumbers)) ? window.rifaplusReservedNumbers : [];
-                        
-                        let vendidosEnRangoVisible = 0;
-                        let apartadosEnRangoVisible = 0;
-                        
-                        // Contar vendidos en el rango visible
-                        sold.forEach(num => {
-                            const n = Number(num);
-                            if (n >= rangoVisible.inicio && n <= rangoVisible.fin) {
-                                vendidosEnRangoVisible++;
-                            }
-                        });
-                        
-                        // Contar apartados en el rango visible
-                        reserved.forEach(num => {
-                            const n = Number(num);
-                            if (n >= rangoVisible.inicio && n <= rangoVisible.fin) {
-                                apartadosEnRangoVisible++;
-                            }
-                        });
-                        
-                        // Calcular disponibles = total rango visible - vendidos - apartados en ese rango
-                        const tamanoRangoVisible = (rangoVisible.fin - rangoVisible.inicio) + 1;
-                        disponiblesEnRango = Math.max(0, tamanoRangoVisible - vendidosEnRangoVisible - apartadosEnRangoVisible);
+                if (data) {
+                    // Actualizar estado global primero para que el botón use datos frescos
+                    if (window.rifaplusConfig && window.rifaplusConfig.estado) {
+                        window.rifaplusConfig.estado.boletosVendidos = data.vendidos;
+                        window.rifaplusConfig.estado.boletosApartados = data.apartados;
+                        window.rifaplusConfig.estado.boletosDisponibles = data.disponibles;
                     }
-                    
-                    // ✅ Actualizar UI con disponibles del rango visible
+
+                    // ⭐ OPTIMIZACIÓN CRÍTICA: Mostrar disponibles INMEDIATAMENTE desde /stats (< 50ms)
+                    // No esperar por cálculo de rango - eso se hace en background en Stage 2
                     const availabilityNote = document.getElementById('availabilityNote');
                     if (availabilityNote) {
-                        availabilityNote.textContent = `${disponiblesEnRango} boletos disponibles`;
+                        availabilityNote.textContent = `${data.disponibles} boletos disponibles`;
                         availabilityNote.style.display = 'inline-block';
-                        const finalElapsed = Math.round(performance.now() - stageStartTime);
-                        console.log(`🎯 [STAGE1] availability-note actualizado en ${finalElapsed}ms: "${disponiblesEnRango} boletos disponibles"`);
-                    }
-                    
-                    // 🚀 CRÍTICO: Marcar como cargado una vez que /stats responde
-                    // Esto permite que el botón de generar se habilite aunque Web Worker siga procesando
-                    window.rifaplusBoletosLoaded = true;
-                    
-                    // 🔧 IMPORTANTE: Si los arrays aún no están poblados (Web Worker lento/fallido),
-                    // crear arrays vacíos para que obtenerNumerosDisponibles() funcione correctamente
-                    if (!window.rifaplusSoldNumbers) {
-                        window.rifaplusSoldNumbers = [];
-                    }
-                    if (!window.rifaplusReservedNumbers) {
-                        window.rifaplusReservedNumbers = [];
                     }
                     
                     if (typeof actualizarEstadoBotonGenerar === 'function') {
                         actualizarEstadoBotonGenerar();
-                    }
-                    
-                    // Actualizar estado global para mostrar porcentaje
-                    if (window.rifaplusConfig && window.rifaplusConfig.estado) {
-                        window.rifaplusConfig.estado.boletosVendidos = data.vendidos;
-                        window.rifaplusConfig.estado.boletosApartados = data.reservados;
-                        window.rifaplusConfig.estado.boletosDisponibles = data.disponibles;
                     }
                 }
             }
@@ -462,8 +588,6 @@ async function cargarBoletosPublicos() {
             // ⚠️ IMPORTANTE: Marcar como cargado INCLUSO con error
             // Sino, se queda bloqueado esperando forever
             window.rifaplusBoletosLoaded = true;
-            if (!window.rifaplusSoldNumbers) window.rifaplusSoldNumbers = [];
-            if (!window.rifaplusReservedNumbers) window.rifaplusReservedNumbers = [];
         }
         
         // 🔄 STAGE 2: BACKGROUND - Cargar datos completos SIN BLOQUEAR
@@ -485,8 +609,9 @@ async function cargarBoletosPublicos() {
             }
         }
         
-        // Cargar full data en background (baja prioridad)
-        cargarDatosCompletosEnBackground(endpoint);
+        // Cargar solo el rango visible en background
+        const rangoInicial = infiniteScrollState.rangoActual || obtenerRangoVisibleInicial();
+        cargarDatosCompletosEnBackground(endpoint, rangoInicial);
         
         return true;
         
@@ -501,53 +626,14 @@ async function cargarBoletosPublicos() {
  * Helper: Carga datos completos en background sin bloquear UI
  * Esta función se ejecuta de forma asincrónica, puede tomar tiempo
  */
-async function cargarDatosCompletosEnBackground(endpoint) {
+async function cargarDatosCompletosEnBackground(endpoint, rango = null) {
     try {
-        console.debug('📦 Iniciando carga en background de datos completos...');
-        
-        const respuesta = await fetch(`${endpoint}/api/public/boletos?listCompleta=true`, {
-            priority: 'low' // Baja prioridad en navegadores que lo soporten
-        });
+        const rangoObjetivo = rango || infiniteScrollState.rangoActual || obtenerRangoVisibleInicial();
+        console.debug(`📦 Iniciando carga en background del rango ${rangoObjetivo.inicio}-${rangoObjetivo.fin}...`);
 
-        // Manejar códigos de estado explícitos primero
-        if (respuesta.status === 429) {
-            // Rate-limited by server
-            console.warn('cargarBoletosPublicos: servidor devolvió 429 Too Many Requests');
-            window.rifaplusBoletosLoaded = false;
-            window.rifaplusBoletosLoading = false;
-            window.rifaplusFetchBackoffMs = Math.min((window.rifaplusFetchBackoffMs || 30000) * 2, 300000);
-            // ensure we don't schedule multiple timeouts
-            if (window.rifaplusFetchTimeoutId) clearTimeout(window.rifaplusFetchTimeoutId);
-            window.rifaplusFetchTimeoutId = setTimeout(cargarBoletosPublicos, window.rifaplusFetchBackoffMs);
-            // update UI state
-            if (typeof actualizarEstadoBotonGenerar === 'function') actualizarEstadoBotonGenerar();
-            return false;
-        }
+        const exito = await cargarEstadoRangoVisibleEnBackground(endpoint, rangoObjetivo.inicio, rangoObjetivo.fin);
 
-        if (!respuesta.ok) {
-            // Non-OK (other than 429), retry with backoff
-            console.warn('cargarBoletosPublicos: respuesta no OK', respuesta.status);
-            window.rifaplusBoletosLoaded = false;
-            window.rifaplusBoletosLoading = false;
-            window.rifaplusFetchBackoffMs = Math.min((window.rifaplusFetchBackoffMs || 30000) * 2, 300000);
-            if (window.rifaplusFetchTimeoutId) clearTimeout(window.rifaplusFetchTimeoutId);
-            window.rifaplusFetchTimeoutId = setTimeout(cargarBoletosPublicos, window.rifaplusFetchBackoffMs);
-            if (typeof actualizarEstadoBotonGenerar === 'function') actualizarEstadoBotonGenerar();
-            return false;
-        }
-
-        const json = await respuesta.json();
-
-        // ⭐ CRITICAL VALIDATION: Verificar que los datos no sean arrays vacíos
-        // Si la API devuelve arrays vacíos, usar datos cacheados o arrays vacíos
-        let sold = Array.isArray(json.data?.sold) ? json.data.sold : [];
-        let reserved = Array.isArray(json.data?.reserved) ? json.data.reserved : [];
-
-        // 🚀 OPTIMIZACIÓN MÓVIL: Procesar boletos SIN BLOQUEAR UI usando Web Worker
-        procesarBoletosEnBackground(sold, reserved);
-        
-
-        if (json && json.success) {
+        if (exito) {
             // Indicar que los datos de disponibilidad ya se cargaron
             window.rifaplusBoletosLoaded = true;
             window.rifaplusBoletosLoading = false;  // ⭐ DESBLOQUEAR CARRITO
@@ -568,18 +654,26 @@ async function cargarDatosCompletosEnBackground(endpoint) {
                 gridEl.removeAttribute('data-loading');
                 gridEl.style.pointerEvents = 'auto';
             }
-            
-            console.debug(`✅ Datos completos cargados: ${sold.length} vendidos, ${reserved.length} reservados`);
+
+            const { sold, reserved } = obtenerEstadoLocalBoletos();
+            console.debug(`✅ Estado de rango cargado: ${sold.length} vendidos, ${reserved.length} reservados`);
 
             // ⭐ OPTIMIZACIÓN: En lugar de re-renderizar TODO el grid (que reinicia scroll),
             // solo actualizar los botones visibles con su nuevo estado
             actualizarEstadoBoletosVisibles();
+            if (typeof actualizarEstadoBotonGenerar === 'function') {
+                actualizarEstadoBotonGenerar();
+            }
+            if (typeof actualizarNotaDisponibilidad === 'function') {
+                actualizarNotaDisponibilidad();
+            }
             
-            // schedule next normal poll (⭐ OPTIMIZACIÓN: 5 minutos en lugar de 30s para no ralentizar la página)
-            if (window.rifaplusFetchTimeoutId) clearTimeout(window.rifaplusFetchTimeoutId);
-            window.rifaplusFetchTimeoutId = setTimeout(cargarBoletosPublicos, 300000); // 5 minutos para mejor performance
-            if (typeof actualizarEstadoBotonGenerar === 'function') actualizarEstadoBotonGenerar();
-            if (typeof actualizarNotaDisponibilidad === 'function') actualizarNotaDisponibilidad();
+            // 🔌 WEBSOCKET ACTIVO: El polling manual ya no es necesario
+            // Socket.io emitirá boletosActualizados en tiempo real desde el servidor
+            // Cuando haya cambios, ejecutaremos actualizarEstadoBoletosVisibles() automáticamente
+            // Si WebSocket falla o se desconecta, socket-handler.js activa fallback a polling
+            // DEV NOTE: Mantener este línea comentada para debugging/fallback manual en desarrollo
+            // window.rifaplusFetchTimeoutId = setTimeout(cargarBoletosPublicos, 300000); // 5 minutos (DESHABILITADO - WebSocket maneja actualizaciones)
             return true;
         }
         // If data not in expected shape, treat as fail and try later
@@ -589,7 +683,7 @@ async function cargarDatosCompletosEnBackground(endpoint) {
         if (window.rifaplusFetchTimeoutId) clearTimeout(window.rifaplusFetchTimeoutId);
         window.rifaplusFetchTimeoutId = setTimeout(cargarBoletosPublicos, window.rifaplusFetchBackoffMs);
         if (typeof actualizarEstadoBotonGenerar === 'function') actualizarEstadoBotonGenerar();
-        if (typeof actualizarNotaDisponibilidad === 'function') actualizarNotaDisponibilidad();
+        // ⭐ OPTIMIZACIÓN: No actualizar availabilityNote aquí - el Web Worker lo hace
         return false;
     } catch (e) {
         // Network or unexpected error — increase backoff and retry later
@@ -600,7 +694,7 @@ async function cargarDatosCompletosEnBackground(endpoint) {
         if (window.rifaplusFetchTimeoutId) clearTimeout(window.rifaplusFetchTimeoutId);
         window.rifaplusFetchTimeoutId = setTimeout(cargarBoletosPublicos, window.rifaplusFetchBackoffMs);
         if (typeof actualizarEstadoBotonGenerar === 'function') actualizarEstadoBotonGenerar();
-        if (typeof actualizarNotaDisponibilidad === 'function') actualizarNotaDisponibilidad();
+        // ⭐ OPTIMIZACIÓN: No actualizar availabilityNote aquí - el Web Worker lo hace
         return false;
     }
 }
@@ -621,8 +715,7 @@ function actualizarEstadoBoletosVisibles() {
             return;
         }
         
-        const soldSet = new Set((window.rifaplusSoldNumbers && Array.isArray(window.rifaplusSoldNumbers)) ? window.rifaplusSoldNumbers : []);
-        const reservedSet = new Set((window.rifaplusReservedNumbers && Array.isArray(window.rifaplusReservedNumbers)) ? window.rifaplusReservedNumbers : []);
+        const { soldSet, reservedSet } = obtenerEstadoLocalBoletos();
         
         console.debug(`🎨 [actualizarEstadoBoletosVisibles] Actualizando colores: ${soldSet.size} vendidos, ${reservedSet.size} apartados`);
         
@@ -660,6 +753,9 @@ function actualizarEstadoBoletosVisibles() {
             });
             
             console.debug(`✅ Safari: ${actualizados}/${botones.length} boletos actualizados`);
+            if (filtroDisponiblesActivo) {
+                aplicarFiltroDisponibles(true);
+            }
             return; // No continuar con IntersectionObserver
         }
         
@@ -690,6 +786,10 @@ function actualizarEstadoBoletosVisibles() {
                     btn.title = 'Apartado';
                 }
             });
+
+            if (filtroDisponiblesActivo) {
+                aplicarFiltroDisponibles(true);
+            }
         }, { 
             root: grid,
             rootMargin: '100px', // Precarga 100px antes de ser visible
@@ -711,6 +811,13 @@ function inicializarMaquinaSuerteMejorada() {
     const btnRepetir = document.getElementById('btnRepetir');
     const btnAgregarSuerte = document.getElementById('btnAgregarSuerte');
     
+    console.log('🎰 Inicializando máquina de suerte...');
+    console.log('   ✓ btnGenerar:', !!btnGenerar);
+    console.log('   ✓ inputCantidad:', !!inputCantidad);
+    console.log('   ✓ rifaplusBoletosLoaded:', window.rifaplusBoletosLoaded);
+
+    actualizarLimiteMaquinaSuerteUI();
+    
     // Helper: activar/desactivar botón generar según cantidad
     // Nota: la función `actualizarEstadoBotonGenerar` se define a nivel global
     // (fuera de esta función) para que pueda ser invocada desde
@@ -731,7 +838,7 @@ function inicializarMaquinaSuerteMejorada() {
         btnAumentar.addEventListener('click', function() {
             let cantidad = parseInt(inputCantidad.value, 10);
             if (isNaN(cantidad)) cantidad = 0;
-            const maxTickets = window.rifaplusConfig.rifa.totalBoletos;
+            const maxTickets = obtenerMaximoPermitidoMaquinaSuerte();
             if (cantidad < maxTickets) {
                 inputCantidad.value = cantidad + 1;
                 actualizarTotalMaquina();
@@ -740,11 +847,7 @@ function inicializarMaquinaSuerteMejorada() {
         });
         
         inputCantidad.addEventListener('change', function() {
-            let cantidad = parseInt(this.value, 10);
-            if (isNaN(cantidad) || cantidad < 0) cantidad = 0;
-            const maxTickets = window.rifaplusConfig.rifa.totalBoletos;
-            if (cantidad > maxTickets) cantidad = maxTickets;
-            this.value = cantidad;
+            this.value = normalizarCantidadMaquinaSuerte(this.value);
             actualizarTotalMaquina();
             actualizarEstadoBotonGenerar();
         });
@@ -755,7 +858,7 @@ function inicializarMaquinaSuerteMejorada() {
             // Convert to integer, stripping non-digit characters
             let parsed = parseInt(raw, 10);
             if (isNaN(parsed) || parsed < 0) parsed = 0;
-            const maxTickets = window.rifaplusConfig.rifa.totalBoletos;
+            const maxTickets = obtenerMaximoPermitidoMaquinaSuerte();
             if (parsed > maxTickets) parsed = maxTickets;
             if (String(parsed) !== raw) {
                 // Update only if different to avoid cursor jump in some browsers
@@ -763,6 +866,23 @@ function inicializarMaquinaSuerteMejorada() {
             }
             actualizarTotalMaquina();
             actualizarEstadoBotonGenerar();
+            console.log(`⌨️ Entrada de cantidad: ${parsed}`);
+        });
+        
+        // Limpiar el 0 cuando el usuario hace focus en el input
+        inputCantidad.addEventListener('focus', function() {
+            if (this.value === '0') {
+                this.value = '';
+            }
+        });
+        
+        // Restaurar el 0 si sale vacío
+        inputCantidad.addEventListener('blur', function() {
+            if (this.value === '' || parseInt(this.value) === 0) {
+                this.value = '0';
+                actualizarTotalMaquina();
+                actualizarEstadoBotonGenerar();
+            }
         });
     }
     
@@ -790,8 +910,76 @@ function inicializarMaquinaSuerteMejorada() {
     // Inicializar total y estado del botón
     actualizarTotalMaquina();
     actualizarEstadoBotonGenerar();
+    console.log('✅ Máquina de suerte inicializada correctamente');
     // Actualizar nota de disponibilidad inicialmente
     if (typeof actualizarNotaDisponibilidad === 'function') actualizarNotaDisponibilidad();
+
+    if (!inicializarMaquinaSuerteMejorada._listenerRegistrado) {
+        window.addEventListener('configuracionActualizada', actualizarLimiteMaquinaSuerteUI);
+        window.addEventListener('configSyncCompleto', actualizarLimiteMaquinaSuerteUI);
+        inicializarMaquinaSuerteMejorada._listenerRegistrado = true;
+    }
+}
+
+function obtenerTamanoRangoVisibleCompra() {
+    const totalTickets = Number(window.rifaplusConfig?.rifa?.totalBoletos) || 0;
+    const oportunidadesConfig = window.rifaplusConfig?.rifa?.oportunidades;
+
+    if (oportunidadesConfig?.enabled && oportunidadesConfig?.rango_visible) {
+        const inicio = Number(oportunidadesConfig.rango_visible.inicio);
+        const fin = Number(oportunidadesConfig.rango_visible.fin);
+        if (Number.isFinite(inicio) && Number.isFinite(fin) && fin >= inicio) {
+            return (fin - inicio) + 1;
+        }
+    }
+
+    return Math.max(0, totalTickets);
+}
+
+function obtenerLimiteConfiguradoMaquinaSuerte() {
+    const limite = Number(window.rifaplusConfig?.rifa?.maquinaSuerte?.limiteBoletos);
+    return Number.isFinite(limite) && limite > 0 ? Math.floor(limite) : 500;
+}
+
+function obtenerMaximoPermitidoMaquinaSuerte() {
+    const limiteConfigurado = obtenerLimiteConfiguradoMaquinaSuerte();
+    const tamanoRangoVisible = obtenerTamanoRangoVisibleCompra();
+    if (tamanoRangoVisible <= 0) return limiteConfigurado;
+    return Math.min(limiteConfigurado, tamanoRangoVisible);
+}
+
+function normalizarCantidadMaquinaSuerte(valor, permitirCero = true) {
+    let cantidad = parseInt(valor, 10);
+    if (isNaN(cantidad) || cantidad < 0) cantidad = 0;
+    const maximo = obtenerMaximoPermitidoMaquinaSuerte();
+    if (cantidad > maximo) cantidad = maximo;
+    if (!permitirCero && cantidad < 1) cantidad = 1;
+    return cantidad;
+}
+
+function actualizarLimiteMaquinaSuerteUI() {
+    const inputCantidad = document.getElementById('cantidadNumeros');
+    const hint = document.getElementById('maquinaLimiteHint');
+    const maximo = obtenerMaximoPermitidoMaquinaSuerte();
+    const limiteConfigurado = obtenerLimiteConfiguradoMaquinaSuerte();
+    const tamanoRangoVisible = obtenerTamanoRangoVisibleCompra();
+
+    if (inputCantidad) {
+        inputCantidad.max = String(maximo);
+        inputCantidad.placeholder = maximo > 0 ? `0 - ${maximo}` : '0';
+        inputCantidad.value = String(normalizarCantidadMaquinaSuerte(inputCantidad.value));
+    }
+
+    if (hint) {
+        if (tamanoRangoVisible > 0 && maximo < limiteConfigurado) {
+            hint.textContent = `Puedes generar hasta ${maximo} boletos por ronda. El límite se ajustó al rango comprable actual.`;
+        } else {
+            hint.textContent = `Puedes generar hasta ${maximo} boletos por ronda.`;
+        }
+    }
+
+    actualizarTotalMaquina();
+    actualizarEstadoBotonGenerar();
 }
 
 function actualizarTotalMaquina() {
@@ -820,22 +1008,33 @@ function actualizarEstadoBotonGenerar() {
         btnGenerar.disabled = true;
         return;
     }
+
+    const maximoPermitido = obtenerMaximoPermitidoMaquinaSuerte();
+    if (val > maximoPermitido) {
+        btnGenerar.disabled = true;
+        return;
+    }
     
-    // 🚀 SIMPLE Y ESTABLE: Usar SOLO el estado de /stats endpoint
-    // No recalcular nada que cause oscilaciones
+    // 🚀 SIMPLE Y ESTABLE: rifaplusBoletosLoaded está ahora true por defecto
+    // Funciona incluso si el backend es lento o falla
     const loaded = !!window.rifaplusBoletosLoaded;
     
-    // Usar conteo del endpoint /stats (fiable)
-    const boletosDisponiblesSegunStats = window.rifaplusConfig && 
-                                         window.rifaplusConfig.estado && 
-                                         window.rifaplusConfig.estado.boletosDisponibles !== undefined
-                                         ? window.rifaplusConfig.estado.boletosDisponibles
-                                         : 0;
+    // Si hay datos del servidor, usar conteo real
+    // Si no, asumir suficientes boletos disponibles
+    const totalBoletosFallback = typeof window.rifaplusConfig?.obtenerTotalBoletos === 'function'
+        ? window.rifaplusConfig.obtenerTotalBoletos()
+        : Number(window.rifaplusConfig?.rifa?.totalBoletos || 0);
+    const boletosDisponibles = (window.rifaplusConfig &&
+                               window.rifaplusConfig.estado &&
+                               window.rifaplusConfig.estado.boletosDisponibles !== undefined)
+                              ? window.rifaplusConfig.estado.boletosDisponibles
+                              : Math.max(0, totalBoletosFallback); // Fallback dinámico, no hardcodeado
     
-    const hay_suficientes = boletosDisponiblesSegunStats >= val;
+    const hay_suficientes = boletosDisponibles >= val;
     
-    // ⭐ SIMPLE: Si /stats dice que hay datos cargados y hay suficientes → HABILITAR y no tocar más
+    // ⭐ SIMPLE: Si hay datos cargados y suficientes → HABILITAR
     btnGenerar.disabled = !loaded || !hay_suficientes;
+    console.debug(`🎰 Estado botón generar: ${btnGenerar.disabled ? '❌ DESHABILITADO' : '✅ HABILITADO'} (cantidad=${val}, disponibles=${boletosDisponibles}, loaded=${loaded})`);
 }
 
 // Mostrar nota de disponibilidad bajo el botón Generar
@@ -843,10 +1042,58 @@ function actualizarNotaDisponibilidad() {
     const note = document.getElementById('availabilityNote');
     if (!note) return;
     
-    // 🚀 OPTIMIZACIÓN: Si ya mostramos el valor del endpoint /stats, NO recalcular
-    // El endpoint /stats ya actualizó esto correctamente
+    // ⭐ OPTIMIZACIÓN: Actualizar con datos reales SOLO si están disponibles
+    // Si estamos cargando o los datos son incompletos, NO CAMBIAR el valor actual
+    if (window.rifaplusBoletosLoaded) {
+        const { sold, reserved } = obtenerEstadoLocalBoletos();
+        
+        // 🔴 CRÍTICO: Si NO tenemos datos de boletos aún (arrays vacíos), NO actualizar
+        // Dejar que Season 1 (/stats) haya puesto el valor correcto
+        if (sold.length === 0 && reserved.length === 0 && !rifaplusEstadoRangoActual.cargado) {
+            // Arrays vacíos = datos aún no disponibles, NO sobrescribir
+            return;
+        }
+        
+        // Obtener configuración del rango visible si oportunidades están habilitadas
+        const oportunidadesConfig = window.rifaplusConfig && window.rifaplusConfig.rifa && window.rifaplusConfig.rifa.oportunidades;
+        let disponiblesActual = 0;
+        
+        if (oportunidadesConfig && oportunidadesConfig.enabled && oportunidadesConfig.rango_visible) {
+            // Calcular para el rango visible
+            const rangoVisible = oportunidadesConfig.rango_visible;
+            const tamanoRango = (rangoVisible.fin - rangoVisible.inicio) + 1;
+            let vendidosEnRango = 0;
+            let apartadosEnRango = 0;
+            
+            sold.forEach(num => {
+                if (num >= rangoVisible.inicio && num <= rangoVisible.fin) {
+                    vendidosEnRango++;
+                }
+            });
+            
+            reserved.forEach(num => {
+                if (num >= rangoVisible.inicio && num <= rangoVisible.fin) {
+                    apartadosEnRango++;
+                }
+            });
+            
+            disponiblesActual = Math.max(0, tamanoRango - vendidosEnRango - apartadosEnRango);
+        } else if (rifaplusEstadoRangoActual.cargado) {
+            const rangoActual = infiniteScrollState.rangoActual || obtenerRangoVisibleInicial();
+            const tamanoRango = (rangoActual.fin - rangoActual.inicio) + 1;
+            disponiblesActual = Math.max(0, tamanoRango - sold.length - reserved.length);
+        } else {
+            const disponibles = obtenerNumerosDisponibles();
+            disponiblesActual = Array.isArray(disponibles) ? disponibles.length : 0;
+        }
+        
+        note.textContent = `${disponiblesActual} boletos disponibles`;
+        note.style.display = 'inline-block';
+        return;
+    }
+    
     if (note.textContent && note.textContent.includes('boletos disponibles') && !note.textContent.includes('Cargando')) {
-        // Ya tenemos un valor del endpoint /stats, no lo sobrescribas
+        // Ya tenemos un valor, no cambiar
         return;
     }
     
@@ -854,20 +1101,6 @@ function actualizarNotaDisponibilidad() {
         note.textContent = 'Cargando disponibilidad...';
         note.style.display = 'inline-block';
         return;
-    }
-    
-    // Solo si NO hay datos del endpoint, calcular localmente
-    const disponibles = obtenerNumerosDisponibles();
-    if (!Array.isArray(disponibles)) {
-        note.textContent = 'Disponibilidad desconocida';
-        note.style.display = 'inline-block';
-        return;
-    }
-    note.textContent = `${disponibles.length} boletos disponibles`;
-    note.style.display = 'inline-block';
-    // Si hay disponibles, ocultar nota si es amplia UX preferida
-    if (disponibles.length === 0) {
-        note.textContent = 'No quedan boletos disponibles';
     }
 }
 
@@ -884,8 +1117,16 @@ async function generarNumerosAleatoriosMejorado() {
     }
     
     const cantidad = parseInt(inputCantidad.value, 10);
+    const maximoPermitido = obtenerMaximoPermitidoMaquinaSuerte();
     if (isNaN(cantidad) || cantidad < 1) {
         rifaplusUtils.showFeedback('⚠️ Selecciona al menos 1 número para generar.', 'warning');
+        return;
+    }
+    if (cantidad > maximoPermitido) {
+        inputCantidad.value = String(maximoPermitido);
+        actualizarTotalMaquina();
+        actualizarEstadoBotonGenerar();
+        rifaplusUtils.showFeedback(`⚠️ La máquina de la suerte permite generar hasta ${maximoPermitido} boletos por intento.`, 'warning');
         return;
     }
     
@@ -917,14 +1158,13 @@ async function generarNumerosAleatoriosMejorado() {
             return;
         }
         
-        // Generar números aleatorios
-        const numerosGenerados = [];
-        const disponiblesCopia = [...numerosDisponibles];
-        
-        for (let i = 0; i < cantidad; i++) {
-            const randomIndex = Math.floor(Math.random() * disponiblesCopia.length);
-            const numero = disponiblesCopia.splice(randomIndex, 1)[0];
-            numerosGenerados.push(numero);
+        // Generar números aleatorios y validarlos contra el backend antes de mostrarlos
+        const numerosGenerados = await generarNumerosVerificadosEnServidor(cantidad);
+
+        if (numerosGenerados.length < cantidad) {
+            await cargarBoletosPublicos();
+            rifaplusUtils.showFeedback(`⚠️ Solo se pudieron validar ${numerosGenerados.length} de ${cantidad} boletos en este momento. Intenta de nuevo.`, 'warning');
+            return;
         }
         
         // Renderizar números
@@ -934,7 +1174,9 @@ async function generarNumerosAleatoriosMejorado() {
         numerosGenerados.forEach(numero => {
             const chip = document.createElement('div');
             chip.className = 'numero-chip';
-            chip.textContent = numero;
+            // Mostrar formateado (con ceros a la izquierda)
+            const numeroFormateado = window.rifaplusConfig.formatearNumeroBoleto(numero);
+            chip.textContent = numeroFormateado;
             chip.setAttribute('data-numero', numero);
             fragment.appendChild(chip);
         });
@@ -944,6 +1186,9 @@ async function generarNumerosAleatoriosMejorado() {
         
         // Mostrar resultado
         resultado.style.display = 'block';
+        resultado.style.visibility = 'visible';
+        resultado.style.opacity = '1';
+        resultado.style.transition = 'opacity 300ms ease-out, visibility 300ms ease-out';
         console.log('✅ Números generados:', numerosGenerados);
         
         // Scroll suave hacia la sección de resultados (corto)
@@ -987,8 +1232,10 @@ async function generarNumerosAleatoriosMejorado() {
     } finally {
         // Restaurar botón
         if (btnGenerar) {
-            btnGenerar.disabled = false;
             btnGenerar.textContent = 'GENERAR NÚMEROS';
+            if (typeof actualizarEstadoBotonGenerar === 'function') {
+                actualizarEstadoBotonGenerar();
+            }
         }
     }
 }
@@ -1005,18 +1252,15 @@ function obtenerNumerosDisponibles() {
         rangoVisible = oportunidadesConfig.rango_visible;
     }
     
-    // Intentar obtener arrays de boletos
-    const sold = (window.rifaplusSoldNumbers && Array.isArray(window.rifaplusSoldNumbers)) ? window.rifaplusSoldNumbers : [];
-    const reserved = (window.rifaplusReservedNumbers && Array.isArray(window.rifaplusReservedNumbers)) ? window.rifaplusReservedNumbers : [];
+    // Obtener arrays de boletos vendidos/apartados del servidor
+    const { sold, reserved } = obtenerEstadoLocalBoletos();
     
-    // ⚠️ CRÍTICO SEGURIDAD: Si arrays de vendidos/apartados están vacíos,
-    // NO devolver números - es peligroso, podrían ser números ya vendidos/apartados
-    if (sold.length === 0 && reserved.length === 0) {
-        // Mostrar log en DEBUG, no warning (es esperado durante carga inicial)
-        if (window.DEBUG_OPORTUNIDADES) {
-            console.debug('🔄 [OportunidadesService] Esperando datos de boletos del servidor...');
-        }
-        return []; // Retornar vacío para forzar recarga
+    // ⏳ REQUISITO PRINCIPAL: SIEMPRE esperar a que el servidor envíe datos reales
+    // Si arrays están vacíos, significa que Stage 2 aun no terminó o falló
+    // NO generar números sin validation real del servidor
+    if (sold.length === 0 && reserved.length === 0 && !rifaplusEstadoRangoActual.cargado) {
+        console.debug('🔄 [obtenerNumerosDisponibles] Esperando datos del servidor...');
+        return []; // Retornar vacío hasta tener datos reales
     }
     
     // Crear un conjunto de todos los números VISIBLES (rango_visible.inicio a rango_visible.fin)
@@ -1025,8 +1269,7 @@ function obtenerNumerosDisponibles() {
         todosLosNumeros.add(i);
     }
     
-    // Eliminar números que están vendidos/apartados según datos reales del servidor
-    // Normalizar y eliminar (ignorar valores no numéricos)
+    // Eliminar números que están vendidos/apartados (datos reales del servidor)
     sold.forEach(n => {
         const nn = Number(n);
         if (!Number.isNaN(nn)) todosLosNumeros.delete(nn);
@@ -1035,10 +1278,8 @@ function obtenerNumerosDisponibles() {
         const nn = Number(n);
         if (!Number.isNaN(nn)) todosLosNumeros.delete(nn);
     });
-
-    // Si no hay datos válidos de servidor, no eliminamos por heurística; dejamos que cargarBoletosPublicos maneje esto.
     
-    // Eliminar números ya seleccionados en el carrito
+    // Eliminar números ya seleccionados en el carrito de esta sesión
     selectedNumbersGlobal.forEach(num => todosLosNumeros.delete(num));
     
     // Convertir Set a Array y retornar
@@ -1058,8 +1299,7 @@ function agregarNumerosSuerteAlCarrito() {
     let agregados = 0;
     
     // OPTIMIZACIÓN: Agregar todos los boletos al estado interno sin actualizar UI cada vez
-    const sold = (window.rifaplusSoldNumbers && Array.isArray(window.rifaplusSoldNumbers)) ? window.rifaplusSoldNumbers : [];
-    const reserved = (window.rifaplusReservedNumbers && Array.isArray(window.rifaplusReservedNumbers)) ? window.rifaplusReservedNumbers : [];
+    const { sold, reserved } = obtenerEstadoLocalBoletos();
     const selectedNumbers = obtenerBoletosSelecionados();
     let stored = JSON.parse(localStorage.getItem('rifaplusSelectedNumbers') || '[]');
     
@@ -1096,17 +1336,22 @@ function agregarNumerosSuerteAlCarrito() {
         }
     });
     
+    // Calcular el tiempo máximo de animaciones
+    let tiempoMaximoAnimacion = 0;
+    
     // Animaciones según cantidad
     boletos_para_agregar.forEach((numero, index) => {
         if (numeros.length <= 5) {
             // Pocos boletos: animar todos con cascada
+            tiempoMaximoAnimacion = Math.max(tiempoMaximoAnimacion, index * 150 + 600);
             setTimeout(() => {
-                animarCarritoSolo(numero);
+                animarAgregarAlCarrito(null, numero, false);
             }, index * 150);
         } else if (numeros.length <= 50) {
             // Cantidad media: animar cada 5 boletos
             if (index % 5 === 0) {
-                animarCarritoSolo(numero);
+                tiempoMaximoAnimacion = Math.max(tiempoMaximoAnimacion, 600);
+                animarAgregarAlCarrito(null, numero, false);
             }
         }
         // Para >50, no animar individuales - solo una animación final
@@ -1114,26 +1359,68 @@ function agregarNumerosSuerteAlCarrito() {
     
     // Mostrar resultado solo si se agregaron números
     if (agregados > 0) {
-        // Limpiar la grilla y ocultarla
-        const resultado = document.getElementById('maquinaResultado');
-        if (resultado) {
-            resultado.style.display = 'none';
-        }
-        
         // Actualizar UI UNA SOLA VEZ (antes lo hacía múltiples veces)
         actualizarResumenCompraConDebounce();
         actualizarVistaCarritoGlobal();
         actualizarContadorCarritoGlobal();
         
-        // Si son muchos boletos, animar carrito una sola vez con delay mínimo
-        if (numeros.length > 5) {
+        // Si son muchos boletos, animar carrito una sola vez
+        let delayFinal = tiempoMaximoAnimacion;
+        if (numeros.length > 50) {
             setTimeout(() => {
-                animarCarritoSolo(0); // Animar carrito sin un número específico
-                rifaplusUtils.showFeedback(`✅ Se agregaron ${agregados} boletos al carrito`, 'success');
+                animarAgregarAlCarrito(null, 0, false);
             }, 50);
+            delayFinal = Math.max(tiempoMaximoAnimacion, 600);
         }
+        
+        // 🎯 IMPORTANTE: Ocultar la máquina de suerte DESPUÉS de que terminen las animaciones
+        // Esto asegura que los elementos origen de las animaciones sigan siendo accesibles
+        setTimeout(() => {
+            const resultado = document.getElementById('maquinaResultado');
+            if (resultado) {
+                resultado.style.opacity = '0';
+                resultado.style.visibility = 'hidden';
+                resultado.style.transition = 'opacity 220ms ease-out, visibility 220ms ease-out';
+                setTimeout(() => {
+                    resultado.style.display = 'none';
+                }, 220);
+            }
+            rifaplusUtils.showFeedback(`✅ Se agregaron ${agregados} boletos al carrito`, 'success');
+        }, delayFinal + 100);
     } else {
         rifaplusUtils.showFeedback('⚠️ No se pudieron agregar los números. Puede que ya estén seleccionados o no estén disponibles.', 'warning');
+    }
+}
+
+/**
+ * actualizarEstadoBtnComprar - Actualiza estado visual del botón según carga de oportunidades
+ * Se llama desde cargarOportunidadesDelCarrito() para deshabilitar/habilitar botón
+ * @returns {void}
+ */
+function actualizarEstadoBtnComprar() {
+    const btnComprar = document.getElementById('btnComprar');
+    if (!btnComprar) return;
+    
+    const estadoCarga = window.rifaplusOportunidadesEstadoCarga;
+    const estaCargando = estadoCarga?.iniciado && !estadoCarga?.completado;
+    
+    if (estaCargando) {
+        // Deshabilitar botón mientras se cargan oportunidades
+        btnComprar.disabled = true;
+        btnComprar.classList.add('disabled');
+        const progreso = estadoCarga.cargadas || 0;
+        const total = estadoCarga.total || 0;
+        const porcentaje = total > 0 ? Math.round((progreso / total) * 100) : 0;
+        btnComprar.textContent = `⏳ Cargando... (${porcentaje}%)`;
+        btnComprar.title = `Cargando oportunidades: ${progreso}/${total}`;
+        console.log(`[UI] Botón deshabilitado - Cargando: ${progreso}/${total}`);
+    } else {
+        // Rehabilitar botón cuando termina la carga
+        btnComprar.disabled = false;
+        btnComprar.classList.remove('disabled');
+        btnComprar.textContent = 'Confirmar compra';
+        btnComprar.title = 'Hacer compra';
+        console.log(`[UI] Botón habilitado`);
     }
 }
 
@@ -1163,12 +1450,20 @@ function configurarEventListeners() {
     
     // 2. BOTONES DE RANGO - Se configuran dinámicamente en generarBotonesRango()
     
-    // 3. BOTÓN LIMPIAR
+    // 3. BOTÓN LIMPIAR ✅ MEJORADO: Usar delegación si no existe aún
     if (btnLimpiar) {
         btnLimpiar.addEventListener('click', limpiarSeleccion);
+        console.log('✓ btnLimpiar event listener configurado');
+    } else {
+        // Fallback: Usar delegación de eventos para cuando el botón se agregue dinámicamente
+        document.addEventListener('click', function(e) {
+            if (e.target.id === 'btnLimpiar') {
+                limpiarSeleccion();
+            }
+        });
     }
     
-    // 4. BOTÓN COMPRAR
+    // 4. BOTÓN COMPRAR ✅ MEJORADO: Usar delegación si no existe aún
     if (btnComprar) {
         btnComprar.addEventListener('click', function() {
             const seleccionados = selectedNumbersGlobal.size;
@@ -1176,6 +1471,19 @@ function configurarEventListeners() {
                 iniciarFlujoPago();
             } else {
                 rifaplusUtils.showFeedback('⚠️ Primero selecciona al menos un boleto', 'warning');
+            }
+        });
+        console.log('✓ btnComprar event listener configurado');
+    } else {
+        // Fallback: Usar delegación de eventos para cuando el botón se agregue dinámicamente
+        document.addEventListener('click', function(e) {
+            if (e.target.id === 'btnComprar') {
+                const seleccionados = selectedNumbersGlobal.size;
+                if (seleccionados > 0) {
+                    iniciarFlujoPago();
+                } else {
+                    rifaplusUtils.showFeedback('⚠️ Primero selecciona al menos un boleto', 'warning');
+                }
             }
         });
     }
@@ -1238,23 +1546,31 @@ function configurarEventListeners() {
  * 5. Limpiar todo -> handleLimpiarCarrito (limpia carrito) o limpiarSeleccion (limpia selección)
  */
 
-function manejarClickNumero(boton) {
+async function manejarClickNumero(boton) {
     const numero = parseInt(boton.getAttribute('data-numero'), 10);
     
     if (boton.classList.contains('selected')) {
         // DESELECCIONAR: quitar de Set, localStorage y actualizar vistas
         console.log(`🔍 Deseleccionando boleto #${numero}`);
-        removerBoletoSeleccionado(numero);
+        
+        // ⚡ Versión defensiva - usa función si está disponible, sino usa API global
+        if (typeof removerBoletoSeleccionado === 'function') {
+            removerBoletoSeleccionado(numero);
+        } else if (typeof window.removerBoletoSeleccionado === 'function') {
+            window.removerBoletoSeleccionado(numero);
+        } else {
+            console.error('❌ Function removerBoletoSeleccionado not available');
+        }
     } else {
         // SELECCIONAR: validar disponibilidad y agregar
         console.log(`🔍 Seleccionando boleto #${numero}`);
-        agregarBoletoDirectoCarrito(numero);
+        const seAgrego = await agregarBoletoDirectoCarrito(numero);
         
         // Animar si se agregó exitosamente
-        if (selectedNumbersGlobal.has(numero)) {
+        if (seAgrego && selectedNumbersGlobal.has(numero)) {
             boton.classList.add('selected');
             // Mostrar efecto en el carrito sin modificar el botón
-            animarCarritoSolo(numero);
+            animarAgregarAlCarrito(null, numero, false);
         }
     }
 }
@@ -1324,42 +1640,35 @@ function actualizarResumenCompra() {
             
             console.log('  ✓ Números ordenados:', numerosOrdenados);
             
-            // ✅ Calcular oportunidades si están habilitadas
-            const oportunidadesConfig = window.rifaplusConfig?.rifa?.oportunidades;
+            // ✅ NOTA: Las oportunidades ya NO se calculan en cliente
+            // Con el nuevo sistema pre-asignado:
+            // - Las oportunidades vienen de la BD en POST /api/ordenes
+            // - Se actualizan automáticamente via FK CASCADE
+            // - El cliente solo las recupera en GET /api/oportunidades/{numero_orden} si necesita mostrarlas
+            // No hay necesidad de calcular nada aquí
+            
             let oportunidadesPorBoleto = {};
             
-            if (oportunidadesConfig && oportunidadesConfig.enabled && window.OportunidadesService) {
-                try {
-                    console.log('🎁 [DEBUG] Llamando OportunidadesService.calcularOportunidadesCarrito()...');
-                    const resultado = window.OportunidadesService.calcularOportunidadesCarrito(numerosOrdenados);
-                    console.log('🎁 [DEBUG] Resultado recibido:', resultado);
-                    oportunidadesPorBoleto = resultado.oportunidadesPorBoleto || {};
-                    console.log('🎁 [DEBUG] Oportunidades por boleto:', oportunidadesPorBoleto);
-                } catch (e) {
-                    console.error('❌ Error crítico al calcular oportunidades:', e);
-                    console.error('Stack:', e.stack);
-                }
-            } else {
-                console.warn('⚠️ Oportunidades NO se pueden calcular:', {
-                    'enabled': oportunidadesConfig?.enabled,
-                    'hasService': !!window.OportunidadesService,
-                    'config': oportunidadesConfig
-                });
-            }
+            // Obtener total de boletos para calcular el padding dinámico
+            const totalTickets = window.rifaplusConfig.rifa.totalBoletos;
+            const digitosMaximos = String(totalTickets - 1).length;
             
             // Renderizar boletos SIN oportunidades
             numerosSeleccionados.innerHTML = `
                 <div class="lista-numeros">
-                    ${numerosOrdenados.map(num => `
+                    ${numerosOrdenados.map(num => {
+                        const numeroFormateado = num.toString().padStart(digitosMaximos, '0');
+                        return `
                         <div class="numero-chip-container" data-numero="${num}">
                             <span class="numero-chip" data-numero="${num}">
-                                ${num}
-                                <button class="numero-chip-delete" data-numero="${num}" aria-label="Eliminar boleto ${num}" title="Eliminar boleto ${num}">
+                                ${numeroFormateado}
+                                <button class="numero-chip-delete" data-numero="${num}" aria-label="Eliminar boleto ${numeroFormateado}" title="Eliminar boleto ${numeroFormateado}">
                                     ×
                                 </button>
                             </span>
                         </div>
-                    `).join('')}
+                    `;
+                    }).join('')}
                 </div>
             `;
             
@@ -1419,21 +1728,36 @@ function actualizarResumenCompra() {
 
 function generarBotonesRango() {
     const rangoBoxes = document.getElementById('rangoBoxes');
+    const instruccionRango = document.querySelector('.instruccion-rango');
     
     if (!rangoBoxes) {
         console.error('❌ ERROR: No se encontró elemento rangoBoxes');
-        return;
+        return false;
     }
     
     // Limpiar botones previos
     rangoBoxes.innerHTML = '';
     
     // SOLO usar rangos de config.js (sin fallback)
-    const rangos = window.rifaplusConfig?.rifa?.rangos || [];
+    const rangos = (window.rifaplusConfig?.rifa?.rangos || []).filter(rango =>
+        Number.isInteger(parseInt(rango?.inicio, 10)) &&
+        Number.isInteger(parseInt(rango?.fin, 10))
+    );
     
     if (rangos.length === 0) {
-        console.error('❌ ERROR CRÍTICO: No hay rangos definidos en config.js');
-        return;
+        console.warn('⏳ Rangos no disponibles todavía (sincronización en progreso...)');
+        return false;  // Retornar FALSE indica que no se pudo generar
+    }
+
+    const mostrarSelectorRangos = rangos.length > 1;
+    rangoBoxes.style.display = mostrarSelectorRangos ? 'flex' : 'none';
+    if (instruccionRango) {
+        instruccionRango.style.display = mostrarSelectorRangos ? 'block' : 'none';
+    }
+
+    if (!mostrarSelectorRangos) {
+        console.log('ℹ️ Solo hay un rango configurado; se oculta el selector de rangos');
+        return true;
     }
     
     let esActivo = true;
@@ -1455,18 +1779,30 @@ function generarBotonesRango() {
         rangoBoxes.appendChild(btn);
     }
     
-    // Botones de rango generados
+    console.log(`✅ Botones de rango generados: ${rangos.length} rangos`);
+    return true;  // Éxito
 }
 
 function inicializarRangoDefault() {
     // Generar botones de rango desde config.js
-    generarBotonesRango();
+    const exitoGen = generarBotonesRango();
+    
+    // Si falla (rangos no disponibles), reintenta en 500ms
+    if (!exitoGen) {
+        console.log('⏳ Esperando rangos... reintentar en 500ms');
+        setTimeout(inicializarRangoDefault, 500);
+        return;
+    }
     
     // Usar SIEMPRE el primer rango de config.js
-    const primerRango = window.rifaplusConfig?.rifa?.rangos?.[0];
+    const primerRango = (window.rifaplusConfig?.rifa?.rangos || []).find(rango =>
+        Number.isInteger(parseInt(rango?.inicio, 10)) &&
+        Number.isInteger(parseInt(rango?.fin, 10))
+    );
     
     if (!primerRango) {
-        console.error('❌ ERROR CRÍTICO: No hay primer rango en config.js');
+        console.warn('⏳ Primer rango no disponible todavía...');
+        setTimeout(inicializarRangoDefault, 500);
         return;
     }
     
@@ -1494,6 +1830,7 @@ function renderRange(inicio, fin) {
     infiniteScrollState.rangoActual = { inicio, fin };
     infiniteScrollState.boletosCargados = 0;
     infiniteScrollState.hasMore = true;
+    rifaplusEstadoRangoActual.cargado = false;
     
     // OPTIMIZACIÓN: Remover animaciones CSS mientras se renderiza
     grid.style.pointerEvents = 'none';
@@ -1501,6 +1838,9 @@ function renderRange(inicio, fin) {
     
     // Limpiar con innerHTML (más rápido que removeChild)
     grid.innerHTML = '';
+
+    const endpoint = obtenerApiBaseCompra();
+    cargarDatosCompletosEnBackground(endpoint, { inicio, fin });
 
     // Asegurar que inicio <= fin y que ambos sean enteros
     inicio = parseInt(inicio, 10) || 0;  // DEFAULT: 0 instead of 1
@@ -1544,8 +1884,7 @@ function infiniteScrollLoadMore() {
     }
     
     // OPTIMIZACIÓN: Crear datos una sola vez en memoria
-    const soldSet = new Set((window.rifaplusSoldNumbers && Array.isArray(window.rifaplusSoldNumbers)) ? window.rifaplusSoldNumbers : []);
-    const reservedSet = new Set((window.rifaplusReservedNumbers && Array.isArray(window.rifaplusReservedNumbers)) ? window.rifaplusReservedNumbers : []);
+    const { soldSet, reservedSet } = obtenerEstadoLocalBoletos();
 
     // OPTIMIZACIÓN: Usar innerHTML string en chunks de 20 (⭐ más pequeño = mejor rendimiento)
     let html = '';
@@ -1570,7 +1909,12 @@ function infiniteScrollLoadMore() {
             classes += ' selected';
         }
 
-        html += `<button class="${classes}" data-numero="${i}" ${disabled ? 'disabled' : ''} ${title ? `title="${title}"` : ''}>${i}</button>`;
+        // Formatear número con ceros a la izquierda (ej: 000123)
+        const numeroFormateado = window.rifaplusConfig?.formatearNumeroBoleto ? 
+            window.rifaplusConfig.formatearNumeroBoleto(i) : 
+            String(i).padStart(6, '0');
+        
+        html += `<button class="${classes}" data-numero="${i}" ${disabled ? 'disabled' : ''} ${title ? `title="${title}"` : ''}>${numeroFormateado}</button>`;
         
         // Insertar en chunks para evitar reflows masivos
         if ((i - nextStart + 1) % CHUNK_SIZE === 0 || i === nextEnd) {
@@ -1671,14 +2015,53 @@ function manejarCambioRango(boton) {
 function configurarBuscadorBoletos() {
     const inputBusqueda = document.getElementById('busquedaBoleto');
     const btnBuscar = document.getElementById('btnBuscarBoleto');
+    const feedbackEl = document.getElementById('busquedaFeedback');
     const resultadosDiv = document.getElementById('busquedaResultados');
     const resultadosList = document.getElementById('resultadosList');
+    const rangoInicio = document.getElementById('rangoInicio');
     const rangoTotal = document.getElementById('rangoTotal');
 
-    const totalTickets = window.rifaplusConfig.rifa.totalBoletos;
-    if (rangoTotal) rangoTotal.textContent = totalTickets;
-
     if (!inputBusqueda || !btnBuscar) return;
+
+    function obtenerRangoBusquedaActual() {
+        const inicio = typeof window.rifaplusConfig?.obtenerRangoMinimoBoletos === 'function'
+            ? window.rifaplusConfig.obtenerRangoMinimoBoletos()
+            : 0;
+        const fin = typeof window.rifaplusConfig?.obtenerRangoMaximoBoletos === 'function'
+            ? window.rifaplusConfig.obtenerRangoMaximoBoletos()
+            : (window.rifaplusConfig?.rifa?.totalBoletos || 0);
+
+        return {
+            inicio: Number.isFinite(inicio) && inicio >= 0 ? inicio : 0,
+            fin: Number.isFinite(fin) && fin > 0 ? fin : 0
+        };
+    }
+
+    function actualizarRangoBusquedaEnUI() {
+        const rango = obtenerRangoBusquedaActual();
+
+        if (rangoInicio) rangoInicio.textContent = rango.inicio.toLocaleString();
+        if (rangoTotal) rangoTotal.textContent = rango.fin.toLocaleString();
+
+        inputBusqueda.min = String(rango.inicio);
+        inputBusqueda.max = String(rango.fin);
+        inputBusqueda.placeholder = `Ej. ${rango.inicio}`;
+    }
+
+    function limpiarFeedbackBusqueda() {
+        if (!feedbackEl) return;
+        feedbackEl.textContent = '';
+        feedbackEl.classList.remove('is-visible', 'is-warning', 'is-info');
+    }
+
+    function mostrarFeedbackBusqueda(mensaje, tipo = 'info') {
+        if (!feedbackEl) return;
+        feedbackEl.textContent = mensaje;
+        feedbackEl.classList.remove('is-warning', 'is-info');
+        feedbackEl.classList.add('is-visible', `is-${tipo}`);
+    }
+
+    actualizarRangoBusquedaEnUI();
 
     // Ejecutar búsqueda al hacer click en botón
     btnBuscar.addEventListener('click', ejecutarBusqueda);
@@ -1691,29 +2074,64 @@ function configurarBuscadorBoletos() {
         }
     });
 
-    function ejecutarBusqueda() {
+    inputBusqueda.addEventListener('input', function() {
+        const valor = this.value.trim();
+        const rango = obtenerRangoBusquedaActual();
+
+        if (!valor) {
+            limpiarFeedbackBusqueda();
+            return;
+        }
+
+        const numero = parseInt(valor, 10);
+        if (!Number.isNaN(numero) && (numero < rango.inicio || numero > rango.fin)) {
+            mostrarFeedbackBusqueda(`Ese boleto no se puede buscar. El rango disponible actualmente va de ${rango.inicio.toLocaleString()} a ${rango.fin.toLocaleString()}.`, 'warning');
+        } else {
+            limpiarFeedbackBusqueda();
+        }
+    });
+
+    async function ejecutarBusqueda() {
+        const rango = obtenerRangoBusquedaActual();
         const valor = inputBusqueda.value.trim();
         
         if (!valor) {
+            mostrarFeedbackBusqueda('Escribe un numero de boleto dentro del rango disponible para poder buscarlo.', 'info');
             rifaplusUtils.showFeedback('⚠️ Ingresa un número para buscar', 'warning');
             return;
         }
 
         const numero = parseInt(valor, 10);
 
-        if (isNaN(numero) || numero < 1 || numero > totalTickets) {
-            rifaplusUtils.showFeedback(`⚠️ Ingresa un número válido entre 1 y ${totalTickets}`, 'warning');
+        if (isNaN(numero) || numero < rango.inicio || numero > rango.fin) {
+            mostrarFeedbackBusqueda(`Ese boleto esta fuera del rango disponible. Puedes buscar del ${rango.inicio.toLocaleString()} al ${rango.fin.toLocaleString()}.`, 'warning');
+            rifaplusUtils.showFeedback(`⚠️ Ingresa un número válido entre ${rango.inicio.toLocaleString()} y ${rango.fin.toLocaleString()}`, 'warning');
             resultadosDiv.style.display = 'none';
             return;
         }
 
-        // Obtener estado del boleto (vendido, apartado, disponible)
-        const sold = (window.rifaplusSoldNumbers && Array.isArray(window.rifaplusSoldNumbers)) ? window.rifaplusSoldNumbers : [];
-        const reserved = (window.rifaplusReservedNumbers && Array.isArray(window.rifaplusReservedNumbers)) ? window.rifaplusReservedNumbers : [];
-        const selectedNumbers = obtenerBoletosSelecionados();
+        limpiarFeedbackBusqueda();
 
-        const estaVendido = sold.includes(numero);
-        const estaApartado = reserved.includes(numero);
+        const selectedNumbers = obtenerBoletosSelecionados();
+        let estaVendido = false;
+        let estaApartado = false;
+
+        try {
+            if (numeroEnRangoActual(numero) && rifaplusEstadoRangoActual.cargado) {
+                const { soldSet, reservedSet } = obtenerEstadoLocalBoletos();
+                estaVendido = soldSet.has(numero);
+                estaApartado = reservedSet.has(numero);
+            } else {
+                const estadoServidor = await verificarEstadoBoletoEnServidor(numero);
+                estaVendido = estadoServidor.vendido;
+                estaApartado = estadoServidor.apartado;
+            }
+        } catch (error) {
+            console.warn('⚠️ Error verificando boleto en búsqueda:', error.message);
+            rifaplusUtils.showFeedback('⚠️ No se pudo verificar el estado del boleto. Intenta de nuevo.', 'warning');
+            return;
+        }
+
         const estaSeleccionado = selectedNumbers.includes(numero);
 
         // Mostrar resultado
@@ -1738,14 +2156,14 @@ function configurarBuscadorBoletos() {
             statusClass = 'seleccionado';
         } else {
             // Solo mostrar botón si está disponible
-            actionButton = `<button class="btn btn-lo-quiero" data-numero="${numero}" style="padding: 0.5rem 1rem; background: var(--primary); color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 600; transition: var(--transition-fast);">Lo quiero</button>`;
+            actionButton = `<button class="btn btn-lo-quiero" data-numero="${numero}">Lo quiero</button>`;
         }
 
         const resultadoHtml = `
-            <div class="resultado-item" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: var(--bg-light); border-radius: 0.5rem; margin-bottom: 0.5rem; gap: 1.5rem;">
-                <div>
-                    <span style="font-weight: 600; font-size: 1.1rem; color: var(--text-dark);">Boleto #${numero}</span>
-                    <span style="display: block; font-size: 0.85rem; color: var(--text-light);">Estado: <strong style="color: ${vendido ? 'var(--danger)' : apartado ? 'var(--primary)' : yaSeleccionado ? 'var(--primary)' : 'var(--success)'}">${statusText}</strong></span>
+            <div class="resultado-item resultado-item--${statusClass}">
+                <div class="resultado-copy">
+                    <span class="resultado-numero">Boleto #${numero}</span>
+                    <span class="resultado-estado">Estado: <strong class="resultado-badge resultado-badge--${statusClass}">${statusText}</strong></span>
                 </div>
                 ${actionButton}
             </div>
@@ -1756,17 +2174,24 @@ function configurarBuscadorBoletos() {
         // Añadir event listener al botón "Lo quiero"
         const btnLoQuiero = resultadosList.querySelector(`[data-numero="${numero}"]`);
         if (btnLoQuiero && !vendido && !apartado && !yaSeleccionado) {
-            btnLoQuiero.addEventListener('click', function() {
-                const seAgregó = agregarBoletoDirectoCarrito(numero);
+            btnLoQuiero.addEventListener('click', async function() {
+                const seAgregó = await agregarBoletoDirectoCarrito(numero);
                 
                 // Si se agregó exitosamente, animar el botón y carrito
                 if (seAgregó) {
-                    animarAgregarAlCarrito(btnLoQuiero, numero);
+                    animarAgregarAlCarrito(btnLoQuiero, numero, true);
                 }
             });
         }
 
         resultadosDiv.style.display = 'block';
+    }
+
+    if (!configurarBuscadorBoletos._listenerRegistrado && window.rifaplusConfig?.escucharEvento) {
+        window.rifaplusConfig.escucharEvento('configuracionActualizada', () => {
+            actualizarRangoBusquedaEnUI();
+        });
+        configurarBuscadorBoletos._listenerRegistrado = true;
     }
 }
 
@@ -1774,7 +2199,7 @@ function configurarBuscadorBoletos() {
  * Agregar un boleto directamente al carrito desde búsqueda o máquina
  * Valida disponibilidad en tiempo real antes de agregar
  */
-function agregarBoletoDirectoCarrito(numero) {
+async function agregarBoletoDirectoCarrito(numero) {
     // ⭐ BLOQUEAR AGREGAR BOLETOS MIENTRAS SE CARGAN LOS ESTADOS
     if (window.rifaplusBoletosLoading) {
         rifaplusUtils.showFeedback('⏳ Por favor espera, cargando estado de los boletos...', 'warning');
@@ -1782,23 +2207,39 @@ function agregarBoletoDirectoCarrito(numero) {
     }
     
     // Validar estado actual del boleto
-    const sold = (window.rifaplusSoldNumbers && Array.isArray(window.rifaplusSoldNumbers)) ? window.rifaplusSoldNumbers : [];
-    const reserved = (window.rifaplusReservedNumbers && Array.isArray(window.rifaplusReservedNumbers)) ? window.rifaplusReservedNumbers : [];
+    const { soldSet, reservedSet } = obtenerEstadoLocalBoletos();
     const selectedNumbers = obtenerBoletosSelecionados();
 
     // Validaciones previas
-    if (sold.includes(numero)) {
+    if (soldSet.has(numero)) {
         rifaplusUtils.showFeedback(`❌ Boleto #${numero} está vendido`, 'error');
         return false;
     }
 
-    if (reserved.includes(numero)) {
+    if (reservedSet.has(numero)) {
         rifaplusUtils.showFeedback(`⏳ Boleto #${numero} está apartado`, 'warning');
         return false;
     }
 
     if (selectedNumbers.includes(numero)) {
         rifaplusUtils.showFeedback(`✔️ Boleto #${numero} ya está en tu carrito`, 'info');
+        return false;
+    }
+
+    try {
+        const estadoServidor = await verificarEstadoBoletoEnServidor(numero);
+        if (estadoServidor.vendido) {
+            rifaplusUtils.showFeedback(`❌ Boleto #${numero} está vendido`, 'error');
+            return false;
+        }
+
+        if (estadoServidor.apartado) {
+            rifaplusUtils.showFeedback(`⏳ Boleto #${numero} está apartado`, 'warning');
+            return false;
+        }
+    } catch (error) {
+        console.warn('⚠️ Error verificando boleto antes de agregar:', error.message);
+        rifaplusUtils.showFeedback('⚠️ No se pudo validar el boleto en este momento. Intenta de nuevo.', 'warning');
         return false;
     }
 
@@ -1932,92 +2373,115 @@ function obtenerColorSeleccionado(alpha = null) {
     }
 }
 
-/**
- * animarCarritoSolo - Solo anima el carrito sin modificar el botón
- * Usado en selección manual de boletera
- */
-function animarCarritoSolo(numeroDelBoleto) {
-    try {
-        const colorSeleccionado = obtenerColorSeleccionado();
-        
-        // ANIMACIÓN DEL CARRITO: Pulso llamativo para mostrar que recibió el item
-        const carritoNav = document.getElementById('carritoNav');
-        if (carritoNav) {
-            // Agregar clase de animación
-            carritoNav.classList.add('cart-pulse');
-            
-            // Cambiar color temporalmente al color de seleccionado
-            const originalColor = carritoNav.style.color;
-            carritoNav.style.color = colorSeleccionado;
-            carritoNav.style.transform = 'scale(1.3)';
-            
-            // Remover después de la animación
-            setTimeout(() => {
-                carritoNav.classList.remove('cart-pulse');
-                carritoNav.style.color = originalColor;
-                carritoNav.style.transform = '';
-            }, 600);
-            
-            // EFECTO FLYING: Crear un elemento flotante que "vuela" al carrito desde el grid
-            crearEfectoVolandoDesdeGrid(carritoNav, numeroDelBoleto);
+function parsearColorCssSeguro(color) {
+    const valor = String(color || '').trim();
+    const hexMatch = valor.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (hexMatch) {
+        let hex = hexMatch[1];
+        if (hex.length === 3) {
+            hex = hex.split('').map((char) => char + char).join('');
         }
-        
-    } catch (error) {
-        console.error('Error al animar carrito:', error);
+        return {
+            r: parseInt(hex.slice(0, 2), 16),
+            g: parseInt(hex.slice(2, 4), 16),
+            b: parseInt(hex.slice(4, 6), 16),
+            a: 1
+        };
     }
+
+    const rgbaMatch = valor.match(/^rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*([0-9.]+))?\s*\)$/i);
+    if (rgbaMatch) {
+        return {
+            r: Math.max(0, Math.min(255, parseFloat(rgbaMatch[1]))),
+            g: Math.max(0, Math.min(255, parseFloat(rgbaMatch[2]))),
+            b: Math.max(0, Math.min(255, parseFloat(rgbaMatch[3]))),
+            a: rgbaMatch[4] !== undefined ? Math.max(0, Math.min(1, parseFloat(rgbaMatch[4]))) : 1
+        };
+    }
+
+    return { r: 39, g: 82, b: 126, a: 1 };
 }
 
+function colorRgbToCss({ r, g, b, a = 1 }) {
+    const rr = Math.round(r);
+    const gg = Math.round(g);
+    const bb = Math.round(b);
+    if (a >= 1) return `rgb(${rr}, ${gg}, ${bb})`;
+    return `rgba(${rr}, ${gg}, ${bb}, ${a})`;
+}
+
+function mezclarColorCss(color, colorObjetivo, ratio = 0.5) {
+    const base = parsearColorCssSeguro(color);
+    const target = parsearColorCssSeguro(colorObjetivo);
+    const t = Math.max(0, Math.min(1, ratio));
+    return colorRgbToCss({
+        r: base.r + ((target.r - base.r) * t),
+        g: base.g + ((target.g - base.g) * t),
+        b: base.b + ((target.b - base.b) * t),
+        a: base.a + ((target.a - base.a) * t)
+    });
+}
+
+function colorConAlpha(color, alpha = 1) {
+    const base = parsearColorCssSeguro(color);
+    return colorRgbToCss({ ...base, a: Math.max(0, Math.min(1, alpha)) });
+}
+
+function configurarColoresAnimacionCarrito(colorBase) {
+    const root = document.documentElement;
+    const colorPrincipal = colorBase || obtenerColorSeleccionado();
+    root.style.setProperty('--cart-confirm-color', colorPrincipal);
+    root.style.setProperty('--cart-confirm-color-dark', mezclarColorCss(colorPrincipal, 'rgb(8, 20, 32)', 0.22));
+    root.style.setProperty('--cart-confirm-shadow', colorConAlpha(colorPrincipal, 0.48));
+}
+
+
+
 /**
- * animarAgregarAlCarrito - Crea un efecto visual intuitivo cuando se agrega un boleto
- * Muestra:
- * 1. Confirmación en el botón (pulso verde)
- * 2. Animación del carrito (shake)
- * 3. Efecto flying (opcional si es necesario)
+ * animarAgregarAlCarrito - Crea animación completa al agregar boleto
+ * Parámetros:
+ * - botonElemento: elemento del botón (puede ser null para grid sin botón)
+ * - numeroDelBoleto: número del boleto añadido
+ * - conAnimacionBoton: si es true, anima el botón; si es false, solo anima carrito y volado
  */
-function animarAgregarAlCarrito(botonElemento, numeroDelBoleto) {
+function animarAgregarAlCarrito(botonElemento = null, numeroDelBoleto = 0, conAnimacionBoton = false) {
     try {
         const colorSeleccionado = obtenerColorSeleccionado();
+        configurarColoresAnimacionCarrito(colorSeleccionado);
         
-        // 1. ANIMACIÓN DEL BOTÓN: Efecto de confirmación con color dinámico
-        botonElemento.classList.add('being-added');
+        // 1️⃣ ANIMACIÓN DEL BOTÓN (opcional): Mostrar confirmación visual
+        if (botonElemento && conAnimacionBoton) {
+            botonElemento.classList.add('being-added');
+            const textoOriginal = botonElemento.textContent;
+            botonElemento.textContent = '✅ ¡Agregado!';
+            botonElemento.style.backgroundColor = colorSeleccionado;
+            botonElemento.style.color = 'white';
+            
+            setTimeout(() => {
+                botonElemento.classList.remove('being-added');
+                botonElemento.style.backgroundColor = '';
+                botonElemento.style.color = '';
+                botonElemento.textContent = '✔️ Seleccionado';
+            }, 600);
+        }
         
-        // Cambiar el contenido brevemente para mostrar confirmación
-        const textoOriginal = botonElemento.textContent;
-        botonElemento.textContent = '✅ ¡Agregado!';
-        botonElemento.style.backgroundColor = colorSeleccionado;
-        botonElemento.style.color = 'white';
-        
-        // Restaurar después de la animación
-        setTimeout(() => {
-            botonElemento.classList.remove('being-added');
-            botonElemento.style.backgroundColor = '';
-            botonElemento.style.color = '';
-            // Dejamos el checkmark en el texto del botón para indicar que está seleccionado
-            botonElemento.textContent = '✔️ Seleccionado';
-        }, 600);
-        
-        // 2. ANIMACIÓN DEL CARRITO: Pulso llamativo para mostrar que recibió el item
+        // 2️⃣ ANIMACIÓN DEL CARRITO: Pulso visual
         const carritoNav = document.getElementById('carritoNav');
         if (carritoNav) {
-            // Agregar clase de animación
             carritoNav.classList.add('cart-pulse');
-            
-            // Cambiar color temporalmente al color dinámico
             const originalColor = carritoNav.style.color;
             carritoNav.style.color = colorSeleccionado;
             carritoNav.style.transform = 'scale(1.3)';
             
-            // Remover después de la animación
             setTimeout(() => {
                 carritoNav.classList.remove('cart-pulse');
                 carritoNav.style.color = originalColor;
                 carritoNav.style.transform = '';
             }, 600);
             
-            // 3. EFECTO FLYING (opcional): Crear un elemento flotante que "vuela" al carrito
-            crearEfectoVolandoAlCarrito(botonElemento, numeroDelBoleto);
+            // 3️⃣ EFECTO VOLADO: Animar boleto volando al carrito
+            crearAnimacionVolado(botonElemento, numeroDelBoleto);
         }
-        
     } catch (error) {
         console.error('Error al animar agregar al carrito:', error);
     }
@@ -2025,6 +2489,7 @@ function animarAgregarAlCarrito(botonElemento, numeroDelBoleto) {
 
 /**
  * crearEfectoVolandoProfesional - Crea un efecto volador profesional y llamativo
+ * MEJORADO para móvil: Maneja correctamente scroll y viewport
  * Soporta: grid, buscador, máquina de suerte
  */
 function crearEfectoVolandoProfesional(origenElement, numeroDelBoleto, origen = 'grid') {
@@ -2032,7 +2497,10 @@ function crearEfectoVolandoProfesional(origenElement, numeroDelBoleto, origen = 
         const carritoNav = document.getElementById('carritoNav');
         if (!carritoNav) return;
         
-        const colorSeleccionado = obtenerColorSeleccionado(); // #FF3D3D
+        const colorSeleccionado = obtenerColorSeleccionado();
+        const colorSeleccionadoClaro = mezclarColorCss(colorSeleccionado, 'rgb(255, 255, 255)', 0.28);
+        
+        // 📍 Obtener posiciones correctas considerando scroll
         const origenRect = origenElement?.getBoundingClientRect ? origenElement.getBoundingClientRect() : {
             left: window.innerWidth / 2,
             top: window.innerHeight / 2,
@@ -2041,10 +2509,26 @@ function crearEfectoVolandoProfesional(origenElement, numeroDelBoleto, origen = 
         };
         const carritoRect = carritoNav.getBoundingClientRect();
         
+        // 🔍 Validación: Si el origen está muy fuera de viewport, usar posición por defecto
+        const isMobile = window.innerWidth < 768;
+        const origenVisibleEnViewport = origenRect.top >= -100 && origenRect.top <= window.innerHeight + 100;
+        
+        // Si estamos en móvil y el origen está significativamente fuera de viewport,
+        // usar el centro de la pantalla pero aún hacer la animación
+        let startX = origenRect.left + origenRect.width / 2;
+        let startY = origenRect.top + origenRect.height / 2;
+        
+        if (isMobile && !origenVisibleEnViewport) {
+            // En móvil, si está muy fuera, usar una posición estimada/fallback
+            console.log('⚠️ En móvil, origen fuera de viewport. Usando fallback.');
+            // Usar puntos donde es probable que el carrito sea visible (parte superior de la pantalla)
+            startX = window.innerWidth * 0.5;
+            startY = 100; // Usa una posición estimada en la parte superior
+        }
+        
         // 🎨 Crear elemento principal del boleto volador
         const mainTicket = document.createElement('div');
-        const startX = origenRect.left + origenRect.width / 2;
-        const startY = origenRect.top + origenRect.height / 2;
+        mainTicket.className = 'ticket-fly-animation';
         
         mainTicket.style.cssText = `
             position: fixed;
@@ -2054,20 +2538,22 @@ function crearEfectoVolandoProfesional(origenElement, numeroDelBoleto, origen = 
             height: 50px;
             z-index: 9998;
             pointer-events: none;
+            will-change: transform, opacity;
         `;
         
         // 🎫 Icono del boleto con efecto de destello
         const ticketIcon = document.createElement('div');
+        ticketIcon.className = 'ticket-fly-animation__icon';
         ticketIcon.style.cssText = `
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, ${colorSeleccionado}, #ff6b5b);
+            background: linear-gradient(135deg, ${colorSeleccionado}, ${colorSeleccionadoClaro});
             border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 24px;
-            box-shadow: 0 0 20px ${colorSeleccionado}99, inset 0 1px 0 rgba(255,255,255,0.3);
+            box-shadow: 0 0 20px ${colorConAlpha(colorSeleccionado, 0.6)}, inset 0 1px 0 rgba(255,255,255,0.3);
             transform: rotate(-15deg);
         `;
         ticketIcon.textContent = '🎫';
@@ -2076,6 +2562,7 @@ function crearEfectoVolandoProfesional(origenElement, numeroDelBoleto, origen = 
         // ✨ Crear partículas de luz alrededor
         for (let i = 0; i < 8; i++) {
             const particle = document.createElement('div');
+            particle.className = 'ticket-fly-animation__particle';
             const angle = (i / 8) * Math.PI * 2;
             const distance = 35;
             const offsetX = Math.cos(angle) * distance;
@@ -2091,7 +2578,7 @@ function crearEfectoVolandoProfesional(origenElement, numeroDelBoleto, origen = 
                 top: 50%;
                 transform: translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px));
                 opacity: 0.8;
-                box-shadow: 0 0 8px ${colorSeleccionado};
+                box-shadow: 0 0 8px ${colorConAlpha(colorSeleccionado, 0.9)};
             `;
             mainTicket.appendChild(particle);
         }
@@ -2131,44 +2618,333 @@ function crearEfectoVolandoProfesional(origenElement, numeroDelBoleto, origen = 
     }
 }
 
+
 /**
- * crearEfectoVolandoDesdeGrid - (MEJORADO) Crea un efecto volando desde el grid (boletera) al carrito
+ * crearEfectoVoladoProfesional - Crea un efecto volador profesional y llamativo
+ * MEJORADO para móvil: Maneja correctamente scroll y viewport
+ * Soporta: grid, buscador, máquina de suerte
  */
-function crearEfectoVolandoDesdeGrid(carritoNav, numero) {
+function crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, origen = 'grid') {
     try {
-        const numerosGrid = document.getElementById('numerosGrid');
-        let botonOrigen = numerosGrid?.querySelector(`[data-numero="${numero}"]`);
-        
-        if (!botonOrigen) {
-            const pseudoElement = document.createElement('div');
-            pseudoElement.style.cssText = `
-                position: fixed;
-                left: ${window.innerWidth / 2}px;
-                top: ${window.innerHeight / 2}px;
-                width: 0;
-                height: 0;
-            `;
-            document.body.appendChild(pseudoElement);
-            crearEfectoVolandoProfesional(pseudoElement, numero, 'grid');
-            setTimeout(() => pseudoElement.remove(), 1200);
-        } else {
-            crearEfectoVolandoProfesional(botonOrigen, numero, 'grid');
+        const carritoNav = document.getElementById('carritoNav');
+        if (!carritoNav) {
+            console.warn('⚠️ Carrito no encontrado, animación cancelada');
+            return;
         }
+        
+        const colorSeleccionado = obtenerColorSeleccionado();
+        const colorSeleccionadoClaro = mezclarColorCss(colorSeleccionado, 'rgb(255, 255, 255)', 0.28);
+        
+        // 📍 Obtener posiciones correctas (ROBUSTO)
+        let origenRect = null;
+        let origenValido = false;
+        
+        if (origenElement && typeof origenElement.getBoundingClientRect === 'function') {
+            try {
+                origenRect = origenElement.getBoundingClientRect();
+                // Validar que el rect tiene valores razonables
+                if (origenRect.width > 0 || origenRect.height > 0 || 
+                    (origenRect.top >= 0 && origenRect.left >= 0)) {
+                    origenValido = true;
+                }
+            } catch (e) {
+                console.warn('Error al obtener rect del origen:', e);
+            }
+        }
+        
+        // Si origen no es válido, usar fallback inteligente
+        if (!origenValido) {
+            const numsGrid = document.getElementById('numerosGrid');
+            const numsSuerte = document.getElementById('numerosSuerte');
+            
+            // Preferir máquina de suerte si está visible
+            if (numsSuerte && numsSuerte.offsetParent !== null) {
+                try {
+                    origenRect = numsSuerte.getBoundingClientRect();
+                    origenValido = true;
+                    console.log('📱 Usando máquina de suerte como origen');
+                } catch (e) {
+                    console.warn('Error obteniendo rect máquina:', e);
+                }
+            }
+            // Luego intentar grid
+            else if (numsGrid && numsGrid.offsetParent !== null) {
+                try {
+                    origenRect = numsGrid.getBoundingClientRect();
+                    origenValido = true;
+                    console.log('📱 Usando grid como origen');
+                } catch (e) {
+                    console.warn('Error obteniendo rect grid:', e);
+                }
+            }
+        }
+        
+        // Si aún no tenemos rect válido, crear uno desde viewport center
+        if (!origenValido) {
+            origenRect = {
+                left: window.innerWidth / 2,
+                top: window.innerHeight / 2,
+                width: 0,
+                height: 0,
+                bottom: window.innerHeight / 2,
+                right: window.innerWidth / 2
+            };
+            console.log('📱 Usando viewport center como fallback');
+        }
+        
+        // Obtener posición del carrito
+        let carritoRect = null;
+        try {
+            carritoRect = carritoNav.getBoundingClientRect();
+            // Validar que carrito tiene posición válida
+            if (!carritoRect || carritoRect.width === 0) {
+                throw new Error('Carrito rect inválido');
+            }
+        } catch (e) {
+            console.warn('Error al obtener rect carrito:', e);
+            return;
+        }
+        
+        // 🎯 Calcular punto de inicio (MÁS ROBUSTO)
+        let startX = window.innerWidth / 2;
+        let startY = window.innerHeight / 2;
+        
+        if (origenRect) {
+            startX = origenRect.left + origenRect.width / 2;
+            startY = origenRect.top + origenRect.height / 2;
+            
+            // Validación de cordura: si está MUY fuera de pantalla, ajustar
+            const isOutOfView = startY < -200 || startY > window.innerHeight + 200 || 
+                                startX < -200 || startX > window.innerWidth + 200;
+            
+            if (isOutOfView) {
+                console.log(`📍 Origen fuera de viewport (${startX}, ${startY}). Ajustando...`);
+                startY = Math.max(50, Math.min(startY, window.innerHeight - 50));
+                startX = Math.max(50, Math.min(startX, window.innerWidth - 50));
+            }
+        }
+        
+        // 🎨 Crear elemento principal del boleto volador
+        const mainTicket = document.createElement('div');
+        
+        mainTicket.style.cssText = `
+            position: fixed;
+            left: ${startX}px;
+            top: ${startY}px;
+            width: 50px;
+            height: 50px;
+            z-index: 9998;
+            pointer-events: none;
+            will-change: transform, opacity;
+            opacity: 1;
+        `;
+        
+        // 🎫 Icono del boleto con efecto de destello (MEJORADO)
+        const ticketIcon = document.createElement('div');
+        ticketIcon.style.cssText = `
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, ${colorSeleccionado}, ${colorSeleccionadoClaro});
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: bold;
+            box-shadow: 0 0 30px ${colorConAlpha(colorSeleccionado, 0.9)}, 
+                        inset 0 2px 0 rgba(255,255,255,0.5),
+                        0 0 0 2px ${colorSeleccionado};
+            transform: rotate(-15deg);
+            filter: brightness(1.2);
+        `;
+        ticketIcon.textContent = '🎫';
+        mainTicket.appendChild(ticketIcon);
+        
+        // ✨ Crear partículas de luz más visibles (MEJORADO)
+        const particleCount = Math.min(16, Math.max(8, Math.floor(window.innerWidth / 100)));
+        for (let i = 0; i < particleCount; i++) {
+            const particle = document.createElement('div');
+            const angle = (i / particleCount) * Math.PI * 2;
+            const distance = 45;
+            const offsetX = Math.cos(angle) * distance;
+            const offsetY = Math.sin(angle) * distance;
+            
+            particle.style.cssText = `
+                position: absolute;
+                width: 12px;
+                height: 12px;
+                background: ${colorSeleccionado};
+                border-radius: 50%;
+                left: 50%;
+                top: 50%;
+                transform: translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px));
+                opacity: 1;
+                box-shadow: 0 0 15px ${colorConAlpha(colorSeleccionado, 1)},
+                            0 0 30px ${colorConAlpha(colorSeleccionado, 0.6)};
+                filter: brightness(1.3);
+            `;
+            mainTicket.appendChild(particle);
+        }
+        
+        // Agregar al DOM
+        document.body.appendChild(mainTicket);
+        
+        // 🚀 Calcular trayectoria hacia carrito (ROBUSTO)
+        const deltaX = carritoRect.left - startX;
+        const deltaY = carritoRect.top - startY;
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        
+        // Duración adaptiva pero SIEMPRE VISIBLE
+        let baseDuration = 800;
+        if (origen === 'suerte') baseDuration = 1100;
+        if (origen === 'fallback') baseDuration = 950;
+        
+        // Mínimo 900ms para toda animación, máximo 2000ms
+        const duration = Math.max(900, Math.min(2000, baseDuration + distance * 0.25));
+        
+        console.log(`🎬 Animación: origen=(${startX.toFixed(0)}, ${startY.toFixed(0)}) → carrito=(${carritoRect.left.toFixed(0)}, ${carritoRect.top.toFixed(0)}), dist=${distance.toFixed(0)}px, dur=${duration}ms, src=${origen}`);
+        
+        // ✨ Crear animación suave y CONFIABLE
+        requestAnimationFrame(() => {
+            mainTicket.style.transition = `all ${duration}ms cubic-bezier(0.16, 1, 0.3, 1)`;
+            mainTicket.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(0.1) rotate(720deg)`;
+            mainTicket.style.opacity = '0';
+            
+            // Animar partículas con más dramatismo
+            const particles = mainTicket.querySelectorAll('div:not(:first-child)');
+            particles.forEach((p, i) => {
+                p.style.transition = `all ${duration}ms ease-out`;
+                p.style.opacity = '0';
+                const angle = (i / particles.length) * Math.PI * 2;
+                const finalDistance = Math.random() * 300 + 150;
+                p.style.transform = `translate(calc(-50% + ${Math.cos(angle) * finalDistance}px), calc(-50% + ${Math.sin(angle) * finalDistance}px)) scale(0)`;
+            });
+        });
+        
+        // Limpiar elemento después de TODA la animación
+        const cleanupTimeout = setTimeout(() => {
+            try {
+                if (mainTicket && mainTicket.parentNode) {
+                    mainTicket.remove();
+                }
+            } catch (e) {
+                console.warn('Error al limpiar elemento:', e);
+            }
+        }, duration + 300);
+        
+        // Guardar timeout para poder limpiarlo si es necesario
+        mainTicket.cleanupTimeout = cleanupTimeout;
+        
     } catch (error) {
-        console.error('Error al crear efecto volando desde grid:', error);
+        console.error('❌ Error en crearEfectoVoladoProfesional:', error);
     }
 }
 
 /**
- * crearEfectoVolandoAlCarrito - (MEJORADO) Crea un efecto volador profesional desde buscador/máquina
+ * crearAnimacionVolado - ULTRA-ROBUSTO para cualquier dispositivo
+ * Busca el origen del boleto en grid/máquina y crea efecto volador hacia carrito
+ * Garantiza animación incluso si el elemento origen no se encuentra
  */
-function crearEfectoVolandoAlCarrito(botonElemento, numero) {
+function crearAnimacionVolado(botonElemento = null, numeroDelBoleto = 0) {
     try {
-        crearEfectoVolandoProfesional(botonElemento, numero, 'boton');
+        let origenElement = botonElemento;
+        let origen = 'unknown';
+        
+        // 1️⃣ Si pasamos un botón, usarlo directamente
+        if (origenElement && origenElement.nodeType === 1) {
+            origen = 'boton';
+            console.log('✅ Usando botón origen directo');
+            crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, origen);
+            return;
+        }
+        
+        // 2️⃣ Buscar en grid de números (prioritario)
+        const numerosGrid = document.getElementById('numerosGrid');
+        if (numerosGrid && numerosGrid.offsetParent !== null) {
+            try {
+                origenElement = numerosGrid.querySelector(`[data-numero="${numeroDelBoleto}"]`);
+                if (origenElement && origenElement.nodeType === 1) {
+                    origen = 'grid';
+                    console.log(`✅ Encontrado en grid: #${numeroDelBoleto}`);
+                    crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, origen);
+                    return;
+                }
+            } catch (e) {
+                console.warn('Error buscando en grid:', e);
+            }
+        }
+        
+        // 3️⃣ Buscar en máquina de suerte
+        const numerosSuerte = document.getElementById('numerosSuerte');
+        if (numerosSuerte && numerosSuerte.offsetParent !== null) {
+            try {
+                // Primero buscar el número específico
+                origenElement = numerosSuerte.querySelector(`[data-numero="${numeroDelBoleto}"]`);
+                if (origenElement && origenElement.nodeType === 1) {
+                    origen = 'suerte-elemento';
+                    console.log(`✅ Encontrado en máquina: #${numeroDelBoleto}`);
+                    crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, origen);
+                    return;
+                }
+                
+                // Si no encontramos el número, usar toda la máquina como origen
+                console.log('📍 Número no encontrado en máquina, usando contenedor');
+                origenElement = numerosSuerte;
+                origen = 'suerte';
+                crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, origen);
+                return;
+            } catch (e) {
+                console.warn('Error buscando en máquina:', e);
+            }
+        }
+        
+        // 4️⃣ Si grid no está visible, crear fallback desde su posición anterior
+        if (numerosGrid) {
+            console.log('📍 Grid existe pero no visible, usando como fallback');
+            try {
+                const gridRect = numerosGrid.getBoundingClientRect();
+                origenElement = document.createElement('div');
+                origenElement.style.cssText = `position: fixed; left: ${gridRect.left + gridRect.width / 2}px; top: ${gridRect.top + gridRect.height / 2}px; width: 0; height: 0;`;
+                document.body.appendChild(origenElement);
+                crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, 'fallback-grid');
+                setTimeout(() => {
+                    if (origenElement && origenElement.parentNode) {
+                        origenElement.remove();
+                    }
+                }, 2300);
+                return;
+            } catch (e) {
+                console.warn('Error creando fallback grid:', e);
+            }
+        }
+        
+        // 5️⃣ Último recurso: viewport center (NUNCA falla)
+        console.log('⚠️ Usando viewport center como último recurso');
+        origenElement = document.createElement('div');
+        origenElement.style.cssText = `position: fixed; left: ${window.innerWidth / 2}px; top: ${window.innerHeight / 2}px; width: 0; height: 0;`;
+        document.body.appendChild(origenElement);
+        crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, 'fallback-viewport');
+        setTimeout(() => {
+            if (origenElement && origenElement.parentNode) {
+                origenElement.remove();
+            }
+        }, 2300);
+        
     } catch (error) {
-        console.error('Error al crear efecto volando:', error);
+        console.error('❌ Error CRÍTICO en crearAnimacionVolado:', error);
+        // Incluso si todo falla, intentar fallback final
+        try {
+            const fallbackEl = document.createElement('div');
+            fallbackEl.style.cssText = `position: fixed; left: ${window.innerWidth / 2}px; top: ${window.innerHeight / 2}px; width: 0; height: 0;`;
+            document.body.appendChild(fallbackEl);
+            crearEfectoVoladoProfesional(fallbackEl, numeroDelBoleto, 'emergency-fallback');
+            setTimeout(() => fallbackEl.remove(), 2300);
+        } catch (e) {
+            console.error('❌ Fallback de emergencia también falló:', e);
+        }
     }
 }
+
 
 /* ============================================================ */
 /* SECCIÓN 14: CARRITO EXPANDIBLE - GESTIONADO POR carrito-global.js */
@@ -2200,106 +2976,38 @@ function controlarEstadoBotonesLoQuiero() {
 // que se carga ANTES de compra.js en el HEAD de compra.html
 
 /**
- * 🚀 OPTIMIZACIÓN MÓVIL: Procesar boletos en Web Worker
- * No bloquea el main thread, permite que la UI sea responsive
- * Con fallback a main thread si Web Worker falla o no responde (ej: iPhone)
+ * Procesa datos de boletos (sold/reserved) y actualiza vista
+ * Marca ventana.rifaplusBoletosDatosActualizados para sincronizar
  */
-let boletosWorker = null;
-let workerTimeoutId = null;
-
 function procesarBoletosEnBackground(sold, reserved) {
-    // Inicializar worker solo una vez
-    if (!boletosWorker && typeof Worker !== 'undefined') {
-        try {
-            boletosWorker = new Worker('js/boletos-processor.worker.js');
-            
-            boletosWorker.onmessage = function(event) {
-                // Limpiar timeout si el worker responde
-                if (workerTimeoutId) clearTimeout(workerTimeoutId);
-                
-                if (event.data.success) {
-                    // ⚠️ CRÍTICO: Marcar datos como OBSOLETOS ANTES de actualizar
-                    window.rifaplusBoletosDatosActualizados = false;
-                    console.log('🔄 [SYNC] Marcando datos como actualizándose...');
-                    
-                    // Worker procesó los datos, guardar en ventana global
-                    window.rifaplusSoldNumbers = event.data.soldSet;
-                    window.rifaplusReservedNumbers = event.data.reservedSet;
-                    console.debug(`✅ Web Worker: ${event.data.totalProcessed} boletos procesados sin bloquear UI`);
-                    
-                    // Actualizar grid solo los elementos visibles
-                    actualizarEstadoBoletosVisibles();
-                    
-                    // ✅ AHORA SÍ: Marcar datos como FRESCOS
-                    window.rifaplusBoletosDatosActualizados = true;
-                    console.log('🔄 [SYNC] Datos frescos y listos para usar');
-                } else {
-                    console.warn('⚠️  Error en Web Worker:', event.data.error);
-                    // Fallback: procesar en main thread (lento pero funciona)
-                    procesarEnMainThread(sold, reserved);
-                }
-            };
-        } catch (error) {
-            console.warn('⚠️  Web Workers no disponibles, procesando en main thread (lento)');
-            // Fallback para navegadores sin Web Workers
-            procesarEnMainThread(sold, reserved);
-        }
-    }
-    
-    // Enviar datos al worker
-    if (boletosWorker) {
-        try {
-            // ⏰ TIMEOUT: Si el worker no responde en 3 segundos, hacer fallback
-            workerTimeoutId = setTimeout(() => {
-                console.warn('⚠️  Web Worker timeout (3s) - usando main thread como fallback');
-                procesarEnMainThread(sold, reserved);
-                boletosWorker = null; // Descartar este worker
-            }, 3000);
-            
-            boletosWorker.postMessage({
-                action: 'process',
-                sold: sold,
-                reserved: reserved
-            });
-        } catch (error) {
-            console.warn('⚠️  Error enviando datos a worker:', error.message);
-            // Fallback inmediato
-            if (workerTimeoutId) clearTimeout(workerTimeoutId);
-            procesarEnMainThread(sold, reserved);
-        }
-    } else {
-        // Si Worker no disponible, procesar aqui (pero lentamente)
-        procesarEnMainThread(sold, reserved);
-    }
-}
-
-function procesarEnMainThread(sold, reserved) {
     try {
-        console.debug('🔄 Procesando en main thread (fallback)...');
-        
         // Marcar datos como OBSOLETOS antes de actualizar
         window.rifaplusBoletosDatosActualizados = false;
         
         window.rifaplusSoldNumbers = sold.map(Number);
         window.rifaplusReservedNumbers = reserved.map(Number);
-        console.debug(`✅ Main thread: Procesados ${sold.length + reserved.length} boletos`);
+        console.debug(`✅ Procesados ${sold.length + reserved.length} boletos`);
+        
+        // Actualizar grid y availability note sincronizados
+        actualizarEstadoBoletosVisibles();
+        if (typeof actualizarNotaDisponibilidad === 'function') {
+            actualizarNotaDisponibilidad();
+        }
         
         // Marcar datos como FRESCOS
         window.rifaplusBoletosDatosActualizados = true;
-        console.log('✅ [SYNC] Datos frescos desde main thread');
     } catch (error) {
-        console.error('❌ Error procesando en main thread:', error);
-        // Último fallback: arrays vacíos (mejor que nada)
+        console.error('❌ Error procesando boletos:', error);
+        // Último fallback: arrays vacíos
         window.rifaplusSoldNumbers = [];
         window.rifaplusReservedNumbers = [];
-        window.rifaplusBoletosDatosActualizados = true; // Marcar como frescos igual
+        window.rifaplusBoletosDatosActualizados = true;
     }
 }
 
 // Exponer funciones globalmente para que otras páginas/módulos puedan llamarlas
 window.cargarBoletosPublicos = cargarBoletosPublicos;
 window.actualizarResumenCompra = actualizarResumenCompra;
-window.actualizarContadorCarritoGlobal = actualizarContadorCarritoGlobal;
 window.controlarEstadoBotonesLoQuiero = controlarEstadoBotonesLoQuiero;
 
 /**
@@ -2319,7 +3027,6 @@ Sold count: ${window.rifaplusSoldNumbers?.length || 0}
 Reserved count: ${window.rifaplusReservedNumbers?.length || 0}
 Loaded: ${window.rifaplusBoletosLoaded}
 Browser: ${/Safari/.test(navigator.userAgent) && !/Chrome|Edge|Firefox/.test(navigator.userAgent) ? '🍎 Safari' : 'Other'}
-Worker timeout: ${window.workerTimeoutId || 'None'}
 Config estado: ${JSON.stringify(window.rifaplusConfig?.estado || {}, null, 2)}
     </div>
     `;

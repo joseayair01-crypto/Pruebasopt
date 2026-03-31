@@ -14,29 +14,30 @@
     /* ========================================================================== */
     
     /* � Rojo Vivo - Éxito, principal, acciones positivas */
-    --color-primary: #FF3D3D;
-    --color-primary-dark: #CC3030;
-    --color-primary-light: #FF6B6B;
+    --color-primary: #12324b;
+    --color-primary-dark: #0b2235;
+    --color-primary-light: #6f9fc8;
+    --color-secondary-rgb: 36, 184, 255;
     
     /* ⚫ Negro Profundo - Acentos, destacados, premios */
-    --color-secondary: #1A1A1A;
-    --color-secondary-dark: #0D0D0D;
-    --color-secondary-light: #333333;
+    --color-secondary: #24b8ff;
+    --color-secondary-dark: #1497d8;
+    --color-secondary-light: #87d8ff;
     
     /* ⚫ Negro Fondo - Fondos, bordes, elementos neutros */
-    --color-neutral: #2A2A2A;
-    --color-neutral-dark: #1A1A1A;
-    --color-neutral-light: #3A3A3A;
+    --color-neutral: #5e7283;
+    --color-neutral-dark: #32485c;
+    --color-neutral-light: #9fb0be;
     
     /* 🔴 Rojo Oscuro - Headers, acciones primarias, texto importante */
-    --color-action: #E63946;
-    --color-action-dark: #A71930;
-    --color-action-light: #F44336;
+    --color-action: #12324b;
+    --color-action-dark: #0b2235;
+    --color-action-light: #6f9fc8;
     
     /* 🔴 Rojo Brillante - Errores, alertas, estados negativos */
-    --color-alert: #FF3D3D;
-    --color-alert-dark: #CC3030;
-    --color-alert-light: #FF6B6B;
+    --color-alert: #c66f6f;
+    --color-alert-dark: #a75757;
+    --color-alert-light: #dc9494;
     
     /* ========================================================================== */
     /* COLORES SOCIALES - MANTENER SEPARADOS                                    */
@@ -63,12 +64,17 @@
     /* ESCALA DE GRISES - TEMA OSCURO                                           */
     /* ========================================================================== */
     
-    --text-dark: #FFFFFF;        /* Texto principal (blanco para fondo oscuro) */
-    --text-light: #D0D0D0;       /* Texto secundario (gris claro) */
-    --text-lighter: #909090;     /* Texto deshabilitado (gris medio) */
-    --bg-light: #1A1A1A;         /* Fondo claro oscuro (componentes) */
-    --bg-white: #000000;         /* Fondo oscuro en lugar de blanco */
-    --border-color: #404040;     /* Bordes grises oscuros */
+    --text-dark: #1b2a38;
+    --text-light: #5e7283;
+    --text-lighter: #95a6b5;
+    --bg-light: #f7fafc;
+    --bg-white: #ffffff;
+    --border-color: #d9e4ec;
+    --surface-base: var(--bg-white);
+    --surface-soft: var(--bg-light);
+    --surface-tint: #eef5fb;
+    --surface-accent: #eef8ff;
+    --surface-header: var(--color-primary);
     
     /* ========================================================================== */
     /* SISTEMA DE ESPACIADO                                                     */

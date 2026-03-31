@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:* http://localhost:*; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' http://127.0.0.1:* http://localhost:* https:; img-src 'self' data: https:;">
+    <title>Ayuda Admin - SaDev</title>
+    <link rel="icon" href="images/placeholder-logo.svg" sizes="32x32">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/admin-layout.css?v=20251221">
+    <link rel="stylesheet" href="css/styles.css?v=20251128">
+    <link rel="stylesheet" href="css/admin-theme.css?v=20260321.01">
+    <script src="js/config.js?v=20251228.15"></script>
+    <script src="js/config-sync.js"></script>
+    <script src="js/theme-dynamic.js"></script>
+    <script src="js/admin-layout.js?v=20251228.15"></script>
+    <script src="js/admin-header-user.js"></script>
+    <style>
+        :root {
+            --help-primary: #0f3a7d;
+            --help-primary-dark: #0b2858;
+            --help-secondary: #f4f7fb;
+            --help-border: rgba(15, 58, 125, 0.12);
+            --help-text: #102033;
+            --help-muted: #5f6c7b;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background:
+                radial-gradient(circle at top right, rgba(15, 58, 125, 0.08), transparent 28%),
+                linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
+            color: var(--help-text);
+        }
+
+        .admin-main {
+            min-height: calc(100vh - 88px);
+        }
+
+        .help-shell {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 2rem 1.25rem 3rem;
+        }
+
+        .help-card {
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid var(--help-border);
+            border-radius: 28px;
+            overflow: hidden;
+            box-shadow: 0 28px 80px rgba(15, 58, 125, 0.12);
+            backdrop-filter: blur(14px);
+        }
+
+        .help-hero {
+            padding: 2.5rem 2rem 2rem;
+            background:
+                linear-gradient(135deg, rgba(15, 58, 125, 0.96) 0%, rgba(27, 95, 184, 0.94) 100%);
+            color: #fff;
+            text-align: center;
+            position: relative;
+        }
+
+        .help-hero::after {
+            content: '';
+            position: absolute;
+            inset: auto -10% -40% auto;
+            width: 280px;
+            height: 280px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.18), transparent 68%);
+            pointer-events: none;
+        }
+
+        .sadev-logo {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 1.25rem;
+            display: block;
+        }
+
+        .sadev-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .help-title {
+            font-size: clamp(2rem, 4vw, 2.8rem);
+            font-weight: 800;
+            margin: 0;
+            letter-spacing: -0.03em;
+        }
+
+        .help-subtitle {
+            max-width: 620px;
+            margin: 0.9rem auto 0;
+            font-size: 1rem;
+            line-height: 1.7;
+            color: rgba(255, 255, 255, 0.88);
+        }
+
+        .help-body {
+            padding: 2rem;
+            display: grid;
+            gap: 1.4rem;
+        }
+
+        .contact-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
+        .contact-card {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.15rem 1.1rem;
+            border-radius: 20px;
+            text-decoration: none;
+            border: 1px solid var(--help-border);
+            background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+            transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+            color: inherit;
+        }
+
+        .contact-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 36px rgba(15, 58, 125, 0.1);
+            border-color: rgba(15, 58, 125, 0.2);
+        }
+
+        .contact-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 18px;
+            display: grid;
+            place-items: center;
+            font-size: 1.4rem;
+            flex-shrink: 0;
+        }
+
+        .contact-card.whatsapp .contact-icon {
+            background: rgba(37, 211, 102, 0.14);
+            color: #16a34a;
+        }
+
+        .contact-card.phone .contact-icon {
+            background: rgba(15, 58, 125, 0.1);
+            color: var(--help-primary);
+        }
+
+        .contact-copy {
+            display: grid;
+            gap: 0.2rem;
+        }
+
+        .contact-label {
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--help-muted);
+        }
+
+        .contact-value {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--help-text);
+        }
+
+        .contact-meta {
+            font-size: 0.88rem;
+            color: var(--help-muted);
+        }
+
+        .support-note {
+            padding: 1.25rem 1.35rem;
+            border-radius: 20px;
+            background: linear-gradient(180deg, #f5f9ff 0%, #edf4fc 100%);
+            border: 1px solid rgba(15, 58, 125, 0.1);
+        }
+
+        .support-note-title {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            margin: 0 0 0.7rem;
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--help-primary);
+        }
+
+        .support-note-text {
+            margin: 0;
+            color: var(--help-muted);
+            line-height: 1.7;
+        }
+
+        .support-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            width: fit-content;
+            padding: 0.6rem 0.9rem;
+            border-radius: 999px;
+            background: rgba(15, 58, 125, 0.08);
+            color: var(--help-primary);
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        @media (max-width: 768px) {
+            .help-shell {
+                padding: 1.25rem 0.9rem 2rem;
+            }
+
+            .help-hero,
+            .help-body {
+                padding: 1.5rem 1.15rem;
+            }
+
+            .contact-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .sadev-logo {
+                width: 124px;
+                height: 124px;
+                font-size: 2.2rem;
+                border-radius: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-header">
+        <div class="admin-header-content">
+            <div class="admin-header-left">
+                <div class="admin-logo-container">
+                    <img src="images/placeholder-logo.svg" alt="Logo" id="dashboardLogo">
+                </div>
+                <div class="admin-header-title">
+                    <div class="admin-header-title-main">Centro de Ayuda</div>
+                    <div class="admin-header-title-sub">SORTEO</div>
+                </div>
+            </div>
+            <div class="admin-header-right">
+                <button class="admin-logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> <span>Cerrar Sesión</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <aside class="admin-sidebar" id="adminSidebar">
+        <div class="admin-sidebar-content">
+            <div class="admin-sidebar-section">
+                <div class="admin-sidebar-section-title">Navegación</div>
+                <a href="admin-dashboard.html" class="admin-nav-btn">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="admin-ordenes.html" class="admin-nav-btn">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>Órdenes</span>
+                </a>
+                <a href="admin-boletos.html" class="admin-nav-btn">
+                    <i class="fas fa-ticket-alt"></i>
+                    <span>Boletos</span>
+                </a>
+                <a href="admin-ruletazo.html" class="admin-nav-btn">
+                    <i class="fas fa-dharmachakra"></i>
+                    <span>Ruletazo</span>
+                </a>
+            </div>
+            <div class="admin-sidebar-section">
+                <div class="admin-sidebar-section-title">Sistema</div>
+                <a href="admin-configuracion.html" class="admin-nav-btn">
+                    <i class="fas fa-cog"></i>
+                    <span>Configuración</span>
+                </a>
+                <a href="admin-ayuda.html" class="admin-nav-btn active" id="navAyuda">
+                    <i class="fas fa-question-circle"></i>
+                    <span>Ayuda</span>
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <button class="admin-sidebar-toggle" id="sidebarToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <main class="admin-main" id="adminMain">
+        <div class="help-shell">
+            <section class="help-card">
+                <div class="help-hero">
+                    <div class="sadev-logo">
+                        <img src="https://res.cloudinary.com/dxu3imvxt/image/upload/v1774673215/rifaplus/sorteos/qzfjmawh4hhknsi64p1k.png" alt="SaDev">
+                    </div>
+                    <h1 class="help-title">SaDev</h1>
+                    <p class="help-subtitle">
+                        Estamos para ayudarte en cualquier duda, ajuste o incidencia relacionada con tu panel administrativo.
+                        Queremos que tu operación se mantenga clara, rápida y siempre respaldada.
+                    </p>
+                </div>
+
+                <div class="help-body">
+                    <div class="contact-grid">
+                        <a class="contact-card whatsapp" href="https://wa.me/524341068932" target="_blank" rel="noopener noreferrer">
+                            <div class="contact-icon">
+                                <i class="fab fa-whatsapp"></i>
+                            </div>
+                            <div class="contact-copy">
+                                <span class="contact-label">WhatsApp</span>
+                                <span class="contact-value">+52 434 106 8932</span>
+                                <span class="contact-meta">Escríbenos para soporte directo y seguimiento.</span>
+                            </div>
+                        </a>
+
+                        <a class="contact-card phone" href="tel:4591153960">
+                            <div class="contact-icon">
+                                <i class="fas fa-phone-alt"></i>
+                            </div>
+                            <div class="contact-copy">
+                                <span class="contact-label">Llamada</span>
+                                <span class="contact-value">459 115 3960</span>
+                                <span class="contact-meta">Atención rápida para dudas urgentes del sistema.</span>
+                            </div>
+                        </a>
+                    </div>
+
+                    <div class="support-note">
+                        <h2 class="support-note-title">
+                            <i class="fas fa-headset"></i>
+                            Soporte para tu operación
+                        </h2>
+                        <p class="support-note-text">
+                            Si necesitas ayuda con configuraciones, órdenes, boletos, ruletazos o cualquier comportamiento del panel,
+                            háznoslo saber. Nuestro objetivo es acompañarte para que tu sistema se mantenga funcional, profesional y confiable.
+                        </p>
+                    </div>
+
+                    <div class="support-pill">
+                        <i class="fas fa-clock"></i>
+                        Soporte 24/7
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+</body>
+</html>

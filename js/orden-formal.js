@@ -8,10 +8,79 @@
  */
 
 /* ============================================================ */
+/* FUNCIONES DEFENSIVAS DE ALMACENAMIENTO                      */
+/* ============================================================ */
+
+/**
+ * 🛡️ FUNCIÓN DEFENSIVA: Guardar en storage de forma segura
+ * Usa localStorage directo con fallback a memoria
+ * NUNCA falla - siempre tiene un plan B
+ * @param {string} key - Clave a guardar
+ * @param {string} value - Valor a guardar
+ * @returns {boolean} true si guardó en localStorage, false si tuvo que usar memoria
+ */
+function setItemSafeOrden(key, value) {
+    try {
+        localStorage.setItem(key, value);
+        return true;
+    } catch (error) {
+        console.warn(`⚠️  [ORDEN] Cuota localStorage excedida para '${key}'. Usando memoria.`, error.message);
+        if (!window.StorageMemoryFallback) window.StorageMemoryFallback = {};
+        window.StorageMemoryFallback[key] = value;
+        return false;
+    }
+}
+
+/**
+ * 🛡️ FUNCIÓN DEFENSIVA: Leer desde storage de forma segura
+ * @param {string} key - Clave a leer
+ * @returns {string|null} Valor guardado o null si no existe
+ */
+function getItemSafeOrden(key) {
+    try {
+        return localStorage.getItem(key);
+    } catch (error) {
+        console.warn(`⚠️  [ORDEN] Error leyendo '${key}'. Intentando memoria.`, error.message);
+        if (window.StorageMemoryFallback && window.StorageMemoryFallback[key]) {
+            return window.StorageMemoryFallback[key];
+        }
+        return null;
+    }
+}
+
+/* ============================================================ */
 /* SECCIÓN 1: CONFIGURACIÓN GLOBAL Y VARIABLES DE ESTADO       */
 /* ============================================================ */
 
 var ordenActual = null;
+
+function obtenerLogoActualOrdenFormal() {
+    const logoConfig = String(
+        window.rifaplusConfig?.cliente?.logo ||
+        window.rifaplusConfig?.cliente?.logotipo ||
+        ''
+    ).trim();
+
+    if (logoConfig && logoConfig !== 'images/placeholder-logo.svg') {
+        return logoConfig;
+    }
+
+    const logoCacheadoGlobal = String(window.__RIFAPLUS_CACHED_LOGO__ || '').trim();
+    if (logoCacheadoGlobal && logoCacheadoGlobal !== 'images/placeholder-logo.svg') {
+        return logoCacheadoGlobal;
+    }
+
+    try {
+        const logoCacheadoLocal = String(localStorage.getItem('rifaplus_cached_logo') || '').trim();
+        if (logoCacheadoLocal && logoCacheadoLocal !== 'images/placeholder-logo.svg') {
+            return logoCacheadoLocal;
+        }
+    } catch (error) {
+        console.warn('⚠️ [Orden-Formal] No se pudo leer el logo cacheado:', error?.message || error);
+    }
+
+    return 'images/placeholder-logo.svg';
+}
 
 /**
  * compactRanges - Compacta un array de números en rangos
@@ -37,6 +106,53 @@ function compactRanges(arr) {
     return ranges.join(',');
 }
 
+function crearFormateadorNumerosOrdenFormal(...colecciones) {
+    const valoresCrudos = colecciones.flat().filter((valor) => valor !== null && valor !== undefined && valor !== '');
+    const totalBoletosConfig = Number(window.rifaplusConfig?.rifa?.totalBoletos);
+    const rangoVisibleFin = Number(window.rifaplusConfig?.rifa?.oportunidades?.rango_visible?.fin);
+
+    let digitos = 0;
+
+    // Priorizar la configuración sincronizada real de la rifa.
+    // El valor 250000 es el fallback de arranque de config.js y no debe imponerse aquí.
+    if (Number.isFinite(totalBoletosConfig) && totalBoletosConfig > 0 && totalBoletosConfig !== 250000) {
+        digitos = String(Math.max(totalBoletosConfig - 1, 0)).length;
+    } else if (Number.isFinite(rangoVisibleFin) && rangoVisibleFin > 0) {
+        digitos = String(rangoVisibleFin).length;
+    } else {
+        const digitosCrudos = valoresCrudos
+            .map((valor) => String(valor).replace(/[^0-9]/g, ''))
+            .filter(Boolean)
+            .map((valor) => valor.length);
+
+        const maxNumero = valoresCrudos.reduce((maximo, valor) => {
+            const numero = parseInt(String(valor).replace(/[^0-9]/g, ''), 10);
+            return Number.isFinite(numero) ? Math.max(maximo, numero) : maximo;
+        }, 0);
+
+        digitos = Math.max(
+            digitosCrudos.length ? Math.max(...digitosCrudos) : 0,
+            String(Math.max(maxNumero, 0)).length
+        );
+    }
+
+    const digitosFinales = Math.max(1, digitos);
+
+    return function formatearNumeroOrdenFormal(numero) {
+        const limpio = String(numero ?? '').replace(/[^0-9]/g, '');
+        if (!limpio) {
+            return '?'.repeat(digitosFinales);
+        }
+
+        const numeroNormalizado = parseInt(limpio, 10);
+        if (!Number.isFinite(numeroNormalizado) || numeroNormalizado < 0) {
+            return '?'.repeat(digitosFinales);
+        }
+
+        return String(numeroNormalizado).padStart(digitosFinales, '0');
+    };
+}
+
 /* ============================================================ */
 /* SECCIÓN 2: APERTURA Y CIERRE DE MODAL DE ORDEN              */
 /* ============================================================ */
@@ -47,6 +163,13 @@ function compactRanges(arr) {
  * @returns {void}
  */
 function abrirOrdenFormal(cuenta) {
+    // VALIDACIÓN 1: Verificar que rifaplusConfig existe
+    if (!window.rifaplusConfig) {
+        console.error('❌ rifaplusConfig no está inicializado');
+        rifaplusUtils.showFeedback('❌ Error de configuración del sistema', 'error');
+        return;
+    }
+    
     // Compilar datos de la orden
     const cliente = JSON.parse(localStorage.getItem('rifaplus_cliente') || '{}');
     let boletos = JSON.parse(localStorage.getItem('rifaplus_boletos') || '[]');
@@ -58,18 +181,28 @@ function abrirOrdenFormal(cuenta) {
         if (selectedNumbers && selectedNumbers.length > 0) {
             console.warn('⚠️  rifaplus_boletos está vacío, usando rifaplusSelectedNumbers como fallback');
             boletos = selectedNumbers;
-            safeTrySetItem('rifaplus_boletos', JSON.stringify(boletos));
+            setItemSafeOrden('rifaplus_boletos', JSON.stringify(boletos));
         }
     }
 
-    // CRÍTICO: Usar la función helper de config.js para GARANTIZAR el prefijo dinámico
-    // Esta función reconstruye SIEMPRE el ID con el prefijo actual, sin importar el estado anterior
-    let ordenId = cliente.ordenId || `ORD-AA001`;
-    ordenId = window.rifaplusConfig.reconstruirIdOrdenConPrefijoActual(ordenId);
+    // Usar solo IDs oficiales y con el prefijo vigente.
+    let ordenId = String(cliente.ordenId || '').trim().toUpperCase();
+    const esOrdenIdOficial = typeof window.rifaplusConfig?.esOrdenIdOficial === 'function'
+        ? window.rifaplusConfig.esOrdenIdOficial(ordenId)
+        : /^[A-Z0-9]+-[A-Z]{2}\d{3}$/.test(ordenId);
+    const tienePrefijoActual = typeof window.rifaplusConfig?.ordenIdTienePrefijoActual === 'function'
+        ? window.rifaplusConfig.ordenIdTienePrefijoActual(ordenId)
+        : true;
+
+    if (!ordenId || !esOrdenIdOficial || !tienePrefijoActual) {
+        console.error('❌ [Orden-Formal] ID de orden oficial no disponible:', ordenId);
+        rifaplusUtils.showFeedback('❌ No se pudo preparar un numero de orden valido. Intenta de nuevo.', 'error');
+        return;
+    }
     
-    // Guardar el ID reconstruido en localStorage para futuros usos
+    // Guardar el ID oficial en localStorage para futuros usos
     cliente.ordenId = ordenId;
-    safeTrySetItem('rifaplus_cliente', JSON.stringify(cliente));
+    setItemSafeOrden('rifaplus_cliente', JSON.stringify(cliente));
 
     ordenActual = {
         ordenId: ordenId,
@@ -90,7 +223,58 @@ function abrirOrdenFormal(cuenta) {
     };
 
     // Guardar en storage
-    safeTrySetItem('rifaplus_orden_actual', JSON.stringify(ordenActual));
+    setItemSafeOrden('rifaplus_orden_actual', JSON.stringify(ordenActual));
+
+    // ✅ SINCRONIZAR OPORTUNIDADES antes de renderizar (robusto y confiable)
+    // Esto asegura que window.rifaplusOportunidadesCarrito esté poblado
+    if (typeof window.sincronizarOportunidadesAlCarrito === 'function') {
+        window.sincronizarOportunidadesAlCarrito();
+        console.log('[Orden-Formal] ✅ Oportunidades sincronizadas antes de renderizar');
+    }
+    
+    // ✅ GUARDAR OPORTUNIDADES EN LA ORDEN - VALIDADO CONTRA BOLETOS ACTUALES
+    // Obtener todas las oportunidades del carrito actual, SOLO de boletos que siguen en la orden
+    const oportunidadesAlCarrito = [];
+    const oportunidadesVistos = new Set();
+    const boletosEnOrden = new Set(boletos.map(b => String(Number(b))));  // Convertir a string consistentemente
+    
+    if (window.rifaplusOportunidadesCarrito && typeof window.rifaplusOportunidadesCarrito === 'object') {
+        for (const boletoKey in window.rifaplusOportunidadesCarrito) {
+            // ✅ VALIDACIÓN CRÍTICA: Solo incluir oportunidades de boletos que siguen en la orden
+            if (!boletosEnOrden.has(String(Number(boletoKey)))) {
+                console.warn(`[Orden-Formal] ⚠️  Boleto #${boletoKey} ya no está en la orden, omitiendo sus oportunidades`);
+                continue;  // Saltar este boleto eliminado
+            }
+            
+            if (Array.isArray(window.rifaplusOportunidadesCarrito[boletoKey])) {
+                for (const opp of window.rifaplusOportunidadesCarrito[boletoKey]) {
+                    const oppNum = Number(opp);
+                    // ✅ Validar: número válido y no duplicado
+                    if (!isNaN(oppNum) && Number.isFinite(oppNum) && oppNum > 0 && !oportunidadesVistos.has(oppNum)) {
+                        oportunidadesAlCarrito.push(oppNum);
+                        oportunidadesVistos.add(oppNum);
+                    }
+                }
+            }
+        }
+    }
+    
+    // Ordenar para consistencia
+    oportunidadesAlCarrito.sort((a, b) => a - b);
+    
+    // Almacenar las oportunidades en la orden (será incluida en payload)
+    ordenActual.boletosOcultos = oportunidadesAlCarrito;
+    console.log('[Orden-Formal] 📌 Guardadas oportunidades validadas en ordenActual:', {
+        cantidad: oportunidadesAlCarrito.length,
+        boletosEnOrden: boletos.length,
+        esperadas: boletos.length * 3,  // ✅ Referencia: 3 opps por boleto
+        oportunidades: oportunidadesAlCarrito.slice(0, 5)
+    });
+    
+    // ✅ VALIDACIÓN: Si no hay oportunidades esperadas, avisar
+    if (oportunidadesAlCarrito.length === 0 && window.rifaplusConfig?.rifa?.oportunidades?.enabled) {
+        console.warn('[Orden-Formal] ⚠️  ADVERTENCIA: Oportunidades habilitadas pero no hay ninguna');
+    }
 
     // Renderizar modal
     renderizarOrdenFormal(ordenActual);
@@ -152,28 +336,74 @@ function renderizarOrdenFormal(orden) {
         hour12: false
     });
 
-    const logoUrl = 'images/logo.png';
+    const logoUrl = obtenerLogoActualOrdenFormal();
     const nombreOrganizador = window.rifaplusConfig?.cliente?.nombre || 'Organizador';
     
     // Obtener todos los boletos (sin compactar - mostrar todos los números)
-    const boletosArray = (orden.boletos || []).map(b => Number(b)).filter(n => !isNaN(n)).sort((a, b) => a - b);
-    const boletosStr = boletosArray.join(', ');
+    const boletosOriginales = Array.isArray(orden.boletos) ? orden.boletos : [];
+    const boletosArray = boletosOriginales.map(b => Number(b)).filter(n => !isNaN(n)).sort((a, b) => a - b);
+    const formatear = crearFormateadorNumerosOrdenFormal(boletosOriginales, orden.boletosOcultos || []);
+    const boletosStr = boletosArray.map(formatear).join(', ');
     
-    // ✅ OBTENER OPORTUNIDADES SOLO SI ESTÁN HABILITADAS
+    // ✅ OBTENER OPORTUNIDADES - Lectura robusta del manager o del carrito global
+    let boletosOcultosHtml = '';
     const oportunidadesHabilitadas = window.rifaplusConfig?.rifa?.oportunidades?.enabled === true;
-    const oportunidadesStorage = JSON.parse(localStorage.getItem('rifaplus_oportunidades') || '{}');
-    const boletosOcultos = oportunidadesStorage.boletosOcultos || [];
-    const oportunidadesHtml = (oportunidadesHabilitadas && boletosOcultos.length > 0) ? `
-        <div class="orden-boletos">
-            <div class="orden-field-label">Oportunidades Adicionales (${boletosOcultos.length})</div>
-            <div class="orden-boletos-list">${boletosOcultos.join(', ')}</div>
-        </div>
-    ` : '';
     
-    // Totales
-    const subtotal = orden.totales?.subtotal || 0;
-    const descuento = orden.totales?.descuento || 0;
-    const total = orden.totales?.totalFinal || orden.totales?.subtotal || 0;
+    if (oportunidadesHabilitadas) {
+        const oppsDisponibles = [];
+        
+        console.log(`[Orden-Formal] 🔍 Buscando oportunidades para ${boletosArray.length} boletos...`);
+        console.log('[Orden-Formal] 📊 rifaplusOportunidadesCarrito:', window.rifaplusOportunidadesCarrito);
+        
+        // Intentar obtener del carrito global primero
+        if (window.rifaplusOportunidadesCarrito && typeof window.rifaplusOportunidadesCarrito === 'object') {
+            for (const boleto of boletosArray) {
+                const boletStr = String(boleto);
+                if (window.rifaplusOportunidadesCarrito[boletStr]) {
+                    oppsDisponibles.push(...window.rifaplusOportunidadesCarrito[boletStr]);
+                    console.log(`[Orden-Formal] ✅ Boleto #${boleto}: ${window.rifaplusOportunidadesCarrito[boletStr].length} opps`);
+                } else {
+                    console.log(`[Orden-Formal] ⚠️ Boleto #${boleto}: Sin oportunidades en carrito global`);
+                }
+            }
+        }
+        
+        // Si no hay datos en carrito global, intentar del manager (fallback)
+        if (oppsDisponibles.length === 0 && window.oportunidadesManager) {
+            console.log('[Orden-Formal] 🔄 Fallback: Intentando obtener del OportunidadesManager...');
+            const oppsPorBoleto = window.oportunidadesManager.obtenerMultiples(boletosArray);
+            for (const boleto of boletosArray) {
+                if (Number(boleto) in oppsPorBoleto && Array.isArray(oppsPorBoleto[Number(boleto)])) {
+                    oppsDisponibles.push(...oppsPorBoleto[Number(boleto)]);
+                    console.log(`[Orden-Formal] ✅ Del Manager - Boleto #${boleto}: ${oppsPorBoleto[Number(boleto)].length} opps`);
+                }
+            }
+        }
+        
+        // Renderizar HTML si hay oportunidades
+        if (oppsDisponibles.length > 0) {
+            console.log(`[Orden-Formal] ✅ MOSTRANDO ${oppsDisponibles.length} oportunidades`);
+            const oppsFormato = oppsDisponibles.map(formatear).join(', ');
+            
+            boletosOcultosHtml = `
+                <div class="orden-boletos">
+                    <div class="orden-field-label">Oportunidades Adicionales (${oppsDisponibles.length})</div>
+                    <div class="orden-boletos-list">${oppsFormato}</div>
+                </div>
+            `;
+        } else {
+            console.log('[Orden-Formal] ⚠️ Sin oportunidades disponibles para mostrar');
+        }
+    }
+    
+    const oportunidadesHtml = boletosOcultosHtml;
+    
+    // Totales normalizados para que siempre reflejen el cálculo real
+    const subtotal = Number(orden.totales?.subtotal || 0);
+    const totalBase = Number(orden.totales?.totalFinal ?? orden.totales?.total ?? 0);
+    const descuentoBase = Number(orden.totales?.descuento ?? orden.totales?.descuentoMonto ?? 0);
+    const descuento = descuentoBase > 0 ? descuentoBase : Math.max(0, subtotal - totalBase);
+    const total = totalBase > 0 ? totalBase : Math.max(0, subtotal - descuento);
 
     const html = `
         <div class="orden-documento" id="documentoPDF">
@@ -181,7 +411,7 @@ function renderizarOrdenFormal(orden) {
             <!-- ENCABEZADO: Logo Grande + Nombre Organizador (Izquierda) + ID Orden (Derecha) -->
             <div class="orden-header">
                 <div class="orden-header-left">
-                    <img src="${logoUrl}" alt="logo" />
+                    <img src="${logoUrl}" alt="logo" data-dynamic-logo="true" class="dynamic-logo" onerror="this.onerror=null; this.src='images/placeholder-logo.svg';" />
                     <div class="orden-organizador">${nombreOrganizador}</div>
                 </div>
                 <div class="orden-header-right">
@@ -265,11 +495,11 @@ function renderizarOrdenFormal(orden) {
             <!-- MENSAJE FINAL -->
             <div class="orden-mensaje-final">
                 <div class="orden-mensaje-texto">
-                    <p style="margin: 0.5rem 0; line-height: 1.5;"><strong>Paso 1:</strong> Realiza una transferencia bancaria por el monto indicado a la cuenta de arriba</p>
-                    <p style="margin: 0.5rem 0; line-height: 1.5;"><strong>Paso 2:</strong> Guarda el comprobante de pago (captura de pantalla o PDF)</p>
-                    <p style="margin: 0.5rem 0; line-height: 1.5;"><strong>Paso 3:</strong> Sube tu comprobante usando el botón <strong>"📤 Subir Comprobante"</strong> en la esquina inferior derecha O desde <strong>"Mis Boletos"</strong> en el menú</p>
+                    <p style="margin: 0.5rem 0; line-height: 1.5;"><strong>1.</strong> Realiza tu pago con los datos mostrados arriba.</p>
+                    <p style="margin: 0.5rem 0; line-height: 1.5;"><strong>2.</strong> Guarda tu comprobante.</p>
+                    <p style="margin: 0.5rem 0; line-height: 1.5;"><strong>3.</strong> Súbelo desde <strong>"Subir Comprobante"</strong> o desde <strong>"Mis Boletos"</strong>.</p>
                     <div style="margin: 1rem 0 0 0; padding: 1rem; border-top: 2px solid #1A1A1A; background: #f8f9fa; border-radius: 8px; text-align: center;">
-                        <p style="margin: 0; color: #1A1A1A; font-weight: 700; font-size: 1rem; line-height: 1.4;">¡Gracias por tu compra! Una vez completados estos pasos, <strong style="color: #E63946;">¡ya estarás participando en nuestro sorteo!</strong> 🎊</p>
+                        <p style="margin: 0; color: #1A1A1A; font-weight: 700; font-size: 1rem; line-height: 1.4;">Cuando completes estos pasos, tu participación quedará lista.</p>
                     </div>
                 </div>
             </div>
@@ -287,87 +517,6 @@ function renderizarOrdenFormal(orden) {
  * makeOrderMessage - Construye el mensaje de orden para el cliente
  * @param {Object} ord - Objeto con datos de la orden
  * @returns {string} Mensaje formateado para WhatsApp
- */
-function makeOrderMessage(ord) {
-    const cliente = ord.cliente || {};
-    const ordenId = ord.ordenId || '';
-    const banco = ord.cuenta ? (ord.cuenta.nombreBanco || '') : '';
-    const cuenta = ord.cuenta ? ord.cuenta.accountNumber : '';
-    const beneficiario = ord.cuenta ? ord.cuenta.beneficiary : '';
-    const referencia = ord.referencia || '';
-    const subtotal = ord.totales ? (ord.totales.subtotal || 0) : 0;
-    const descuento = ord.totales ? (ord.totales.descuento || 0) : 0;
-    const monto = ord.totales ? (ord.totales.totalFinal || ord.totales.subtotal || 0) : 0;
-    const boletos = ord.boletos || [];
-    
-    // Use global compactRanges function
-    const compactBoletosStr = compactRanges(boletos);
-    const fecha = new Date(ord.fecha);
-    const fechaFormato = fecha.toLocaleDateString('es-ES', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-    const origin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
-    const misBoletosUrl = cliente.whatsapp ? `${origin}/mis-boletos.html?whatsapp=${encodeURIComponent(cliente.whatsapp)}` : `${origin}/mis-boletos.html`;
-
-    return `ORDEN DE PAGO
-ID de orden: ${ordenId}
-Emitida: ${fechaFormato}
-
-DATOS DEL CLIENTE
-Nombre: ${cliente.nombre || ''} ${cliente.apellidos || ''}
-WhatsApp: ${cliente.whatsapp || '-'}
-Estado: ${cliente.estado || '-'}
-Ciudad: ${cliente.ciudad || '-'}
-
-DETALLES DE COMPRA
-Boletos: ${compactBoletosStr}
-Subtotal: $${Number(subtotal).toFixed(2)}
-${descuento > 0 ? `Descuento: -$${Number(descuento).toFixed(2)}\n` : ''}Total a pagar: $${Number(monto).toFixed(2)}
-
-MÉTODO DE PAGO
-Banco: ${banco}
-Número de cuenta: ${cuenta}
-Referencia: ${referencia}
-Beneficiario: ${beneficiario}
-
-Ver tu orden y el estado de tus boletos: ${misBoletosUrl}
-
-------------------------------
-Por favor, envía el comprobante de pago para confirmar la compra de tus boletos y asegurar tu participación en la rifa.
-¡Mucha suerte! Tu participación es muy importante y pronto podrías ser el ganador. 🎉`;
-}
-
-/**
- * buildWaMeUrl - Construye URL de WhatsApp Web con teléfono y mensaje
- * @param {string} phone - Número de teléfono
- * @param {string} text - Texto del mensaje
- * @returns {string} URL para wa.me
- */
-function buildWaMeUrl(phone, text) {
-    if (!phone) phone = '';
-    let cleaned = phone.replace(/[^0-9+]/g, '');
-    cleaned = cleaned.replace(/^\+/, ''); // wa.me needs no +
-    const encoded = encodeURIComponent(text);
-    return `https://wa.me/ ${cleaned}?text=${encoded}`;
-}
-
-/* ============================================================ */
-/* SECCIÓN 5: GENERACIÓN Y DESCARGA DE PDF                     */
-/* ============================================================ */
-
-/**
- * imprimirOrden - Genera PDF de la orden usando html2canvas + jsPDF CON OPTIMIZACIÓN
- * OPTIMIZACIONES APLICADAS:
- * 1. Escala reducida de 2 a 1.5 para menor memoria y tamaño
- * 2. Formato JPEG con 80% de calidad en lugar de PNG
- * 3. Compresión del PDF habilitada en jsPDF
- * 4. Aplicación automática de clase 'pdf-optimizado' para estilos compactos
- * 5. Sin imágenes de fondo ni estilos innecesarios durante captura
- * @returns {void}
  */
 function imprimirOrden() {
     const docEl = document.getElementById('documentoPDF');
@@ -498,54 +647,66 @@ function imprimirOrden() {
 /**
  * limpiarCarritoCompletamente - Limpia todo el carrito y localStorage
  * Se llama después de éxito (409 verificado, timeout verificado, o éxito normal)
+ * @returns {void}
  */
 function limpiarCarritoCompletamente() {
     console.log('🧹 Limpiando carrito completamente...');
     
-    // Limpiar localStorage
-    localStorage.removeItem('rifaplusSelectedNumbers');
-    localStorage.removeItem('rifaplus_boletos');
-    localStorage.removeItem('rifaplus_cliente');
-    localStorage.removeItem('rifaplus_total');
-    localStorage.removeItem('rifaplusBoletosCache');
-    localStorage.removeItem('rifaplusBoletosTimestamp');
-    localStorage.removeItem('rifaplus_oportunidades');
-    
-    // Limpiar objeto global del carrito
-    if (typeof selectedNumbersGlobal !== 'undefined' && selectedNumbersGlobal?.clear) {
-        try {
-            selectedNumbersGlobal.clear();
-            console.log('✅ selectedNumbersGlobal limpiado');
-        } catch (e) {
-            console.warn('⚠️  Error limpiando selectedNumbersGlobal:', e?.message);
+    try {
+        // Limpiar localStorage - Todos los keys del carrito
+        const keysALimpiar = [
+            'rifaplusSelectedNumbers',
+            'rifaplus_boletos',
+            'rifaplus_cliente',
+            'rifaplus_total',
+            'rifaplusBoletosCache',
+            'rifaplusBoletosTimestamp',
+            'rifaplus_oportunidades',                 // Obsoleto: sistema viejo
+            'rifaplus_oportunidades_por_boleto',     // Obsoleto: sistema viejo
+            'rifaplusOportunidadesCalculadas',       // Obsoleto: sistema viejo
+            'rifaplusOportunidadesLoading'           // Obsoleto: sistema viejo
+        ];
+        
+        keysALimpiar.forEach(key => {
+            try {
+                localStorage.removeItem(key);
+            } catch (e) {
+                console.warn(`⚠️  Error removiendo ${key}:`, e.message);
+            }
+        });
+        
+        // Limpiar objeto global del carrito
+        if (typeof selectedNumbersGlobal !== 'undefined' && selectedNumbersGlobal?.clear) {
+            try {
+                selectedNumbersGlobal.clear();
+                console.log('✅ selectedNumbersGlobal limpiado');
+            } catch (e) {
+                console.warn('⚠️  Error limpiando selectedNumbersGlobal:', e?.message);
+            }
         }
-    }
-    
-    // Actualizar UI
-    if (typeof actualizarVistaCarritoGlobal === 'function') {
-        try { 
-            actualizarVistaCarritoGlobal();
-            console.log('✅ Vista carrito actualizada');
-        } catch (e) { 
-            console.warn('⚠️  Error actualizando vista:', e); 
+        
+        // Actualizar UI
+        if (typeof actualizarVistaCarritoGlobal === 'function') {
+            try { 
+                actualizarVistaCarritoGlobal();
+                console.log('✅ Vista carrito actualizada');
+            } catch (e) { 
+                console.warn('⚠️  Error actualizando vista:', e); 
+            }
         }
-    }
-    if (typeof actualizarContadorCarritoGlobal === 'function') {
-        try { 
-            actualizarContadorCarritoGlobal();
-            console.log('✅ Contador carrito actualizado');
-        } catch (e) { 
-            console.warn('⚠️  Error actualizando contador:', e); 
+        if (typeof actualizarContadorCarritoGlobal === 'function') {
+            try { 
+                actualizarContadorCarritoGlobal();
+                console.log('✅ Contador carrito actualizado');
+            } catch (e) { 
+                console.warn('⚠️  Error actualizando contador:', e); 
+            }
         }
+        
+        console.log('✅ Carrito limpiado completamente');
+    } catch (e) {
+        console.error('❌ Error crítico limpiando carrito:', e);
     }
-    
-    // Marcar que regresará a compra.html
-    safeTrySetItem('rifaplusOrdenEnviada', 'true');
-    
-    // Cerrar modal
-    cerrarOrdenFormal();
-    
-    console.log('✅ Carrito limpiado completamente');
 }
 
 /**
@@ -648,13 +809,18 @@ async function guardarOrden() {
         const subtotal = parseFloat(ordenActual.totales?.subtotal) || parseFloat(ordenActual.totales?.total) || 0;
         const totalFinal = parseFloat(ordenActual.totales?.totalFinal) || parseFloat(ordenActual.totales?.total) || 0;
 
-        if (subtotal <= 0 || totalFinal <= 0) {
-            throw new Error('El total debe ser mayor a 0');
+        if (subtotal <= 0) {
+            throw new Error('El subtotal debe ser mayor a 0');
+        }
+
+        if (totalFinal < 0) {
+            throw new Error('El total final no puede ser negativo');
         }
 
         // Preparar payload validado
         const payload = {
             ordenId: (ordenActual.ordenId || `RIFA-${Date.now()}`).slice(0, 50),  // Limitar longitud
+            nombre_sorteo: window.rifaplusConfig?.rifa?.nombre || 'Sorteo',  // Nombre del sorteo from config
             cliente: {
                 nombre: nombre.slice(0, 100),
                 apellidos: (ordenActual.cliente.apellidos || '').trim().slice(0, 100),
@@ -663,6 +829,7 @@ async function guardarOrden() {
                 ciudad: (ordenActual.cliente.ciudad || '').trim().slice(0, 50)
             },
             boletos: boletosArray,
+            cantidad_boletos: boletosArray.length,  // ✅ AGREGADO: cantidad de boletos
             totales: {
                 subtotal: Math.round(subtotal * 100) / 100,
                 descuento: Math.max(0, Math.round((parseFloat(ordenActual.totales?.descuento) || 0) * 100) / 100),
@@ -677,69 +844,15 @@ async function guardarOrden() {
             })(),
             metodoPago: 'transferencia',
             notas: '',
-            // ✅ ENVIAR OPORTUNIDADES GENERADAS DESDE CLIENTE
-            // El servidor las validará en BD para garantizar que estén disponibles
-            boletosOcultos: await (async function(){
-                const oportunidadesHabilitadas = window.rifaplusConfig?.rifa?.oportunidades?.enabled === true;
-                if (!oportunidadesHabilitadas) {
-                    console.log('ℹ️  Oportunidades deshabilitadas');
-                    return [];
-                }
-                
-                // ✅ USAR LAS OPORTUNIDADES YA CALCULADAS POR carrito-global.js
-                try {
-                    const oportunidadesData = localStorage.getItem('rifaplus_oportunidades');
-                    if (oportunidadesData) {
-                        const oportunidades = JSON.parse(oportunidadesData);
-                        
-                        // Verificar que sean para estos boletos
-                        if (oportunidades.oportunidadesPorBoleto) {
-                            const boletosSet = new Set(boletosArray);
-                            let todasValidas = true;
-                            
-                            for (const boleto of boletosArray) {
-                                if (!oportunidades.oportunidadesPorBoleto[boleto]) {
-                                    todasValidas = false;
-                                    break;
-                                }
-                            }
-                            
-                            if (todasValidas) {
-                                console.log(`✅ Oportunidades válidas recuperadas de localStorage`);
-                                return oportunidades.boletosOcultos || [];
-                            } else {
-                                console.warn('⚠️  Algunos boletos no tienen oportunidades en localStorage');
-                                // Si hay conflicto, filtrar solo lo que sí tenemos
-                                const oportunidadesDisponibles = [];
-                                for (const boleto of boletosArray) {
-                                    if (oportunidades.oportunidadesPorBoleto[boleto]) {
-                                        oportunidadesDisponibles.push(...oportunidades.oportunidadesPorBoleto[boleto]);
-                                    }
-                                }
-                                if (oportunidadesDisponibles.length > 0) {
-                                    console.log(`✅ Recuperadas parcialmente: ${oportunidadesDisponibles.length} oportunidades`);
-                                    return oportunidadesDisponibles;
-                                }
-                            }
-                        } else {
-                            // Fallback si estructura es diferente
-                            if (Array.isArray(oportunidades.boletosOcultos) && oportunidades.boletosOcultos.length > 0) {
-                                console.log(`✅ Oportunidades recuperadas (estructura alternativa)`);
-                                return oportunidades.boletosOcultos;
-                            }
-                        }
-                    }
-                    
-                    console.error('❌ No hay oportunidades en localStorage. Esto no debería pasar - carrito-global.js debería haberlas generado');
-                    return [];
-                    
-                } catch (e) {
-                    console.error('❌ Error recuperando oportunidades:', e);
-                    console.error('   Stack:', e.stack);
-                    return [];
-                }
-            })()
+            // ✅ INCLUIR OPORTUNIDADES EN EL PAYLOAD (para persistencia en BD)
+            // Las oportunidades fueron calculadas y sincronizadas antes
+            boletosOcultos: Array.isArray(ordenActual.boletosOcultos) ? ordenActual.boletosOcultos : []
         };
+        
+        console.log('[Orden-Formal] 📦 Payload construido con boletosOcultos:', {
+            cantidad: payload.boletosOcultos.length,
+            oportunidades: payload.boletosOcultos
+        });
 
         // VALIDACIÓN 6: Consistencia de precio
         const precioCalculado = boletosArray.length * payload.precioUnitario;
@@ -750,7 +863,9 @@ async function guardarOrden() {
         }
 
         // ENVÍO AL SERVIDOR CON TIMEOUT Y REINTENTOS
-        const apiBase = window.rifaplusConfig?.backend?.apiBase || 'http://localhost:5001';
+        const apiBase = window.rifaplusConfig?.backend?.apiBase
+            || window.rifaplusConfig?.obtenerApiBase?.()
+            || window.location.origin;
         const apiUrl = `${apiBase}/api/ordenes`;
         const maxReintentos = 3;
         let ultimoError = null;
@@ -821,7 +936,7 @@ async function guardarOrden() {
                         // Error 409 = Conflicto de boletos
                         console.log('⚠️  Error 409 - Conflicto detectado');
 
-                        // ✅ NUEVO: Manejo elegante de conflictos
+                        // ✅ Manejo elegante de conflictos - ÚNICA verificación
                         if (errorData.code === 'BOLETOS_CONFLICTO' && typeof window.ModalConflictoBoletos !== 'undefined') {
                             console.log('🔴 Mostrando modal de conflicto de boletos...');
                             
@@ -832,7 +947,7 @@ async function guardarOrden() {
                                 // Usuario quiere elegir otros boletos
                                 console.log('ℹ️  Usuario decidió elegir otros boletos');
                                 
-                                // ✅ NUEVO: Eliminar automáticamente los boletos conflictivos del carrito
+                                // Eliminar boletos conflictivos del carrito
                                 console.log('🗑️  Eliminando boletos conflictivos del carrito...');
                                 if (typeof window.removerBoletoSeleccionado === 'function') {
                                     errorData.boletosConflicto.forEach(boleto => {
@@ -857,156 +972,134 @@ async function guardarOrden() {
                                 // Usuario quiere continuar sin los boletos conflictivos
                                 console.log('✅ Usuario decidió continuar con boletos disponibles:', opcionUsuario.boletosSeleccionados);
                                 
-                                // Actualizar los boletos en la orden
+                                // Actualizar payload con boletos disponibles
                                 payload.boletos = opcionUsuario.boletosSeleccionados;
                                 boletosArray = opcionUsuario.boletosSeleccionados;
                                 
-                                // Recalcular totales
-                                const precioUnitarioActual = payload.precioUnitario || 100;
-                                const nuevoSubtotal = boletosArray.length * precioUnitarioActual;
-                                payload.cantidad_boletos = boletosArray.length;
-                                payload.totales = {
-                                    subtotal: nuevoSubtotal,
-                                    descuentoMonto: 0,
-                                    totalFinal: nuevoSubtotal
-                                };
+                                // 🔴 CRÍTICO: Limpiar localStorage de boletos para sincronizar UI
+                                localStorage.setItem('rifaplusSelectedNumbers', JSON.stringify(boletosArray));
                                 
-                                // ✅ SOLUCIÓN FINAL Y CORRECTA: 
-                                // Recalcular oportunidades SOLO para los boletos disponibles
-                                // Esto garantiza las oportunidades CORRECTAS sin importar qué esté en localStorage
-                                console.log('🎲 Filtrando oportunidades SOLO para boletos disponibles...');
-                                console.log('  📌 Boletos disponibles:', boletosArray);
-                                console.log('  📌 Boletos conflictivos eliminados:', errorData.boletosConflicto);
+                                // ✅ CRÍTICO: Recalcular oportunidades removiendo las de boletos conflictivos
+                                // Usar el array original de oportunidades que ya tenemos en memoria
+                                console.log('🗑️  Removiendo oportunidades de boletos conflictivos...');
+                                let oportunidadesFinales = [];
                                 
-                                const oportunidadesHabilitadas = window.rifaplusConfig?.rifa?.oportunidades?.enabled === true;
-                                if (oportunidadesHabilitadas) {
-                                    try {
-                                        // ✅ ESTRATEGIA: Las oportunidades YA fueron calculadas por carrito-global.js
-                                        // SOLO necesitamos filtrar las que corresponden a boletos disponibles
-                                        const oportunidadesGuardadas = localStorage.getItem('rifaplus_oportunidades');
-                                        if (oportunidadesGuardadas) {
-                                            const datosOpp = JSON.parse(oportunidadesGuardadas);
-                                            const boletosSet = new Set(boletosArray);
-                                            
-                                            // Filtrar oportunidades SOLO para boletos que están disponibles
-                                            const oportunidadesFiltradas = [];
-                                            if (datosOpp.oportunidadesPorBoleto) {
-                                                for (const boleto of boletosArray) {
-                                                    if (datosOpp.oportunidadesPorBoleto[boleto]) {
-                                                        oportunidadesFiltradas.push(...datosOpp.oportunidadesPorBoleto[boleto]);
-                                                    }
+                                try {
+                                    // Obtener oportunidades por boleto del localStorage (antes de limpiar)
+                                    const oportunidadesGuardadas = localStorage.getItem('rifaplus_oportunidades');
+                                    if (oportunidadesGuardadas) {
+                                        const datosOpp = JSON.parse(oportunidadesGuardadas);
+                                        
+                                        // Crear mapa de oportunidades por boleto ANTES de eliminar
+                                        const oportunidadesPorBoletoCopia = JSON.parse(JSON.stringify(datosOpp.oportunidadesPorBoleto || {}));
+                                        
+                                        // Reconstruir array SOLO con boletos que permanecen
+                                        if (oportunidadesPorBoletoCopia) {
+                                            boletosArray.forEach(boletoBueno => {
+                                                const oppsDelBoleto = oportunidadesPorBoletoCopia[boletoBueno];
+                                                if (Array.isArray(oppsDelBoleto)) {
+                                                    oportunidadesFinales.push(...oppsDelBoleto);
                                                 }
-                                            }
-                                            
-                                            payload.boletosOcultos = oportunidadesFiltradas;
-                                            console.log(`  ✅ Oportunidades filtradas: ${payload.boletosOcultos.length} para ${boletosArray.length} boletos`);
-                                            console.log(`  ✅ Oportunidades asignadas: [${payload.boletosOcultos.slice(0, 10).join(', ')}${payload.boletosOcultos.length > 10 ? '...' : ''}]`);
-                                        } else {
-                                            console.warn('⚠️  No hay oportunidades guardadas en localStorage');
-                                            payload.boletosOcultos = [];
+                                            });
                                         }
                                         
-                                    } catch (e) {
-                                        console.error('❌ Error al filtrar oportunidades:', e);
-                                        console.error('   Stack:', e.stack);
-                                        payload.boletosOcultos = [];
+                                        console.log('✅ Oportunidades recalculadas:', {
+                                            boletos: boletosArray.length,
+                                            oportunidades: oportunidadesFinales.length,
+                                            porBoleto: Math.round(oportunidadesFinales.length / boletosArray.length)
+                                        });
+                                        
+                                        // Ahora sí: remover oportunidades de boletos conflictivos del caché
+                                        if (datosOpp.oportunidadesPorBoleto) {
+                                            errorData.boletosConflicto.forEach(boletoCon => {
+                                                delete datosOpp.oportunidadesPorBoleto[boletoCon];
+                                                console.log(`  - Removida opps de boleto #${boletoCon}`);
+                                            });
+                                        }
+                                        
+                                        // Guardar caché actualizado
+                                        localStorage.setItem('rifaplus_oportunidades', JSON.stringify(datosOpp));
+                                        console.log('✅ Oportunidades de conflictivos removidas del caché');
+                                    } else {
+                                        // ✅ FALLBACK DINÁMICO: Calcular opps por boleto desde array original
+                                        if (Array.isArray(ordenActual.boletosOcultos)) {
+                                            const oppsActuales = ordenActual.boletosOcultos;
+                                            const boletosOriginales = payload.boletos.length + errorData.boletosConflicto.length;
+                                            
+                                            // Calcular dinámicamente: opps por boleto
+                                            const oppsPerBoleto = boletosOriginales > 0 
+                                                ? Math.round(oppsActuales.length / boletosOriginales)
+                                                : 0;
+                                            
+                                            // Tomar solo la cantidad correspondiente a boletos restantes
+                                            const oppsTargetCount = boletosArray.length * oppsPerBoleto;
+                                            oportunidadesFinales = oppsActuales.slice(0, oppsTargetCount);
+                                            
+                                            console.warn('⚠️  FALLBACK DINÁMICO usado:', {
+                                                boletosOriginales,
+                                                boletosRestantes: boletosArray.length,
+                                                oppsPerBoleto,
+                                                oppsActuales: oppsActuales.length,
+                                                oppsFinales: oportunidadesFinales.length
+                                            });
+                                        }
                                     }
-                                } else {
-                                    console.log('ℹ️  Oportunidades deshabilitadas en config');
-                                    payload.boletosOcultos = [];
+                                } catch (e) {
+                                    console.warn('⚠️  Error recalculando oportunidades:', e.message);
+                                    // Último recurso: usar array original sin filtro pero logged
+                                    if (Array.isArray(ordenActual.boletosOcultos)) {
+                                        oportunidadesFinales = ordenActual.boletosOcultos;
+                                        console.error('🔴 CRÍTICO: No se pudo recalcular, usando array original sin filtro');
+                                    }
                                 }
                                 
-                                // ✅ VALIDACIÓN DE INTEGRIDAD PRE-FLIGHT
-                                // Verificar que el payload es consistente antes de reintentar
-                                const validacionPayload = {
-                                    boletosArray: Array.isArray(payload.boletos),
-                                    boletosLength: payload.boletos?.length || 0,
-                                    oportunidadesArray: Array.isArray(payload.boletosOcultos),
-                                    oportunidadesLength: payload.boletosOcultos?.length || 0,
-                                    totalsCorrecto: payload.totales && payload.totales.totalFinal > 0,
-                                    precioValido: payload.precioUnitario > 0
-                                };
-
-                                const todasLasValidacionesPasan = Object.values(validacionPayload).every(v => v === true);
+                                // Actualizar payload y ordenActual con oportunidades correctas
+                                payload.boletosOcultos = oportunidadesFinales;
+                                ordenActual.boletosOcultos = oportunidadesFinales;
                                 
-                                console.log('📋 VALIDACIÓN DE INTEGRIDAD DEL PAYLOAD:', validacionPayload);
-                                console.log(`   ${todasLasValidacionesPasan ? '✅' : '❌'} Integridad: ${todasLasValidacionesPasan ? 'CORRECTA' : 'ERROR'}`);
-                                
-                                if (!todasLasValidacionesPasan) {
-                                    console.error('❌ PAYLOAD CORRUPTO DETECTADO:', {
-                                        boletos: payload.boletos,
-                                        boletosOcultos: payload.boletosOcultos,
-                                        totales: payload.totales
-                                    });
-                                    throw new Error('PAYLOAD_INTEGRITY_CHECK_FAILED');
-                                }
-
-                                console.log('📊 Estado FINAL del payload después de filtrado:', {
-                                    boletos: `${payload.boletos.length} boleto(s)`,
-                                    oportunidades: `${payload.boletosOcultos.length} oportunidad(es)`,
-                                    total: `$${payload.totales.totalFinal}`,
-                                    precioUnitario: payload.precioUnitario
+                                console.log('📌 Payload actualizado después de conflicto:', {
+                                    boletos: boletosArray.length,
+                                    oportunidades: oportunidadesFinales.length
                                 });
                                 
-                                // ✅ TODO CORRECTO: Reintentar con los nuevos boletos
-                                console.log('🔄 Reintentando POST con payload validado...');
+                                // Recalcular totales
+                                const precioUnitarioActual = payload.precioUnitario || 100;
+                                payload.cantidad_boletos = boletosArray.length;
+                                payload.totales = {
+                                    subtotal: boletosArray.length * precioUnitarioActual,
+                                    descuentoMonto: 0,
+                                    totalFinal: boletosArray.length * precioUnitarioActual
+                                };
+                                
+                                // ✅ VALIDACIÓN DE INTEGRIDAD
+                                const validacionPayload = {
+                                    boletos: Array.isArray(payload.boletos) && payload.boletos.length > 0,
+                                    totales: payload.totales
+                                        && Number.isFinite(Number(payload.totales.subtotal))
+                                        && Number(payload.totales.subtotal) > 0
+                                        && Number.isFinite(Number(payload.totales.totalFinal))
+                                        && Number(payload.totales.totalFinal) >= 0,
+                                    precio: payload.precioUnitario > 0
+                                };
+
+                                if (!Object.values(validacionPayload).every(v => v)) {
+                                    console.error('❌ Payload corrupto:', validacionPayload);
+                                    throw new Error('PAYLOAD_INTEGRITY_CHECK_FAILED');
+                                }
+                                
+                                console.log('🔄 Reintentando con boletos filtrados...');
                                 continue;
                             }
                         }
 
-                        // FALLBACK: Si no está disponible el modal, hacer verificación antigua
-                        console.log('⚠️  Modal no disponible, usando verificación antigua...');
-                        try {
-                            const pollController = new AbortController();
-                            const pollTimeoutId = setTimeout(() => pollController.abort(), 3000);
-                            
-                            // Obtener datos para búsqueda
-                            const nombreCliente = payload.cliente?.nombre || '';
-                            const whatsappCliente = payload.cliente?.whatsapp || '';
-                            const totalFinal = payload.totales?.totalFinal;
-                            const cantidadBoletos = payload.boletos?.length || 0;
-                            
-                            if (nombreCliente && whatsappCliente) {
-                                // Buscar órdenes recientes del cliente por nombre + whatsapp
-                                const searchUrl = `${apiBase}/api/ordenes/por-cliente/dummy?nombre=${encodeURIComponent(nombreCliente)}&whatsapp=${encodeURIComponent(whatsappCliente)}`;
-                                
-                                const checkResponse = await fetch(searchUrl, {
-                                    method: 'GET',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    credentials: 'omit',
-                                    signal: pollController.signal
-                                });
-                                
-                                clearTimeout(pollTimeoutId);
-                                
-                                if (checkResponse.ok) {
-                                    const ordenes = await checkResponse.json();
-                                    // Buscar orden MÁS RECIENTE con monto similar
-                                    if (Array.isArray(ordenes) && ordenes.length > 0) {
-                                        const ordenReciente = ordenes[0]; // Primera (más reciente)
-                                        
-                                        // Verificar que sea la misma orden (cantidad de boletos)
-                                        if (ordenReciente.cantidad_boletos === cantidadBoletos) {
-                                            console.log('✅ La orden SÍ se guardó (encontrada por cliente+cantidad)');
-                                            console.log('📋 Orden encontrada:', ordenReciente.numero_orden);
-                                            window.location.href = 'orden-confirmada.html';
-                                            return;
-                                        }
-                                    }
-                                }
-                            }
-                        } catch (checkError) {
-                            console.warn('⚠️  No se pudo verificar en error 409:', checkError.message);
-                            // No fallar por error de verificación, continuar con reintentos
-                        }
-                        
-                        // Si no se encontró la orden y hay conflicto de boletos específico
+                        // Sin modal: error directo del servidor
+                        console.warn('Modal de conflicto no disponible');
                         if (errorData.boletosConflicto) {
                             throw new Error(
-                                `❌ Estos boletos ya fueron comprados: ${errorData.boletosConflicto.join(', ')}. Selecciona otros.`
+                                `Boletos conflictivos: ${errorData.boletosConflicto.join(', ')}. Intenta otros.`
                             );
                         }
-                        throw new Error('Esta orden ya existe. Intenta con otra configuración.');
+                        throw new Error('Error 409: Conflicto al guardar de orden.');
                     }
                     if (response.status >= 400 && response.status < 500) {
                         throw new Error(`Error en los datos: ${mensajeError}`);
@@ -1031,6 +1124,19 @@ async function guardarOrden() {
                     throw new Error(respuestaExitosa.message || 'Respuesta no exitosa del servidor');
                 }
 
+                const totalesOficiales = respuestaExitosa?.data?.totales;
+                if (totalesOficiales) {
+                    payload.ordenId = respuestaExitosa?.data?.numero_orden || respuestaExitosa?.ordenId || payload.ordenId;
+                    payload.totales = {
+                        subtotal: Number(totalesOficiales.subtotal || 0),
+                        descuento: Number(totalesOficiales.descuento || 0),
+                        totalFinal: Number(totalesOficiales.totalFinal || 0),
+                        precioUnitario: Number(totalesOficiales.precioUnitario || payload.precioUnitario || 0)
+                    };
+                    payload.precioUnitario = Number(totalesOficiales.precioUnitario || payload.precioUnitario || 0);
+                    console.log('✅ Totales oficiales del servidor aplicados al cliente:', payload.totales);
+                }
+
                 // ⭐ OCULTAR LOADING INMEDIATAMENTE (cuando se crea exitosamente la orden)
                 const modalLoadingSuccess = document.getElementById('modalLoadingOrden');
                 if (modalLoadingSuccess) {
@@ -1052,13 +1158,11 @@ async function guardarOrden() {
                         console.warn('⚠️  No se pudo actualizar disponibilidad:', e?.message);
                     }
                 }
-                // GUARDAR EN LOCALSTORAGE (con fallback si quota se excede)
-                safeTrySetItem('rifaplus_orden_actual', JSON.stringify(ordenActual));
-                safeTrySetItem('rifaplus_orden_url', respuestaExitosa.url || '');
-                safeTrySetItem('rifaplus_orden_confirmada', 'true');
                 
-                // ✅ IMPORTANTE: Guardar DATOS FINALES de la orden (después de posibles filtrados por conflicto)
-                // Esto es lo que orden-confirmada.html mostrará al usuario
+                // ✅ CONSOLIDADO: Usar la función unificada limpiarCarritoCompletamente()
+                limpiarCarritoCompletamente();
+                
+                // GUARDAR DATOS FINALES de la orden para confirmación
                 const datosFinalesOrden = {
                     ordenId: payload.ordenId,
                     boletos: payload.boletos,
@@ -1066,69 +1170,35 @@ async function guardarOrden() {
                     cantidad_boletos: payload.cantidad_boletos,
                     totales: payload.totales,
                     cliente: payload.cliente,
-                    fecha: new Date().toISOString(),
-                    esResultadoDeConflicto: payload.boletos.length !== boletosArray.length ? false : undefined  // Solo si hubo cambio
+                    fecha: new Date().toISOString()
                 };
                 
-                // ✅ INTENTAR guardar en localStorage, pero con fallback si no hay espacio
-                safeTrySetItem('rifaplus_orden_final', JSON.stringify(datosFinalesOrden));
-                console.log('📦 Datos finales de la orden guardados para orden-confirmada:', datosFinalesOrden);
+                setItemSafeOrden('rifaplus_orden_final', JSON.stringify(datosFinalesOrden));
+                setItemSafeOrden('rifaplus_orden_confirmada', 'true');
+                setItemSafeOrden('rifaplus_orden_url', respuestaExitosa.url || '');
+                console.log('📦 Orden guardada para confirmación:', datosFinalesOrden);
                 
-                // ✅ IMPORTANTE: Actualizar TAMBIÉN rifaplus_oportunidades con los datos correctos filtrados
-                // Esto asegura que orden-confirmada.html y mis-boletos.html vean los datos correctos
-                safeTrySetItem('rifaplus_oportunidades', JSON.stringify({
-                    boletosOcultos: payload.boletosOcultos || [],
-                    boletosSeleccionados: payload.boletos || [],
-                    cantidad: (payload.boletosOcultos || []).length,
-                    oportunidadesPorBoleto: {} // Vacío porque ya no es necesario
-                }));
-                console.log('✅ localStorage rifaplus_oportunidades actualizado con datos filtrados:', payload.boletosOcultos);
-
-                // GUARDAR EN HISTORIAL
-                try {
-                    const ordenes = JSON.parse(localStorage.getItem('rifaplus_ordenes_admin') || '[]');
-                    ordenes.push({
-                        ...ordenActual,
-                        estado: 'pendiente',
-                        fecha: new Date().toISOString(),
-                        url_confirmacion: respuestaExitosa.url
+                // ⭐ MOSTRAR MODAL Y AUTO-REDIRIGIR A MIS BOLETOS
+                console.log('🚀 Mostrando modal de orden confirmada');
+                if (typeof mostrarModalOrdenConfirmada === 'function') {
+                    // ✅ Calcular oportunidades correctamente (suma total, no array length)
+                    const totalOportunidades = Array.isArray(datosFinalesOrden.boletosOcultos)
+                        ? datosFinalesOrden.boletosOcultos.length
+                        : 0;
+                    
+                    mostrarModalOrdenConfirmada({
+                        ordenId: datosFinalesOrden.ordenId,
+                        sorteo: window.rifaplusConfig?.rifa?.nombreSorteo || 'Sorteo',
+                        cliente: datosFinalesOrden.cliente,
+                        cantidad_boletos: datosFinalesOrden.cantidad_boletos || 0,
+                        oportunidades: totalOportunidades,
+                        totales: datosFinalesOrden.totales
                     });
-                    safeTrySetItem('rifaplus_ordenes_admin', JSON.stringify(ordenes));
-                } catch (e) {
-                    console.warn('⚠️  No se pudo guardar historial:', e?.message);
+                } else {
+                    // Fallback si el modal no está cargado
+                    console.warn('Modal no disponible, redirigiendo directamente');
+                    window.location.href = `mis-boletos.html?ordenId=${encodeURIComponent(datosFinalesOrden.ordenId)}&autoOpen=true`;
                 }
-
-                // LIMPIAR CARRITO
-                console.log('🧹 Limpiando carrito...');
-                localStorage.removeItem('rifaplusSelectedNumbers');
-                localStorage.removeItem('rifaplus_boletos');
-                localStorage.removeItem('rifaplus_cliente');
-                localStorage.removeItem('rifaplus_total');
-                
-                if (typeof selectedNumbersGlobal !== 'undefined' && selectedNumbersGlobal?.clear) {
-                    selectedNumbersGlobal.clear();
-                }
-                
-                // ACTUALIZAR UI
-                if (typeof actualizarVistaCarritoGlobal === 'function') {
-                    try { actualizarVistaCarritoGlobal(); } catch (e) { console.warn('Error actualizando vista:', e); }
-                }
-                if (typeof actualizarContadorCarritoGlobal === 'function') {
-                    try { actualizarContadorCarritoGlobal(); } catch (e) { console.warn('Error actualizando contador:', e); }
-                }
-                
-                // ⚡ LIMPIAR CACHÉ DE BOLETOS (importante para que cuando regrese a compra.html, vea datos frescos)
-                localStorage.removeItem('rifaplusBoletosCache');
-                localStorage.removeItem('rifaplusBoletosTimestamp');
-                
-                // Marcar que regresará a compra.html
-                safeTrySetItem('rifaplusOrdenEnviada', 'true');
-                
-                cerrarOrdenFormal();
-                
-                // ⭐ REDIRIGIR INMEDIATAMENTE (sin delay) - experiencia de usuario optimizada
-                console.log('🚀 Redirigiendo a orden-confirmada.html (INMEDIATAMENTE)');
-                window.location.href = 'orden-confirmada.html';
                 
                 return;  // ÉXITO - salir del loop de reintentos
 
@@ -1172,8 +1242,8 @@ async function guardarOrden() {
                                     if (ordenReciente.cantidad_boletos === cantidadBoletos) {
                                         console.log('✅ La orden SÍ se guardó en el servidor (encontrada después de timeout)');
                                         console.log('📋 Orden encontrada:', ordenReciente.numero_orden);
-                                        console.log('🚀 Redirigiendo a orden-confirmada.html');
-                                        window.location.href = 'orden-confirmada.html';
+                                        console.log('🚀 Redirigiendo a mis-boletos.html');
+                                        window.location.href = `mis-boletos.html?ordenId=${encodeURIComponent(ordenReciente.numero_orden)}&autoOpen=true`;
                                         return;
                                     }
                                 }
@@ -1183,8 +1253,10 @@ async function guardarOrden() {
                             // Si el polling falla, asumir que la orden SÍ se guardó
                             // porque llegó al último reintento con timeout
                             console.log('⚠️  Asumiendo que la orden se guardó porque llegó al timeout final');
-                            console.log('🚀 Redirigiendo a orden-confirmada.html');
-                            window.location.href = 'orden-confirmada.html';
+                            console.log('🚀 Redirigiendo a mis-boletos.html');
+                            // Usar última orden conocida para la redirección
+                            const ordenId = datosFinalesOrden?.numero_orden || payload?.cliente?.ordenId || 'unknown';
+                            window.location.href = `mis-boletos.html?ordenId=${encodeURIComponent(ordenId)}&autoOpen=true`;
                             return;
                         }
                     }
@@ -1196,8 +1268,13 @@ async function guardarOrden() {
                 }
 
                 if (intento < maxReintentos) {
-                    console.log(`⏳ Reintentando (${intento + 1}/${maxReintentos})...`);
-                    await new Promise(resolve => setTimeout(resolve, 2000 * intento));
+                    // ✅ Backoff exponencial con jitter para evitar thundering herd
+                    // Intento 1: ~1-2s, Intento 2: ~2-4s, Intento 3: ~4-8s
+                    const baseDelay = 1000 * Math.pow(2, intento - 1);
+                    const jitter = Math.random() * 1000; // 0-1s jitter
+                    const delayMs = baseDelay + jitter;
+                    console.log(`⏳ Reintentando (${intento + 1}/${maxReintentos})... esperando ${(delayMs/1000).toFixed(1)}s`);
+                    await new Promise(resolve => setTimeout(resolve, delayMs));
                     continue;
                 }
 

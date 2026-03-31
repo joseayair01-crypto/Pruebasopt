@@ -11,12 +11,14 @@
  */
 window.rifaplusOportunidadesDisponiblesReal = []; // DATOS FRESCOS DEL BACKEND
 window.rifaplusBoletosDatosActualizados = false;  // Flag de sincronización
-window.rifaplusOportunidadesLoaded = false;       // Flag de carga
+window.rifaplusOportunidadesLoaded = false;       // Flag de carga completada
+window.rifaplusOportunidadesLoading = false;      // Flag de carga en progreso (previene race conditions)
+window.rifaplusOportunidadesCargandoTimeout = null; // Timeout para resetear flag si se queda stuck
+window.rifaplusOportunidadesStartTime = null;    // Timestamp de inicio de carga (para timeout en flujo-compra.js)
 
 /**
- * 🔥 CRÍTICO: Cargar boletos públicos al iniciar index.html
- * Esto llena window.rifaplusSoldNumbers y window.rifaplusReservedNumbers
- * que se usan en actualizarBarraProgreso() para mostrar el progreso
+ * 🔥 CRÍTICO: Cargar resumen público al iniciar index.html
+ * Para sorteos grandes, evita bajar arrays completos innecesarios.
  */
 (async function cargarBoletosEnIndexHtml() {
     try {
@@ -27,7 +29,7 @@ window.rifaplusOportunidadesLoaded = false;       // Flag de carga
         
         console.debug('[main] Cargando boletos públicos para progreso bar...');
         
-        // 🎯 INTENTAR CON CACHÉ PRIMERO
+        // 🎯 CACHÉ OPTIMIZADO: Solo almacena resumen (50 bytes), no arrays (262 KB)
         const cacheKey = 'rifaplusBoletosCache';
         const cachedData = localStorage.getItem(cacheKey);
         
@@ -37,27 +39,30 @@ window.rifaplusOportunidadesLoaded = false;       // Flag de carga
                 const cacheAge = Date.now() - (cached.timestamp || 0);
                 
                 if (cacheAge < 300000) { // 5 minutos
-                    console.debug('[main] Usando caché de boletos (edad: ' + Math.round(cacheAge/1000) + 's)');
-                    window.rifaplusSoldNumbers = cached.sold || [];
-                    window.rifaplusReservedNumbers = cached.reserved || [];
+                    // Caché de resumen NO contiene arrays, solo contadores
+                    // Los arrays frescos se obtienen del backend
+                    console.debug('[main] Resumen caché (edad: ' + Math.round(cacheAge/1000) + 's): ' + cached.apartados + ' apartados');
                     window.rifaplusBoletosLoaded = true;
                     
-                    // 🔥 DISPARA EVENTO para que countdown.js actualice la barra
+                    // DISPARA EVENTO para que countdown.js actualice la barra
                     window.dispatchEvent(new CustomEvent('boletosListos', { detail: { origen: 'cache' } }));
-                    return; // ✅ Datos listos desde caché
+                    return; // Resumen listo
                 }
             } catch (e) {
-                console.warn('[main] Error parseando caché:', e.message);
+                console.warn('[main] Error parseando caché resumen:', e.message);
             }
         }
         
-        // 🎯 FALLBACK: Fetch desde backend
-        console.debug('[main] Fetch desde backend para boletos públicos...');
+        // 🎯 FETCH LIVIANO: Usar stats para no descargar arrays completos en el index
+        console.debug('[main] Fetch desde backend para resumen de boletos...');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-        
+        const timeoutId = setTimeout(() => {
+            controller.abort();
+            console.warn('[main] ⏱️ Timeout alcanzado (10s) - Abortando fetch de resumen de boletos');
+        }, 10000);
+
         try {
-            const response = await fetch(`${endpoint}/api/public/boletos`, {
+            const response = await fetch(`${endpoint}/api/public/boletos/stats`, {
                 signal: controller.signal,
                 cache: 'no-store',
                 headers: { 'Accept': 'application/json' }
@@ -66,7 +71,7 @@ window.rifaplusOportunidadesLoaded = false;       // Flag de carga
             clearTimeout(timeoutId);
             
             if (!response.ok) {
-                console.warn('[main] Error cargando boletos:', response.status);
+                console.warn('[main] Error cargando resumen de boletos:', response.status);
                 window.rifaplusSoldNumbers = [];
                 window.rifaplusReservedNumbers = [];
                 window.rifaplusBoletosLoaded = true;
@@ -75,104 +80,66 @@ window.rifaplusOportunidadesLoaded = false;       // Flag de carga
             }
             
             const json = await response.json();
-            const data = json.data || json;
-            const sold = Array.isArray(data.sold) ? data.sold : [];
-            const reserved = Array.isArray(data.reserved) ? data.reserved : [];
+            const data = json.data || {};
+            const vendidos = Number(data.vendidos) || 0;
+            const apartados = Number(data.apartados) || 0;
+            const disponibles = Number(data.disponibles) || 0;
             
-            window.rifaplusSoldNumbers = sold;
-            window.rifaplusReservedNumbers = reserved;
-            window.rifaplusBoletosLoaded = true;
-            
-            // Guardar en caché
-            localStorage.setItem(cacheKey, JSON.stringify({
-                sold: sold,
-                reserved: reserved,
-                timestamp: Date.now()
-            }));
-            
-            console.debug('[main] ✅ Boletos cargados:', { sold: sold.length, reserved: reserved.length });
-            
-            // 🔥 DISPARA EVENTO para que countdown.js actualice la barra
-            window.dispatchEvent(new CustomEvent('boletosListos', { detail: { origen: 'backend', sold: sold.length, reserved: reserved.length } }));
-        } catch (error) {
-            clearTimeout(timeoutId);
-            console.warn('[main] Error fetch boletos:', error.message);
             window.rifaplusSoldNumbers = [];
             window.rifaplusReservedNumbers = [];
             window.rifaplusBoletosLoaded = true;
-            window.dispatchEvent(new CustomEvent('boletosListos', { detail: { origen: 'error', message: error.message } }));
+
+            if (window.rifaplusConfig?.estado) {
+                window.rifaplusConfig.estado.boletosVendidos = vendidos;
+                window.rifaplusConfig.estado.boletosApartados = apartados;
+                window.rifaplusConfig.estado.boletosDisponibles = disponibles;
+            }
+            
+            // OPTIMIZADO: Guardar SOLO resumen (50 bytes) en lugar de arrays (262 KB)
+            try {
+                const totalBoletosActual = typeof window.rifaplusConfig?.obtenerTotalBoletos === 'function'
+                    ? window.rifaplusConfig.obtenerTotalBoletos()
+                    : Number(window.rifaplusConfig?.rifa?.totalBoletos || 0);
+                const cacheData = JSON.stringify({
+                    vendidos,
+                    apartados,
+                    disponibles: disponibles || Math.max(0, totalBoletosActual - vendidos - apartados),
+                    timestamp: Date.now()
+                });
+                
+                localStorage.setItem(cacheKey, cacheData);
+                console.debug('[main] Cache resumen guardado (' + (cacheData.length / 1024).toFixed(2) + 'KB)');
+            } catch (storageError) {
+                console.debug('[main] Caché resumen no guardado, pero datos del backend frescos');
+            }
+            
+            console.debug('[main] ✅ Resumen cargado:', { vendidos, apartados, disponibles });
+            
+            // 🔥 DISPARA EVENTO para que countdown.js actualice la barra
+            window.dispatchEvent(new CustomEvent('boletosListos', { detail: { origen: 'backend', sold: vendidos, reserved: apartados } }));
+        } catch (error) {
+            clearTimeout(timeoutId);
+            
+            // Checa si fue un timeout (AbortError)
+            const isTimeoutError = error.name === 'AbortError';
+            const errorMsg = isTimeoutError 
+                ? 'Timeout al cargar resumen de boletos (servidor lento)'
+                : error.message || 'Error desconocido';
+            
+            console.warn('[main] Error fetch boletos:', errorMsg, { 
+                isTimeout: isTimeoutError, 
+                errorName: error.name 
+            });
+            
+            window.rifaplusSoldNumbers = [];
+            window.rifaplusReservedNumbers = [];
+            window.rifaplusBoletosLoaded = true;
+            window.dispatchEvent(new CustomEvent('boletosListos', { detail: { origen: 'error', message: errorMsg } }));
         }
     } catch (error) {
         console.error('[main] Error en cargarBoletosEnIndexHtml:', error);
     }
 })();
-
-/**
- * 🔥 CRÍTICO: REMOVIDO - Usar solo cargarOportunidadesDisponiblesDelBackend()
- * La carga de oportunidades ahora sucede DIRECTAMENTE del backend en:
- * 1. compra.js:startCargarBoletosPublicosConIntentos() - carga inicial
- * 2. flujo-compra.js:DOMContentLoaded - carga inicial
- * 3. compra.js:iniciarActualizacionPeriodicaBoletos() - actualización cada 15s
- * 
- * ARQUITECTURA NUEVA (simplificada y más rápida):
- * - Cualquier página llamará cargarOportunidadesDisponiblesDelBackend()
- * - Datos frescos guardados en window.rifaplusOportunidadesDisponiblesReal
- * - JAMÁS se usa caché local (siempre datos frescos del backend)
- */
-
-/**
- * 🆕 Cargar oportunidades disponibles DIRECTAMENTE del backend (no del cache local)
- * ESTO ES LO QUE ASEGURA QUE SIEMPRE USAMOS DATOS FRESCOS DEL BACKEND
- * Similar a como boletos se cargan en Stage 1/Stage 2
- */
-async function cargarOportunidadesDisponiblesDelBackend() {
-    try {
-        const apiBase = (window.rifaplusConfig && window.rifaplusConfig.backend && window.rifaplusConfig.backend.apiBase) 
-            ? window.rifaplusConfig.backend.apiBase 
-            : 'http://localhost:5001';
-        const endpoint = String(apiBase).replace(/\/+$/, '');
-        
-        console.log('[main] 🔄 Cargando oportunidades FRESCAS del backend...');
-        
-        const response = await fetch(`${endpoint}/api/public/oportunidades/disponibles?t=${Date.now()}`, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
-            cache: 'no-store',
-            signal: AbortSignal.timeout(8000)
-        });
-        
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        
-        const data = await response.json();
-        
-        if (!data.success) {
-            console.warn('[main] ⚠️ Backend returned success:false:', data.message);
-            window.rifaplusOportunidadesDisponiblesReal = [];
-            return;
-        }
-        
-        // Guardar lista REAL del backend
-        window.rifaplusOportunidadesDisponiblesReal = data.disponibles || [];
-        
-        console.log(`✅ [main] Oportunidades FRESCAS del backend: ${window.rifaplusOportunidadesDisponiblesReal.length} disponibles`);
-        console.log(`[main] Rango oculto del backend: ${data.rango?.min}-${data.rango?.max}`);
-        
-        // Disparar evento
-        window.dispatchEvent(new CustomEvent('oportunidadesDisponiblesActualizadas', { 
-            detail: { 
-                cantidad: window.rifaplusOportunidadesDisponiblesReal.length,
-                momento: new Date().toISOString()
-            } 
-        }));
-        
-        return window.rifaplusOportunidadesDisponiblesReal;
-        
-    } catch (error) {
-        console.error('[main] ❌ Error cargando oportunidades del backend:', error.message);
-        window.rifaplusOportunidadesDisponiblesReal = [];
-        return [];
-    }
-}
 
 /**
  * ESTRUCTURA DE PROMOCIONES (PAQUETES FIJOS):
@@ -198,12 +165,13 @@ async function cargarOportunidadesDisponiblesDelBackend() {
 /**
  * Normalizar la fecha del sorteo a timestamp (milisegundos)
  * Maneja diferentes formatos y zonas horarias
+ * NOTA: Puede retornar sin hacer nada si la sincronización aún está en progreso
  */
 (function normalizarFechaSorteo() {
     try {
         const fechaSorteo = window.rifaplusConfig?.rifa?.fechaSorteo;
         if (!fechaSorteo) {
-            console.warn('⚠️ fechaSorteo no encontrada en config');
+            console.debug('⏳ fechaSorteo aún no sincronizada desde servidor');
             return;
         }
 
@@ -357,6 +325,18 @@ window.utilidadesRifaPlus = {
      * @returns {object} Desglose completo del precio
      */
     calcularPrecioConDescuento: function(cantidad, precioUnitario = null) {
+        if (typeof calcularTotalConPromociones === 'function') {
+            const resultado = calcularTotalConPromociones(cantidad, precioUnitario);
+            return {
+                cantidadBoletos: resultado.cantidadBoletos,
+                precioUnitario: resultado.precioUnitario,
+                subtotal: resultado.subtotal,
+                montoDescuento: resultado.descuentoMonto,
+                porcentajeDescuento: resultado.descuentoPorcentaje,
+                precioFinal: resultado.totalFinal
+            };
+        }
+
         if (!precioUnitario) {
             precioUnitario = (window.rifaplusConfig && window.rifaplusConfig.rifa && window.rifaplusConfig.rifa.precioBoleto) ? Number(window.rifaplusConfig.rifa.precioBoleto) : 50;
         }
@@ -447,7 +427,28 @@ window.rifaplusUtils = window.utilidadesRifaPlus;
  */
 function inyectarLogoDinamico() {
     try {
-        const logoConfig = window.rifaplusConfig?.cliente?.logo || 'images/logo.png';
+        const logoConfigCrudo = window.rifaplusConfig?.cliente?.logo || window.rifaplusConfig?.cliente?.logotipo || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='34' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ESaDev%3C/text%3E%3C/svg%3E";
+        let logoConfig = logoConfigCrudo;
+
+        try {
+            const cachedLogo = localStorage.getItem('rifaplus_cached_logo') || '';
+            if ((!logoConfig || logoConfig === 'images/placeholder-logo.svg') && cachedLogo && cachedLogo !== 'images/placeholder-logo.svg') {
+                logoConfig = cachedLogo;
+                if (window.rifaplusConfig?.cliente) {
+                    window.rifaplusConfig.cliente.logo = cachedLogo;
+                    window.rifaplusConfig.cliente.logotipo = cachedLogo;
+                }
+            }
+        } catch (error) {
+            // Continuar con logoConfig si localStorage no está disponible
+        }
+
+        try {
+            localStorage.setItem('rifaplus_cached_logo', logoConfig);
+            window.__RIFAPLUS_CACHED_LOGO__ = logoConfig;
+        } catch (error) {
+            console.warn('⚠️ No se pudo persistir el logo en localStorage:', error?.message || error);
+        }
         
         // Estrategia 1: Buscar imágenes con clases que indiquen logo
         const logoSelectors = [
@@ -465,8 +466,8 @@ function inyectarLogoDinamico() {
                 const oldSrc = img.src;
                 img.src = logoConfig;
                 img.onerror = function() {
-                    console.warn(`Logo no encontrado: ${logoConfig}. Usando fallback: images/logo.png`);
-                    this.src = 'images/logo.png';
+                    console.warn(`Logo no encontrado: ${logoConfig}. Usando fallback inline.`);
+                    this.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='34' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ESaDev%3C/text%3E%3C/svg%3E";
                 };
                 if (oldSrc !== logoConfig) {
                     console.debug(`✓ Logo actualizado: ${oldSrc.split('/').pop()} → ${logoConfig.split('/').pop()}`);
@@ -511,6 +512,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     inicializarCarrusel();       // Carrusel de imágenes
     inicializarCuentaRegresiva(); // Contador de tiempo del sorteo
+    
+    // Reiniciar countdown cuando se sincronice fecha desde servidor
+    if (window.rifaplusConfig?.escucharEvento) {
+        window.rifaplusConfig.escucharEvento('configuracionActualizada', (evento) => {
+            console.log('🔄 Reinicializando countdown por sincronización...', evento);
+            inicializarCuentaRegresiva();
+        });
+    }
+    
     inicializarFAQ();             // Acordeón de ayuda
     inicializarScrollSuave();     // Scroll suave hacia secciones
     inicializarAnimacionesScroll();// Animaciones al hacer scroll
@@ -540,7 +550,7 @@ function inicializarCarrusel() {
     const imagenes = window.rifaplusConfig?.rifa?.premios?.[0]?.imagenes || [];
     
     if (imagenes.length === 0) {
-        console.warn('⚠️ No hay imágenes configuradas en config.rifa.premios[0].imagenes');
+        console.debug('⏳ No hay imágenes de premios aún (sincronizando desde servidor)');
         return;
     }
 
@@ -682,10 +692,36 @@ function inicializarCuentaRegresiva() {
         window.intervaloConteoRegresivo = null;
     }
 
-    const elementoDias = document.getElementById('countdown-days');
-    const elementoHoras = document.getElementById('countdown-hours');
-    const elementoMinutos = document.getElementById('countdown-minutes');
-    const elementoSegundos = document.getElementById('countdown-seconds');
+    const contenedorCountdown = document.querySelector('.countdown-timer');
+    if (!contenedorCountdown) {
+        return;
+    }
+
+    if (!contenedorCountdown.dataset.originalMarkup) {
+        contenedorCountdown.dataset.originalMarkup = contenedorCountdown.innerHTML;
+    }
+
+    function restaurarCountdownSiFueReemplazado() {
+        if (contenedorCountdown.querySelector('.sorteo-terminado') && contenedorCountdown.dataset.originalMarkup) {
+            contenedorCountdown.innerHTML = contenedorCountdown.dataset.originalMarkup;
+        }
+    }
+
+    function obtenerElementosCountdown() {
+        return {
+            dias: document.getElementById('countdown-days'),
+            horas: document.getElementById('countdown-hours'),
+            minutos: document.getElementById('countdown-minutes'),
+            segundos: document.getElementById('countdown-seconds')
+        };
+    }
+
+    let {
+        dias: elementoDias,
+        horas: elementoHoras,
+        minutos: elementoMinutos,
+        segundos: elementoSegundos
+    } = obtenerElementosCountdown();
 
     // Verificar que existen los elementos (silencioso si no existen - página sin countdown)
     if (!elementoDias || !elementoHoras || !elementoMinutos || !elementoSegundos) {
@@ -701,6 +737,13 @@ function inicializarCuentaRegresiva() {
     // Validar la fecha del sorteo
     const validacion = window.rifaplusConfig.validarFechaSorteo();
     if (!validacion.valida) {
+        // Si está pendiente (sincronización en progreso), no lanzar error, simplemente esperar
+        if (validacion.pendiente) {
+            console.debug('⏳ [Countdown] Sincronizando fecha del sorteo desde servidor...');
+            // Reintentar en 1 segundo cuando la sincronización complete
+            setTimeout(() => inicializarCuentaRegresiva(), 1000);
+            return;
+        }
         console.error('❌ [Countdown] Fecha del sorteo inválida:', validacion.mensaje);
         return;
     }
@@ -728,6 +771,18 @@ function inicializarCuentaRegresiva() {
         const diferencia = timestampObjetivo - ahora;
 
         if (diferencia > 0) {
+            restaurarCountdownSiFueReemplazado();
+            ({
+                dias: elementoDias,
+                horas: elementoHoras,
+                minutos: elementoMinutos,
+                segundos: elementoSegundos
+            } = obtenerElementosCountdown());
+
+            if (!elementoDias || !elementoHoras || !elementoMinutos || !elementoSegundos) {
+                return;
+            }
+
             // Calcular unidades de tiempo
             const dias = Math.floor(diferencia / (1000 * 60 * 60 * 24));
             const horas = Math.floor((diferencia % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -753,7 +808,6 @@ function inicializarCuentaRegresiva() {
             elementoSegundos.textContent = '00';
 
             // Mostrar mensaje de sorteo completado
-            const contenedorCountdown = document.querySelector('.countdown-timer');
             if (contenedorCountdown && !contenedorCountdown.querySelector('.sorteo-terminado')) {
                 contenedorCountdown.innerHTML = `
                     <div class="sorteo-terminado" style="
@@ -1103,6 +1157,14 @@ if (typeof console === "undefined" || typeof console.log === "undefined") {
  * Actualiza los datos de boletos vendidos desde la API
  * @async
  */
+function aplicarVisibilidadProgressStats() {
+    const progressStats = document.querySelector('.progress-stats');
+    if (!progressStats) return;
+
+    const mostrarStats = window.rifaplusConfig?.rifa?.publicacion?.progressStats !== false;
+    progressStats.style.display = mostrarStats ? '' : 'none';
+}
+
 async function actualizarBarraProgreso() {
     try {
         const config = window.rifaplusConfig;
@@ -1110,12 +1172,16 @@ async function actualizarBarraProgreso() {
             console.warn('⚠️ Config no disponible');
             return;
         }
+
+        aplicarVisibilidadProgressStats();
         
         // 🎯 PASO 1: Determinar total y rango de boletos a mostrar
         // Si oportunidades está habilitada, usar SOLO el rango visible
         // Si no, usar el totalBoletos configurado
         const oportunidadesConfig = config.rifa?.oportunidades;
-        const totalBoletosConfiguracion = config.rifa?.totalBoletos || 10000;
+        const totalBoletosConfiguracion = typeof config?.obtenerTotalBoletos === 'function'
+            ? config.obtenerTotalBoletos()
+            : (config.rifa?.totalBoletos || 0);
         
         let totalParaMostrar = totalBoletosConfiguracion;
         let rangoVisible = null;
@@ -1127,6 +1193,11 @@ async function actualizarBarraProgreso() {
             console.debug('[main] Oportunidades enabled, usando rango visible:', rangoVisible, 'Total:', totalParaMostrar);
         } else {
             console.debug('[main] Oportunidades disabled, usando totalBoletos:', totalParaMostrar);
+        }
+
+        if (!Number.isFinite(totalParaMostrar) || totalParaMostrar <= 0) {
+            console.warn('⚠️ Total de boletos invalido para countdown-progress:', totalParaMostrar);
+            return;
         }
         
         // 🎯 PASO 2: Obtener datos de boletos (PRIMERO en memoria, LUEGO backend)
@@ -1243,8 +1314,8 @@ function actualizarInterfazProgreso(sold = [], reserved = [], totalParaMostrar =
     const elemPorcentaje = document.getElementById('porcentaje-vendido');
     const elemProgressFill = document.getElementById('progress-fill');
 
-    if (elemVendidos) elemVendidos.textContent = boletosVendidosParaMostrar;
-    if (elemRestantes) elemRestantes.textContent = boletosRestantes;
+    if (elemVendidos) elemVendidos.textContent = boletosVendidosParaMostrar.toLocaleString();
+    if (elemRestantes) elemRestantes.textContent = boletosRestantes.toLocaleString();
     if (elemPorcentaje) elemPorcentaje.textContent = `${porcentaje}%`;
 
     if (elemProgressFill) {
@@ -1281,13 +1352,15 @@ function actualizarInterfazProgreso(sold = [], reserved = [], totalParaMostrar =
  * Actualiza el total de boletos en la interfaz
  */
 function actualizarTotalBoletosEnUI() {
-    // DINÁMICO: Usar obtenerRangoMaximoBoletos para considerar oportunidades
-    const totalBoletos = window.rifaplusConfig?.obtenerRangoMaximoBoletos?.() || 10000;
+    const totalBoletos = window.rifaplusConfig?.obtenerTotalBoletos?.() || 10000;
     const elem = document.getElementById('total-boletos-info');
     if (elem) {
         elem.textContent = totalBoletos.toLocaleString();
     }
 }
+
+window.addEventListener('configSyncCompleto', aplicarVisibilidadProgressStats);
+window.addEventListener('configuracionActualizada', aplicarVisibilidadProgressStats);
 
 /**
  * Inicializa completamente el countdown y progreso
@@ -1295,8 +1368,24 @@ function actualizarTotalBoletosEnUI() {
 (function initializeCountdownConsolidated() {
     let intervalId = null;
     let ultimaActualizacionProgreso = 0; // Cooldown para evitar 429
+    let sincronizacionInicialCompletada = false;
+
+    async function asegurarConfigRealParaCountdown() {
+        if (sincronizacionInicialCompletada) return;
+        sincronizacionInicialCompletada = true;
+
+        if (window.rifaplusConfig?.sincronizarConfigDelBackend) {
+            try {
+                await window.rifaplusConfig.sincronizarConfigDelBackend({ force: true });
+            } catch (error) {
+                console.warn('⚠️ No se pudo sincronizar config antes de renderizar countdown-progress:', error.message);
+            }
+        }
+    }
     
-    function setupCountdown() {
+    async function setupCountdown() {
+        await asegurarConfigRealParaCountdown();
+
         if (document.getElementById('countdown-days') || document.getElementById('boletos-vendidos')) {
             actualizarTotalBoletosEnUI();
             
@@ -1319,6 +1408,13 @@ function actualizarTotalBoletosEnUI() {
         document.addEventListener('DOMContentLoaded', setupCountdown);
     } else {
         setupCountdown();
+    }
+
+    if (window.rifaplusConfig?.escucharEvento) {
+        window.rifaplusConfig.escucharEvento('configuracionActualizada', () => {
+            actualizarTotalBoletosEnUI();
+            actualizarBarraProgreso();
+        });
     }
     
     // OPTIMIZACIÓN: Cleanup - detener polling cuando usuario abandona la página

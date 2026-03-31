@@ -1,0 +1,46 @@
+{
+  "name": "rifaplus",
+  "version": "2.0.0",
+  "description": "Sistema profesional de rifas - Production Ready",
+  "private": true,
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "scripts": {
+    "test": "jest --coverage --maxWorkers=50%",
+    "test:watch": "jest --watch",
+    "test:unit": "jest --testPathPattern='\\.unit\\.test\\.js$'",
+    "test:integration": "jest --testPathPattern='\\.integration\\.test\\.js$'",
+    "test:e2e": "playwright test",
+    "test:coverage": "jest --coverage --coverageReporters=html",
+    "lint": "eslint js/ backend/ --fix",
+    "lint:check": "eslint js/ backend/",
+    "format": "prettier --write \"js/**/*.js\" \"backend/**/*.js\"",
+    "build": "node build/build.js",
+    "build:prod": "NODE_ENV=production node build/build.js",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "npm run build -- --watch",
+    "prod": "NODE_ENV=production node backend/server.js",
+    "health-check": "node scripts/health-check.js",
+    "migration:create": "knex migrate:make",
+    "migration:latest": "knex migrate:latest",
+    "migration:rollback": "knex migrate:rollback"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.22.0",
+    "@babel/preset-env": "^7.22.0",
+    "@sentry/node": "^7.44.0",
+    "babel-jest": "^29.5.0",
+    "concurrently": "^8.0.0",
+    "eslint": "^8.44.0",
+    "jest": "^29.5.0",
+    "jest-environment-jsdom": "^29.5.0",
+    "prettier": "^3.0.0",
+    "playwright": "^1.35.0"
+  }
+}

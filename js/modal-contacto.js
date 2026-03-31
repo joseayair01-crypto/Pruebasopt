@@ -8,6 +8,75 @@
  */
 
 /* ============================================================ */
+/* FUNCIONES DEFENSIVAS DE ALMACENAMIENTO                      */
+/* ============================================================ */
+
+/**
+ * 🛡️ FUNCIÓN DEFENSIVA: Guardar en storage de forma segura
+ * Intenta usar window.safeTrySetItem si está disponible
+ * Si no, usa localStorage directo como fallback
+ * NUNCA falla - siempre tiene un plan B
+ */
+function setItemSafeModal(key, value) {
+    try {
+        if (typeof window.safeTrySetItem === 'function') {
+            return window.safeTrySetItem(key, value);
+        } else {
+            // Fallback: localStorage directo
+            localStorage.setItem(key, value);
+            return true;
+        }
+    } catch (error) {
+        console.warn(`⚠️  [MODAL] Error guardando '${key}':`, error.message);
+        // Última opción: intentar en memoria
+        if (!window.StorageMemoryFallback) window.StorageMemoryFallback = {};
+        window.StorageMemoryFallback[key] = value;
+        return false;
+    }
+}
+
+/**
+ * 🛡️ FUNCIÓN DEFENSIVA: Leer desde storage de forma segura
+ * Intenta usar window.safeTryGetItem si está disponible
+ * Si no, usa localStorage directo como fallback
+ */
+function getItemSafeModal(key) {
+    try {
+        if (typeof window.safeTryGetItem === 'function') {
+            return window.safeTryGetItem(key);
+        } else {
+            // Fallback: localStorage directo
+            return localStorage.getItem(key);
+        }
+    } catch (error) {
+        console.warn(`⚠️  [MODAL] Error leyendo '${key}':`, error.message);
+        // Última opción: ver si está en memoria
+        if (window.StorageMemoryFallback && window.StorageMemoryFallback[key]) {
+            return window.StorageMemoryFallback[key];
+        }
+        return null;
+    }
+}
+
+/**
+ * 🛡️ FUNCIÓN DEFENSIVA: Remover del storage
+ */
+function removeItemSafeModal(key) {
+    try {
+        if (typeof window.safeTryRemoveItem === 'function') {
+            return window.safeTryRemoveItem(key);
+        } else {
+            localStorage.removeItem(key);
+            return true;
+        }
+    } catch (error) {
+        console.warn(`⚠️  [MODAL] Error removiendo '${key}':`, error.message);
+        if (window.StorageMemoryFallback) delete window.StorageMemoryFallback[key];
+        return false;
+    }
+}
+
+/* ============================================================ */
 /* SECCIÓN 1: FUNCIONES DE GESTIÓN DEL MODAL                   */
 /* ============================================================ */
 
@@ -127,111 +196,53 @@ function validarFormularioContacto() {
  * @returns {Promise<string>} ID de orden formateado (ej: SET-AA001, RET-AA001, etc.)
  */
 async function generarIdOrden() {
-    try {
-        // 1. Obtener prefijo dinámico desde config.js (usa getter automático)
-        const prefijo = window.rifaplusConfig?.cliente?.prefijoOrden || 'ORD';
-        
-        // Validación defensiva
-        if (!prefijo || prefijo.length === 0) {
-            console.warn('⚠️ Prefijo de orden inválido, usando fallback');
-            return `FALLBACK-${Date.now()}`;
-        }
-
-        // 2. Solicitar al backend el siguiente ID secuencial
-        const respuesta = await fetch(`${window.rifaplusConfig.backend.apiBase}/api/admin/order-counter/next`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cliente_id: window.rifaplusConfig.cliente.id })
-        });
-
-        if (!respuesta.ok) {
-            console.warn('⚠️ Backend no disponible para generar ID, usando localStorage');
-            return generarIdOrdenLocalStorage(prefijo);
-        }
-
-        const data = await respuesta.json();
-        if (data.success && data.orden_id) {
-            // IMPORTANTE: Reconstruir el ID con el prefijo dinámico actual
-            // El backend puede devolver un ID con un prefijo antiguo
-            // Ej: Backend devuelve "SY-AA004", pero prefijo actual es "RET"
-            // Resultado: "RET-AA004"
-            const ordenIdDelBackend = data.orden_id;
-            let ordenIdFinal = ordenIdDelBackend;
-            
-            // Extraer la secuencia del ID del backend (ej: "SY-AA004" → "AA004")
-            const secuenciaMatch = ordenIdDelBackend.match(/-(.+)$/);
-            if (secuenciaMatch) {
-                const secuencia = secuenciaMatch[1];
-                ordenIdFinal = `${prefijo}-${secuencia}`;
-                
-                // Log solo si hubo cambio de prefijo
-                if (!ordenIdDelBackend.startsWith(prefijo)) {
-                    console.log(`ℹ️  ID de orden actualizado a prefijo dinámico: ${ordenIdDelBackend} → ${ordenIdFinal}`);
-                }
-            }
-            
-            // Guardar en localStorage como respaldo
-            guardarIdEnLocalStorage(ordenIdFinal);
-            
-            // CRÍTICO: Guardar el ID actualizado en el cliente también
-            // Esto asegura que cuando se abre el modal, tenga el prefijo correcto
-            const cliente = JSON.parse(localStorage.getItem('rifaplus_cliente') || '{}');
-            cliente.ordenId = ordenIdFinal;
-            localStorage.setItem('rifaplus_cliente', JSON.stringify(cliente));
-            
-            return ordenIdFinal;
-        } else {
-            console.warn('⚠️ Error en respuesta del servidor:', data.message);
-            const prefijo = window.rifaplusConfig?.cliente?.prefijoOrden || 'ORD';
-            const ordenIdFinal = generarIdOrdenLocalStorage(prefijo);
-            
-            // Guardar el ID en el cliente
-            const cliente = JSON.parse(localStorage.getItem('rifaplus_cliente') || '{}');
-            cliente.ordenId = ordenIdFinal;
-            localStorage.setItem('rifaplus_cliente', JSON.stringify(cliente));
-            
-            return ordenIdFinal;
-        }
-
-    } catch (error) {
-        console.error('❌ Error generando ID:', error);
-        // Fallback: generar localmente si el backend falla (usa prefijo dinámico de config)
-        const prefijo = window.rifaplusConfig?.cliente?.prefijoOrden || 'ORD';
-        const ordenIdFinal = generarIdOrdenLocalStorage(prefijo);
-        
-        // Guardar el ID en el cliente también (CRÍTICO)
-        const cliente = JSON.parse(localStorage.getItem('rifaplus_cliente') || '{}');
-        cliente.ordenId = ordenIdFinal;
-        localStorage.setItem('rifaplus_cliente', JSON.stringify(cliente));
-        
-        return ordenIdFinal;
+    const config = window.rifaplusConfig;
+    if (!config?.backend?.apiBase) {
+        throw new Error('BACKEND_API_BASE_UNAVAILABLE');
     }
+
+    let clienteId = String(config?.cliente?.id || '').trim();
+
+    if ((!clienteId || !config?.cliente?.prefijoOrden) && typeof config?.sincronizarConfigDelBackend === 'function') {
+        try {
+            await config.sincronizarConfigDelBackend({ force: true });
+            clienteId = String(config?.cliente?.id || '').trim();
+        } catch (syncError) {
+            console.warn('⚠️ [Modal-Contacto] No se pudo sincronizar config antes de generar orden:', syncError?.message || syncError);
+        }
+    }
+
+    const respuesta = await fetch(`${config.backend.apiBase}/api/public/order-counter/next`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cliente_id: clienteId || null })
+    });
+
+    if (!respuesta.ok) {
+        throw new Error(`ORDER_COUNTER_HTTP_${respuesta.status}`);
+    }
+
+    const data = await respuesta.json();
+    const ordenIdFinal = String(data?.orden_id || '').trim().toUpperCase();
+
+    if (!data?.success || !config?.esOrdenIdOficial?.(ordenIdFinal) || !config?.ordenIdTienePrefijoActual?.(ordenIdFinal)) {
+        throw new Error(`ORDER_COUNTER_INVALID_RESPONSE:${ordenIdFinal || 'EMPTY'}`);
+    }
+
+    guardarIdEnLocalStorage(ordenIdFinal);
+
+    const cliente = JSON.parse(localStorage.getItem('rifaplus_cliente') || '{}');
+    cliente.ordenId = ordenIdFinal;
+    localStorage.setItem('rifaplus_cliente', JSON.stringify(cliente));
+
+    return ordenIdFinal;
 }
 
-/**
- * generarIdOrdenLocalStorage - Genera ID localmente como fallback
- * IMPORTANTE: Este fallback solo debería usarse si el backend está completamente caído
- * Para evitar conflictos, usa un timestamp y UUID parcial
- * @param {string} prefijo - Prefijo dinámico (ej: "SY")
- * @returns {string} ID de orden formateado
- */
-function generarIdOrdenLocalStorage(prefijo) {
-    // En lugar de un contador simple que puede causar conflictos,
-    // usar una combinación de timestamp + random para garantizar unicidad
-    // Formato: SY-TS[timestamp][random]
-    // Esto previene conflictos incluso si el fallback se usa múltiples veces
-    
-    const ahora = Date.now();
-    const random = Math.floor(Math.random() * 100000);
-    const numeroUnico = String(ahora + random).slice(-3); // Últimos 3 dígitos
-    const secuencia = String(Math.floor((ahora + random) / 1000) % 676).toString(26).toUpperCase().padStart(2, '0');
-    
-    const id = `${prefijo}-${secuencia}${numeroUnico}`;
-    
-    console.warn(`⚠️ Usando fallback localStorage para ID: ${id}`);
-    console.warn(`⚠️ ADVERTENCIA: Backend no disponible. El servidor puede rechazar esta orden si el ID ya existe.`);
-    
-    return id;
+// Exponer explícitamente el generador para otros flujos (compra/orden formal).
+// No depender de que el navegador eleve implícitamente la función al objeto window.
+window.generarIdOrden = generarIdOrden;
+if (window.rifaplusConfig) {
+    window.rifaplusConfig.generarIdOrden = generarIdOrden;
 }
 
 /**
@@ -283,7 +294,7 @@ function guardarIdEnLocalStorage(orderId) {
         if (used.length > 10000) {
             used = used.slice(-10000);
         }
-        safeTrySetItem(usedKey, JSON.stringify(used));
+        setItemSafeModal(usedKey, JSON.stringify(used));
     }
 }
 
@@ -301,7 +312,7 @@ function guardarIdEnLocalStorage(orderId) {
  * @returns {Promise<Object>} Objeto con datos guardados
  */
 async function guardarClienteEnStorage(nombre, apellidos, whatsapp, estado, ciudad) {
-    // Generar ID único (ahora es async)
+    // Generar ID único oficial (ahora es async)
     const ordenId = await generarIdOrden();
     
     const clienteData = {
@@ -314,7 +325,7 @@ async function guardarClienteEnStorage(nombre, apellidos, whatsapp, estado, ciud
         fecha: new Date().toISOString()
     };
     
-    safeTrySetItem('rifaplus_cliente', JSON.stringify(clienteData));
+    setItemSafeModal('rifaplus_cliente', JSON.stringify(clienteData));
     
     return clienteData;
 }
@@ -328,6 +339,29 @@ function obtenerClienteDelStorage() {
     return data ? JSON.parse(data) : null;
 }
 
+function limpiarOrdenIdObsoletoDelStorage() {
+    try {
+        const raw = localStorage.getItem('rifaplus_cliente');
+        if (!raw) return;
+
+        const cliente = JSON.parse(raw);
+        const ordenId = String(cliente?.ordenId || '').trim().toUpperCase();
+        const config = window.rifaplusConfig;
+
+        if (!ordenId || !config?.esOrdenIdOficial || !config?.ordenIdTienePrefijoActual) {
+            return;
+        }
+
+        if (!config.esOrdenIdOficial(ordenId) || !config.ordenIdTienePrefijoActual(ordenId)) {
+            delete cliente.ordenId;
+            localStorage.setItem('rifaplus_cliente', JSON.stringify(cliente));
+            console.log('🧹 [Modal-Contacto] Orden ID obsoleto eliminado del storage:', ordenId);
+        }
+    } catch (error) {
+        console.warn('⚠️ [Modal-Contacto] No se pudo limpiar ordenId obsoleto:', error?.message || error);
+    }
+}
+
 /**
  * guardarBoletoSeleccionadosEnStorage - Guarda boletos seleccionados en localStorage
  * @returns {void}
@@ -336,16 +370,30 @@ function guardarBoletoSeleccionadosEnStorage() {
     try {
         // Guardar números seleccionados para que aparezcan en la orden
         const boletos = Array.from(selectedNumbersGlobal);
-        safeTrySetItem('rifaplus_boletos', JSON.stringify(boletos));
+        
+        // ✅ VALIDACIÓN CORRECTA: Validar retorno para saber si está persistido
+        const saveResult = setItemSafeModal('rifaplus_boletos', JSON.stringify(boletos));
+        
+        if (saveResult === true) {
+            console.log(`✅ [MODAL] Boletos guardados en localStorage (${boletos.length} items)`);
+        } else if (saveResult === false) {
+            console.warn(`⚠️  [MODAL] Boletos guardados en MEMORIA (no persistente)`);
+        } else if (saveResult && saveResult.persisted !== undefined) {
+            if (saveResult.persisted) {
+                console.log(`✅ [MODAL] Boletos guardados en ${saveResult.location}`);
+            } else {
+                console.warn(`⚠️  [MODAL] Boletos guardados en MEMORIA (se pierde en reload)`);
+            }
+        }
     } catch (e) {
         console.error('❌ Error preparando boletos para storage:', e);
     }
-    
-    // ✅ NOTA: Las oportunidades YA fueron calculadas por carrito-global.js
-    // y están guardadas en localStorage 'rifaplus_oportunidades'
-    // NO recalcular aquí para evitar duplicados o conflictos
-    // El siguiente paso es flujo-compra.js que las recupera de localStorage
 }
+
+// ✅ NOTA: Las oportunidades YA fueron calculadas por carrito-global.js
+// y están guardadas en localStorage 'rifaplus_oportunidades'
+// NO recalcular aquí para evitar duplicados o conflictos
+// El siguiente paso es flujo-compra.js que las recupera de localStorage
 
 /* ============================================================ */
 /* SECCIÓN 5: INICIALIZACIÓN Y EVENT LISTENERS                */
@@ -355,6 +403,8 @@ function guardarBoletoSeleccionadosEnStorage() {
  * Configura todos los event listeners del modal de contacto
  */
 document.addEventListener('DOMContentLoaded', function() {
+    limpiarOrdenIdObsoletoDelStorage();
+
     const btnCancelarContacto = document.getElementById('btnCancelarContacto');
     const btnContinuarContacto = document.getElementById('btnContinuarContacto');
     const closeContacto = document.getElementById('closeContacto');
@@ -428,7 +478,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 const ciudad = document.getElementById('clienteCiudad') ? document.getElementById('clienteCiudad').value.trim() : '';
 
                 // Guardar en storage (ahora es async)
-                await guardarClienteEnStorage(nombre, apellidos, whatsapp, estado, ciudad);
+                try {
+                    await guardarClienteEnStorage(nombre, apellidos, whatsapp, estado, ciudad);
+                } catch (error) {
+                    console.error('❌ [Modal-Contacto] No se pudo generar un numero de orden oficial:', error);
+                    rifaplusUtils.showFeedback('❌ No se pudo obtener un numero de orden oficial. Intenta de nuevo.', 'error');
+                    return;
+                }
                 guardarBoletoSeleccionadosEnStorage();
                 
                 // Si estamos en flujo de pago en compra.html, llamar al callback

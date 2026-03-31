@@ -3,203 +3,240 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verificar Mis Boletos - SORTEOS YEPE</title>
+    <title>Mis Boletos - Acceso Restringido</title>
     <link rel="stylesheet" href="css/styles.css?v=20251228.15">
+    <link rel="stylesheet" href="css/modal-contacto.css?v=20251221.09">
+    <link rel="stylesheet" href="css/orden.css?v=20251221.09">
+    <link rel="stylesheet" href="css/orden-formal.css?v=20251221.09">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="js/config.js?v=1766990666"></script>
-    <script src="js/theme-dynamic.js"></script>
+    <script src="js/config-sync.js"></script>
     <script src="js/theme-loader.js?v=20251220.2"></script>
+    <script src="js/theme-dynamic.js"></script>
     <style>
-        /* ===== PÁGINA RESTRINGIDA MIS BOLETOS ===== */
         body.sorteo-finalizado-restricted {
-            margin: 0;
-            padding: 0;
-            background: linear-gradient(135deg, #f8f9fa 0%, #f0f0f0 100%);
             overflow-x: hidden;
         }
 
-        .restricted-container {
-            min-height: 100vh;
+        body.sorteo-finalizado-restricted .header,
+        body.sorteo-finalizado-restricted .overlay-menu,
+        body.sorteo-finalizado-restricted #carritoNav {
+            pointer-events: none;
+        }
+
+        body.sorteo-finalizado-restricted .nav-link,
+        body.sorteo-finalizado-restricted .overlay-link,
+        body.sorteo-finalizado-restricted .hamburger,
+        body.sorteo-finalizado-restricted #carritoNav {
+            opacity: 0.42;
+            filter: grayscale(0.35);
+        }
+
+        .modo-restringido-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            background: linear-gradient(135deg, rgba(15, 58, 125, 0.08) 0%, rgba(27, 95, 184, 0.12) 100%);
+            border: 1px solid rgba(15, 58, 125, 0.15);
+            border-radius: 18px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .modo-restringido-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(15, 58, 125, 0.12);
+            color: var(--primary, #0F3A7D);
+            padding: 0.45rem 0.8rem;
+            border-radius: 999px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            margin-bottom: 0.7rem;
+        }
+
+        .modo-restringido-title {
+            margin: 0;
+            color: var(--text-dark, #1F2937);
+            font-size: 1.05rem;
+            font-weight: 800;
+        }
+
+        .modo-restringido-subtitle {
+            margin: 0.35rem 0 0;
+            color: var(--text-light, #6B7280);
+            line-height: 1.55;
+            font-size: 0.94rem;
+        }
+
+        .btn-volver-index {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.95rem 1.3rem;
+            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(15, 58, 125, 0.1) 0%, rgba(27, 95, 184, 0.16) 100%);
+            color: var(--primary, #0F3A7D);
+            border: 1px solid rgba(15, 58, 125, 0.2);
+            font-weight: 800;
+            box-shadow: 0 12px 28px rgba(15, 58, 125, 0.14);
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .btn-volver-index:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 34px rgba(15, 58, 125, 0.18);
+        }
+
+        .mis-boletos-section {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .busqueda-destacada {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 3rem 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 20px 60px rgba(15, 58, 125, 0.25);
+            margin-bottom: 3rem;
+            animation: slideDown 0.6s ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .busqueda-destacada::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 300px;
+            height: 300px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .busqueda-form {
+            position: relative;
+            z-index: 2;
+        }
+
+        .busqueda-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .busqueda-titulo {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin: 0 0 0.75rem 0;
+            color: white;
+            letter-spacing: -0.5px;
+        }
+
+        .busqueda-subtitulo {
+            font-size: 1.05rem;
+            color: rgba(255, 255, 255, 0.95);
+            margin: 0;
+            line-height: 1.6;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .busqueda-input-group {
             display: flex;
             flex-direction: column;
-            align-items: center;
+            gap: 1rem;
             justify-content: center;
-            padding: 20px;
+            align-items: center;
+            max-width: 100%;
+            margin-bottom: 1rem;
+            height: fit-content;
         }
 
-        .restricted-header {
+        .busqueda-input {
+            width: 100% !important;
+            max-width: 600px !important;
+            padding: 0.3rem 1.25rem !important;
+            border: 2px solid rgba(255, 255, 255, 0.3) !important;
+            border-radius: 0.5rem !important;
+            font-size: 1rem !important;
+            font-family: 'Inter', sans-serif !important;
+            transition: all 200ms ease !important;
+            background: rgba(255, 255, 255, 0.98) !important;
+            color: var(--text-dark) !important;
+            box-sizing: border-box !important;
+            height: 2.2rem !important;
+            min-height: 2.2rem !important;
+            flex: none !important;
+            display: block !important;
+        }
+
+        .busqueda-input:hover {
+            border-color: rgba(255, 255, 255, 0.5) !important;
+            background: white !important;
+        }
+
+        .busqueda-input:focus {
+            outline: none !important;
+            border-color: white !important;
+            background: white !important;
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.15) !important;
+            transform: none !important;
+        }
+
+        .busqueda-input::placeholder {
+            color: #9CA3AF !important;
+            font-size: 1rem !important;
+        }
+
+        .btn-buscar {
+            background: linear-gradient(135deg, var(--secondary, #e8553b) 0%, var(--secondary-dark, #D64520) 100%) !important;
+            color: #ffffff !important;
+            border: none !important;
+            padding: 0.25rem 2rem !important;
+            font-size: 0.95rem !important;
+            font-weight: 600 !important;
+            height: 1.8rem !important;
+            min-height: 1.8rem !important;
+            white-space: nowrap !important;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15) !important;
+            flex: none !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 0.5rem !important;
+        }
+
+        .btn-buscar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2) !important;
+        }
+
+        .busqueda-hint {
             text-align: center;
-            margin-bottom: 30px;
-            width: 100%;
-            max-width: 600px;
-        }
-
-        .restricted-logo {
-            width: 120px;
-            height: auto;
-            margin-bottom: 20px;
-        }
-
-        .restricted-titulo {
-            font-size: 2rem;
-            color: #0F3A7D;
-            margin: 0 0 10px 0;
-            font-weight: 700;
-        }
-
-        .restricted-subtitulo {
-            color: #6B7280;
-            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 0.9rem;
             margin: 0;
         }
 
-        .restricted-content {
-            background: white;
-            border-radius: 12px;
-            padding: 40px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 600px;
-        }
-
-        .verificacion-seccion {
-            margin-bottom: 30px;
-        }
-
-        .seccion-titulo {
-            font-size: 1.2rem;
-            color: #1F2937;
-            margin: 0 0 20px 0;
-            font-weight: 600;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #e5e7eb;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: #1F2937;
-            font-weight: 500;
-        }
-
-        .form-group input,
-        .form-group select {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: border-color 0.2s;
-            box-sizing: border-box;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: #0F3A7D;
-            box-shadow: 0 0 0 3px rgba(15, 58, 125, 0.1);
-        }
-
-        .form-actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 30px;
-        }
-
-        .btn-verificar-restricted {
-            flex: 1;
-            padding: 12px 24px;
-            background: linear-gradient(135deg, #0F3A7D 0%, #1B5FB8 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .btn-verificar-restricted:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(15, 58, 125, 0.3);
-        }
-
-        .btn-verificar-restricted:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .btn-volver {
-            padding: 12px 24px;
-            background: white;
-            color: #0F3A7D;
-            border: 2px solid #0F3A7D;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .btn-volver:hover {
-            background: #0F3A7D;
-            color: white;
-        }
-
-        .resultado {
-            margin-top: 30px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            border-left: 4px solid #0F3A7D;
-        }
-
-        .resultado.ganador {
-            background: #d1fae5;
-            border-left-color: #10B981;
-        }
-
-        .resultado.no-ganador {
-            background: #fee2e2;
-            border-left-color: #EF4444;
-        }
-
-        .resultado-titulo {
-            font-size: 1.2rem;
-            font-weight: 700;
-            margin: 0 0 10px 0;
-        }
-
-        .resultado.ganador .resultado-titulo {
-            color: #059669;
-        }
-
-        .resultado.no-ganador .resultado-titulo {
-            color: #DC2626;
-        }
-
-        .resultado-contenido {
-            color: #1F2937;
+        .restricted-note {
+            margin-top: 1.25rem;
+            padding: 1rem 1.1rem;
+            border-radius: 16px;
+            background: rgba(15, 58, 125, 0.04);
+            border: 1px solid rgba(15, 58, 125, 0.08);
+            color: var(--text-light, #6B7280);
             line-height: 1.6;
+            text-align: center;
         }
 
-        .resultado-item {
-            margin: 10px 0;
-        }
-
-        .resultado-label {
-            font-weight: 600;
-            color: #6B7280;
-        }
-
-        .resultado-valor {
-            color: #1F2937;
-            margin-left: 10px;
+        .restricted-note strong {
+            color: var(--text-dark, #1F2937);
         }
 
         .alerta {
@@ -225,139 +262,653 @@
             border: 1px solid #a7f3d0;
         }
 
-        .loading {
-            display: none;
-            text-align: center;
-            margin: 20px 0;
+        .orden-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+            overflow: hidden;
+            transition: box-shadow var(--transition-fast), transform var(--transition-fast), border-color var(--transition-fast);
+            display: flex;
+            flex-direction: column;
         }
 
-        .loading.show {
+        .orden-card:hover {
+            box-shadow: 0 18px 42px rgba(15, 23, 42, 0.12);
+            border-color: rgba(15, 58, 125, 0.18);
+        }
+
+        .orden-header-top {
+            background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+            padding: 0.78rem 0.92rem;
+            border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .orden-header-top-left {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            flex-wrap: wrap;
+        }
+
+        .orden-header-top-left img {
+            width: 42px;
+            height: 42px;
+            object-fit: contain;
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            background: white;
+            flex-shrink: 0;
             display: block;
         }
 
-        .spinner {
-            border: 4px solid #f0f0f0;
-            border-top: 4px solid #0F3A7D;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
+        .orden-header-top-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0.25rem;
+            max-width: 180px;
+            flex-shrink: 0;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .restricted-footer {
-            margin-top: 30px;
-            text-align: center;
-            color: #6B7280;
+        .orden-id-numero {
+            font-weight: 700;
+            color: var(--text-dark);
             font-size: 0.9rem;
+            word-break: break-word;
+            white-space: normal;
+            text-align: right;
+            letter-spacing: 0.2px;
         }
 
-        .modo-restringido-badge {
-            display: inline-block;
-            background: #FCD34D;
-            color: #856404;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-bottom: 20px;
-            text-align: center;
+        .orden-fecha-hora {
+            font-size: 0.74rem;
+            color: var(--text-light);
+            word-break: break-word;
+            white-space: normal;
+            text-align: right;
+            line-height: 1.35;
+        }
+
+        .orden-imagen-principal {
             width: 100%;
-            box-sizing: border-box;
+            background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            overflow: hidden;
+            position: relative;
+            min-height: 180px;
+        }
+
+        .orden-imagen-principal-titulo {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            text-align: center;
+            padding: 0.48rem 0.78rem;
+            line-height: 1.2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.92);
+            border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+            z-index: 2;
+        }
+
+        .orden-imagen-principal img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 0.5rem 0.75rem 0.65rem;
+            background: transparent;
+            display: block;
+            max-height: 220px;
+        }
+
+        .orden-imagen-principal-fecha {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.3rem;
+            padding: 0.44rem 0.7rem;
+            background: rgba(255, 255, 255, 0.92);
+            border-top: 1px solid rgba(15, 23, 42, 0.08);
+            font-size: 0.76rem;
+            line-height: 1.2;
+            text-align: center;
+            color: var(--text-dark);
+        }
+
+        .orden-imagen-principal-fecha strong {
+            color: var(--primary);
+            font-weight: 800;
+        }
+
+        .orden-body {
+            padding: 0.82rem 0.9rem;
+            background: linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%);
+        }
+
+        .orden-card.orden-card--ticket {
+            position: relative;
+            border: 1px solid #d8cfba;
+            border-radius: 1.15rem;
+            background: linear-gradient(180deg, #fffef9 0%, #fffaf0 100%);
+            box-shadow: 0 22px 44px rgba(33, 35, 38, 0.12);
+            overflow: hidden;
+        }
+
+        .orden-card.orden-card--ticket::before,
+        .orden-card.orden-card--ticket::after {
+            content: '';
+            position: absolute;
+            top: 57%;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #f7f8fb;
+            border: 1px solid #d8cfba;
+            z-index: 2;
+        }
+
+        .orden-card.orden-card--ticket::before {
+            left: -11px;
+        }
+
+        .orden-card.orden-card--ticket::after {
+            right: -11px;
+        }
+
+        .orden-card.orden-card--ticket .orden-seccion {
+            background: transparent;
+            border: 0;
+            border-radius: 0;
+            padding: 0.95rem 0;
+            margin-bottom: 0;
+        }
+
+        .orden-card.orden-card--ticket .orden-seccion + .orden-seccion {
+            margin-top: 0;
+            border-top: 1px dashed rgba(53, 82, 109, 0.16);
+        }
+
+        .orden-card.orden-card--ticket .orden-seccion-titulo {
+            font-size: 0.79rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #47627b;
+            margin-bottom: 0.72rem;
+            padding-bottom: 0;
+            border-bottom: 0;
+        }
+
+        .orden-card.orden-card--ticket .orden-info {
+            grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+            gap: 0.72rem 1rem;
+            margin-bottom: 0;
+        }
+
+        .orden-card.orden-card--ticket .orden-info-item {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.14rem;
+            min-width: 0;
+            background: transparent;
+            border: 0;
+            border-radius: 0;
+            padding: 0;
+        }
+
+        .orden-card.orden-card--ticket .orden-info-label {
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #77889a;
+            white-space: normal;
+        }
+
+        .orden-card.orden-card--ticket .orden-info-value {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #17324a;
+            word-break: break-word;
+        }
+
+        .orden-card.orden-card--ticket .orden-info-label::after {
+            content: none;
+        }
+
+        .orden-card.orden-card--ticket .orden-info-item[data-separator="true"] {
+            margin-top: 0.1rem;
+            padding-top: 0.8rem;
+            border-top: 1px dashed rgba(53, 82, 109, 0.16);
+        }
+
+        .orden-card.orden-card--ticket .orden-info-item-total {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, rgba(18, 50, 75, 0.06) 0%, rgba(111, 159, 200, 0.12) 100%);
+            border: 1px solid rgba(18, 50, 75, 0.1);
+            border-radius: 1rem;
+            padding: 0.82rem 0.95rem;
+        }
+
+        .orden-card.orden-card--ticket .orden-info-item-total.promocion {
+            background: linear-gradient(135deg, rgba(95, 123, 105, 0.12) 0%, rgba(95, 123, 105, 0.05) 100%);
+            border-color: rgba(95, 123, 105, 0.18);
+        }
+
+        .orden-card.orden-card--ticket .orden-info-item-total .orden-info-label {
+            color: #35526d;
+        }
+
+        .orden-card.orden-card--ticket .orden-info-item-total .orden-info-value {
+            font-size: 1.08rem;
+        }
+
+        .orden-boletos,
+        .orden-oportunidades {
+            margin-top: 0.85rem;
+            padding-top: 0.85rem;
+            border-top: 1px dashed rgba(53, 82, 109, 0.18);
+        }
+
+        .orden-boletos-titulo,
+        .orden-oportunidades-titulo {
+            font-weight: 800;
+            color: #17324a;
+            margin-bottom: 0.65rem;
+            font-size: 0.8rem;
+            letter-spacing: 0.02em;
+        }
+
+        .orden-boletos-lista {
+            display: block;
+        }
+
+        .orden-boletos-lista .orden-ticket-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            grid-template-columns: unset;
+            grid-auto-rows: unset;
+        }
+
+        .ticket-item {
+            position: relative;
+            background: linear-gradient(135deg, var(--surface-base) 0%, var(--surface-card-soft) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0;
+            width: 100%;
+            max-width: 110px;
+            min-height: 48px;
+            display: flex;
+            overflow: visible;
+            box-shadow: 0 2px 6px rgba(24, 119, 242, 0.06);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .ticket-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(24, 119, 242, 0.12);
+        }
+
+        .ticket-item-content {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .ticket-item-left {
+            flex: 0 0 33.333%;
+            padding: 0.16rem 0.18rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            border-right: 1px dashed #d9e4ec;
+        }
+
+        .ticket-item-right {
+            flex: 0 0 66.667%;
+            padding: 0.14rem 0.24rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .ticket-numero {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.4rem;
+            font-weight: 700;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.08rem;
+            line-height: 1;
+            word-break: break-word;
+        }
+
+        .ticket-numero i {
+            font-size: 1.3rem;
+        }
+
+        .ticket-numero-grande {
+            font-size: 0.82rem;
+            font-weight: 900;
+            color: var(--primary);
+            line-height: 1;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0;
+            word-break: normal;
+            white-space: nowrap;
+            text-align: center;
+        }
+
+        .ticket-item--oportunidad .ticket-numero {
+            font-size: 0.92rem;
+            margin-bottom: 0;
+        }
+
+        .ticket-item--oportunidad .ticket-numero-grande {
+            color: var(--primary);
+        }
+
+        .orden-acciones-wrap {
+            margin-top: 0.95rem;
         }
 
         @media (max-width: 768px) {
-            .restricted-content {
-                padding: 25px;
+            .orden-imagen-principal {
+                min-height: 200px;
             }
 
-            .restricted-titulo {
-                font-size: 1.5rem;
+            .ticket-item {
+                max-width: 100px;
+                min-height: 46px;
             }
 
-            .form-actions {
+            .ticket-numero i {
+                font-size: 1.3rem;
+            }
+
+            .ticket-numero-grande {
+                font-size: 0.78rem;
+            }
+
+            .busqueda-destacada {
+                padding: 2.5rem 2rem;
+                margin-bottom: 2.5rem;
+            }
+
+            .busqueda-header {
+                margin-bottom: 2rem;
+            }
+
+            .busqueda-titulo {
+                font-size: 1.8rem;
+            }
+
+            .busqueda-subtitulo {
+                font-size: 1rem;
+            }
+
+            .busqueda-input-group {
                 flex-direction: column;
+                gap: 0.75rem;
+                align-items: center;
             }
 
-            .btn-verificar-restricted,
-            .btn-volver {
+            .busqueda-input {
+                flex: 1;
                 width: 100%;
+                max-width: 400px;
+                min-width: 160px;
+            }
+
+            .btn-buscar {
+                width: 100%;
+                max-width: 300px;
+                padding: 0.85rem 1.5rem;
+            }
+
+            .modo-restringido-banner {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .btn-volver-index {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .mis-boletos-container {
+                padding: 1.5rem 0;
+            }
+
+            .busqueda-destacada {
+                padding: 2rem 1.5rem;
+                margin-bottom: 2rem;
+                margin-left: 1rem;
+                margin-right: 1rem;
+                border-radius: 0.75rem;
+                box-shadow: 0 15px 45px rgba(15, 58, 125, 0.2);
+            }
+
+            .busqueda-titulo {
+                font-size: 1.5rem;
+                margin-bottom: 0.5rem;
+            }
+
+            .busqueda-subtitulo {
+                font-size: 0.95rem;
+                margin-bottom: 1.5rem;
+            }
+
+            .busqueda-input {
+                padding: 0.3rem 1rem !important;
+                font-size: 16px;
+                height: 2.2rem !important;
+                min-height: 2.2rem !important;
+            }
+
+            .btn-buscar {
+                padding: 0.25rem 1.5rem !important;
+                font-size: 0.9rem;
+                height: 1.8rem !important;
+            }
+
+            .busqueda-hint {
+                font-size: 0.85rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .busqueda-destacada {
+                padding: 1.5rem 1.25rem;
+                margin-bottom: 1.5rem;
+                margin-left: 1rem;
+                margin-right: 1rem;
+            }
+
+            .busqueda-titulo {
+                font-size: 1.3rem;
+            }
+
+            .orden-header-top-left img {
+                width: 28px;
+                height: 28px;
+            }
+
+            .orden-imagen-principal {
+                min-height: 170px;
+                max-height: 210px;
+                display: flex;
+                flex-direction: column;
+                background: #fafafa;
+            }
+
+            .orden-imagen-principal img {
+                flex: 1;
+                object-fit: contain;
+                padding: 0.3rem;
+                background: #fafafa;
+                max-height: none;
+            }
+
+            .ticket-item {
+                max-width: 90px;
+                min-height: 44px;
+            }
+
+            .ticket-numero {
+                font-size: 0.35rem;
+            }
+
+            .ticket-numero i {
+                font-size: 1.3rem;
+            }
+
+            .ticket-numero-grande {
+                font-size: 0.72rem;
             }
         }
     </style>
 </head>
 <body class="sorteo-finalizado-restricted">
-    <div class="restricted-container">
-        <div class="restricted-header">
-            <img src="images/logo.png" alt="SORTEOS YEPE" class="restricted-logo">
-            <h1 class="restricted-titulo">🔍 Verificar Mis Boletos</h1>
-            <p class="restricted-subtitulo">Ingresa tus datos para verificar si ganaste</p>
-        </div>
+    <header class="header">
+        <div class="container">
+            <div class="header-left">
+                <button class="hamburger" id="hamburger" aria-label="Abrir menú" aria-expanded="false">
+                    <span class="hamburger-box">
+                        <span class="hamburger-inner"></span>
+                    </span>
+                </button>
+            </div>
 
-        <div class="restricted-content">
-            <!-- BADGE DE MODO RESTRINGIDO -->
-            <div class="modo-restringido-badge">Modo Sorteo Finalizado - Acceso Restringido</div>
+            <a href="index.html#top" class="logo" data-logo-src tabindex="-1" aria-disabled="true">
+                <div class="logo-circle">
+                    <script>
+                        document.write('<img src="' + (window.__RIFAPLUS_CACHED_LOGO__ || "images/placeholder-logo.svg") + '" alt="SORTEOS YEPE" class="logo-image dynamic-logo" data-dynamic-logo="true" fetchpriority="high" width="320" height="137">');
+                    </script>
+                    <noscript><img src="images/placeholder-logo.svg" alt="SORTEOS YEPE" class="logo-image dynamic-logo" data-dynamic-logo="true" fetchpriority="high" width="320" height="137"></noscript>
+                </div>
+            </a>
 
-            <!-- ALERTA -->
-            <div id="alerta" class="alerta"></div>
+            <nav class="nav" aria-label="Navegación principal">
+                <a href="index.html" class="nav-link">Inicio</a>
+                <a href="compra.html" class="nav-link">Comprar boletos</a>
+                <a href="cuentas-pago.html" class="nav-link">Cuentas de pago</a>
+                <a href="ayuda.html" class="nav-link">Ayuda</a>
+                <a href="#" class="nav-link active">Mis Boletos</a>
+            </nav>
 
-            <!-- BUSCADOR SIMPLIFICADO (WhatsApp solamente) -->
-            <div class="busqueda-ordenes busqueda-destacada">
-                <div class="busqueda-form">
-                    <div class="busqueda-header">
-                        <h2 class="busqueda-titulo">Verifica tu orden</h2>
-                        <p class="busqueda-subtitulo">Ingresa tu número de WhatsApp para ver tu orden</p>
-                    </div>
-                    <div class="busqueda-input-group">
-                        <input 
-                            type="text" 
-                            id="whatsappInputRestricted" 
-                            placeholder="5512345678" 
-                            maxlength="10" 
-                            inputmode="numeric"
-                            pattern="[0-9]{10}"
-                            class="busqueda-input"
-                        >
-                        <button id="btnBuscarRestricted" class="btn btn-secondary btn-buscar" style="background: var(--secondary); color: white; border: none;">
-                            <i class="fas fa-search"></i> Buscar
-                        </button>
-                    </div>
-                    <p class="busqueda-hint">10 dígitos sin espacios ni símbolos</p>
-                    <div id="validacionWhatsapp" class="validacion-error" style="display: none;"></div>
+            <div class="header-right">
+                <div class="carrito-nav" id="carritoNav" aria-label="Carrito de compras">
+                    <span class="carrito-icon" aria-hidden="true">🛒</span>
+                    <span class="carrito-count">0</span>
+                    <span class="sr-only">0 items en el carrito</span>
                 </div>
             </div>
+        </div>
 
-            <!-- ESTADO DE CARGA Y RESULTADOS -->
-            <div id="estadoCarga" class="estado-carga" style="display: none; text-align: center; padding: 2rem;">
-                <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary);"></i>
-                <p style="margin-top: 1rem;">Buscando tus órdenes...</p>
-            </div>
-
-            <div id="listaOrdenes" class="ordenes-lista" style="display: none;"></div>
-
-                    <div id="sinOrdenes" class="sin-ordenes" style="display: none;">
-                <div class="sin-ordenes-content">
-                    <i class="fas fa-inbox" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
-                    <h3>No se encontraron órdenes</h3>
-                    <p id="mensajeSinOrdenes">No se encontraron órdenes con ese WhatsApp.</p>
-                </div>
-            </div>
-
-            <!-- FOOTER -->
-            <div class="restricted-footer">
-                <p>Esta página solo está disponible durante el cierre del sorteo.</p>
-                <p>Por tu seguridad, no puedes navegar a otras secciones del sitio.</p>
+        <div class="overlay-menu" id="overlayMenu" aria-hidden="true">
+            <div class="overlay-inner">
+                <button class="overlay-close" id="overlayClose" aria-label="Cerrar menú">×</button>
+                <a href="index.html" class="overlay-link">Inicio</a>
+                <a href="compra.html" class="overlay-link">Comprar boletos</a>
+                <a href="cuentas-pago.html" class="overlay-link">Cuentas de pago</a>
+                <a href="ayuda.html" class="overlay-link">Ayuda</a>
+                <a href="#" class="overlay-link">Mis Boletos</a>
             </div>
         </div>
-    </div>
+    </header>
+
+    <main class="mis-boletos-container">
+        <div class="container">
+            <section class="mis-boletos-section">
+                <div class="modo-restringido-banner">
+                    <div class="modo-restringido-copy">
+                        <div class="modo-restringido-badge">
+                            <i class="fas fa-lock"></i>
+                            Acceso restringido durante el cierre del sorteo
+                        </div>
+                        <h1 class="modo-restringido-title">Verifica tu compra durante el cierre del sorteo</h1>
+                        <p class="modo-restringido-subtitle">Aquí solo puedes consultar tu orden y revisar los boletos que compraste. Esto ayuda a mantener el cierre del sorteo claro y transparente mientras se publican los resultados.</p>
+                    </div>
+                </div>
+
+                <div id="alerta" class="alerta"></div>
+
+                <div class="busqueda-ordenes busqueda-destacada">
+                    <div class="busqueda-form">
+                        <div class="busqueda-header">
+                            <h2 class="busqueda-titulo">🔍 Busca Tus Órdenes</h2>
+                        <p class="busqueda-subtitulo">Ingresa el mismo número de WhatsApp que usaste en tu compra para consultar tu orden y revisar los boletos registrados en tu compra.</p>
+                        </div>
+                        <div class="busqueda-input-group">
+                            <input
+                                type="text"
+                                id="whatsappInputRestricted"
+                                placeholder="5512345678"
+                                maxlength="10"
+                                inputmode="numeric"
+                                pattern="[0-9]{10}"
+                                class="busqueda-input"
+                            >
+                            <button id="btnBuscarRestricted" class="btn btn-primary btn-buscar">
+                                <i class="fas fa-search"></i> Buscar
+                            </button>
+                        </div>
+                        <p class="busqueda-hint">10 dígitos sin espacios ni símbolos</p>
+                        <div id="validacionWhatsapp" class="validacion-error" style="display: none;"></div>
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:center; margin-top:-1rem; margin-bottom:2rem;">
+                    <button type="button" class="btn-volver-index" id="btnVolverModalRestricted">
+                        <i class="fas fa-arrow-left"></i>
+                        Volver al cierre
+                    </button>
+                </div>
+
+                <div class="divider-section"></div>
+
+                <div id="estadoCarga" class="estado-carga" style="display: none; text-align: center; padding: 2rem;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary);"></i>
+                    <p style="margin-top: 1rem;">Buscando tus órdenes...</p>
+                </div>
+
+                <div id="listaOrdenes" class="ordenes-lista" style="display: none;"></div>
+
+                <div id="sinOrdenes" class="sin-ordenes" style="display: none;">
+                    <div class="sin-ordenes-content">
+                        <i class="fas fa-inbox" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
+                        <h3>No se encontraron órdenes</h3>
+                        <p id="mensajeSinOrdenes">No se encontraron órdenes con ese WhatsApp.</p>
+                    </div>
+                </div>
+
+                <div class="restricted-note">
+                    <strong>Modo seguro activado.</strong> Durante el cierre del sorteo solo puedes consultar las órdenes registradas con tu compra desde esta página.
+                </div>
+            </section>
+        </div>
+    </main>
 
     <script>
-        // Simplified restricted search script
         document.addEventListener('DOMContentLoaded', () => {
             if (window.location.pathname && window.location.pathname.includes('mis-boletos-restringido')) {
                 setupRestrictedSearcher();
@@ -371,8 +922,241 @@
             const listaOrdenes = document.getElementById('listaOrdenes');
             const sinOrdenes = document.getElementById('sinOrdenes');
             const validacionWhatsapp = document.getElementById('validacionWhatsapp');
+            const volverBtn = document.getElementById('btnVolverModalRestricted');
+            const MAX_SEARCH_RETRIES = 2;
 
-            function validarWhatsappLocal(w) { return w && /^\d{10}$/.test(w); }
+            function validarWhatsappLocal(w) {
+                return w && /^\d{10}$/.test(w);
+            }
+
+            function mostrarSinOrdenes(mensaje) {
+                listaOrdenes.style.display = 'none';
+                sinOrdenes.style.display = 'block';
+                const mensajeNodo = document.getElementById('mensajeSinOrdenes');
+                if (mensajeNodo && mensaje) mensajeNodo.textContent = mensaje;
+            }
+
+            function extractTime(o) {
+                const candidates = [o.fecha, o.fecha_creacion, o.fechaCreacion, o.created_at, o.createdAt, o.timestamp, o.tiempo, o.date];
+                for (const c of candidates) {
+                    if (!c) continue;
+                    const t = Date.parse(c);
+                    if (!isNaN(t)) return t;
+                    const n = Number(c);
+                    if (!isNaN(n) && n > 0) return n;
+                }
+                const nid = Number(o.id || o.orderId || o.numeroOrden || o.numero);
+                return !isNaN(nid) ? nid : 0;
+            }
+
+            function renderOrdenes(ordenesConfirmadas) {
+                listaOrdenes.innerHTML = '';
+                const config = window.rifaplusConfig || {};
+
+                ordenesConfirmadas.forEach((o) => {
+                    const ordenId = String(o.id || o.numero_orden || o.numeroOrden || o.numero || o.orderId || '-').replace(/[^a-zA-Z0-9\-]/g, '');
+                    const logoOrganizador = config?.cliente?.logo || 'images/placeholder-logo.svg';
+                    const nombreSorteo = o.nombre_sorteo || o.sorteo_nombre || config?.rifa?.nombreSorteo || 'Sorteo';
+                    const imagenPrincipal = config?.cliente?.imagenPrincipal || 'images/placeholder-cover.svg';
+                    const fechaSorteoFormato = config?.obtenerFechaSorteoFormato?.() || config?.rifa?.fechaSorteoFormato || '-';
+                    const nombreCliente = o.nombre_cliente || (o.cliente && (o.cliente.nombre || o.cliente.name)) || o.customerName || o.buyer_name || o.nombre || o.client_name || 'Cliente desconocido';
+                    const apellidosCliente = o.apellido_cliente || o.apellidos || '';
+                    const estadoCliente = o.estado_cliente || '';
+                    const ciudadCliente = o.ciudad_cliente || '';
+                    const comprobanteSubido = Boolean(o.comprobante_path);
+                    const estadoRaw = (o.estado || o.status || o.state || 'pendiente').toString().toLowerCase();
+                    const estadoValidado = ['pendiente', 'confirmada', 'cancelada'].includes(estadoRaw) ? estadoRaw : 'pendiente';
+
+                    let fechaFormato = 'Fecha desconocida';
+                    try {
+                        const fecha = new Date(o.createdAt || o.fecha_creacion || o.created_at);
+                        if (!isNaN(fecha.getTime())) {
+                            fechaFormato = fecha.toLocaleString('es-MX', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+                        }
+                    } catch (e) {}
+
+                    let boletosArr = o.boletos || o.tickets || o.items || o.detalle || o.order_items || o.purchasedTickets || null;
+                    const oportunidadesArr = Array.isArray(o.oportunidades) ? o.oportunidades : [];
+                    if (!Array.isArray(boletosArr)) {
+                        if (o.numeros && typeof o.numeros === 'string') boletosArr = o.numeros.split(/[,;\s]+/).filter(Boolean);
+                        else if (o.numero_boleto || o.boleto_numero || o.numeroBoleto) boletosArr = [o.numero_boleto || o.boleto_numero || o.numeroBoleto];
+                        else if (typeof o.cantidad === 'number' && o.cantidad > 0) boletosArr = null;
+                        else boletosArr = null;
+                    }
+
+                    let boletosHtml = '';
+                    if (Array.isArray(boletosArr) && boletosArr.length > 0) {
+                        const items = boletosArr.map((b) => {
+                            if (b == null) return null;
+                            if (typeof b === 'object') return b.numero || b.numero_boleto || b.id || b.n || b.name || JSON.stringify(b);
+                            return String(b);
+                        }).filter(Boolean);
+
+                        const totalBoletosConfig = Number(config?.rifa?.totalBoletos);
+                        const totalBoletos = Number.isFinite(totalBoletosConfig) && totalBoletosConfig > 0 ? totalBoletosConfig : 1000;
+                        const digitos = String(totalBoletos - 1).length;
+                        const ticketsHtml = items.map((x) => `
+                            <div class="ticket-item">
+                                <div class="ticket-item-content">
+                                    <div class="ticket-item-left">
+                                        <div class="ticket-numero"><i class="fas fa-ticket-alt" aria-hidden="true"></i></div>
+                                    </div>
+                                    <div class="ticket-item-right">
+                                        <div class="ticket-numero-grande">${String(parseInt(String(x).replace(/[^0-9]/g, ''), 10)).padStart(digitos, '0')}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('');
+
+                        boletosHtml = `<div class="orden-ticket-grid">${ticketsHtml}</div>`;
+                    } else if (typeof o.cantidad === 'number') {
+                        boletosHtml = `<div style="margin-top:8px;">Cantidad de boletos: <span style="background:var(--primary,#0F3A7D);color:#fff;padding:6px 10px;border-radius:8px;font-weight:700">${o.cantidad}</span></div>`;
+                    } else {
+                        boletosHtml = `<div style="margin-top:8px;color:#6B7280;">No hay detalle de boletos disponible para esta orden.</div>`;
+                    }
+
+                    let oportunidadesHtml = '';
+                    if (oportunidadesArr.length > 0) {
+                        const totalBoletosConfig = Number(config?.rifa?.totalBoletos);
+                        const totalBoletos = Number.isFinite(totalBoletosConfig) && totalBoletosConfig > 0 ? totalBoletosConfig : 1000;
+                        const digitos = String(totalBoletos - 1).length;
+                        const oportunidadesCards = oportunidadesArr.map((x) => `
+                            <div class="ticket-item ticket-item--oportunidad">
+                                <div class="ticket-item-content">
+                                    <div class="ticket-item-left">
+                                        <div class="ticket-numero" aria-label="Numero de oportunidad">✔️</div>
+                                    </div>
+                                    <div class="ticket-item-right">
+                                        <div class="ticket-numero-grande">${String(parseInt(String(x).replace(/[^0-9]/g, ''), 10)).padStart(digitos, '0')}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('');
+                        oportunidadesHtml = `
+                            <div class="orden-oportunidades">
+                                <div class="orden-oportunidades-titulo">🎁 Oportunidades Adicionales (${oportunidadesArr.length})</div>
+                                <div class="orden-oportunidades-lista">${oportunidadesCards}</div>
+                            </div>
+                        `;
+                    }
+
+                    const cantidadProductos = o.cantidad_boletos || (Array.isArray(boletosArr) ? boletosArr.length : 0) || 0;
+                    const precioNormalDinamico = Number(o.precio_unitario || config?.rifa?.precioBoleto || 0);
+                    const subtotalDinamico = Number(o.subtotal || (precioNormalDinamico * cantidadProductos) || 0);
+                    const descuentoDinamico = Number(o.descuento || 0);
+                    const totalDinamico = Number(o.total || Math.max(0, subtotalDinamico - descuentoDinamico) || 0);
+                    const hayPromocionActiva = descuentoDinamico > 0;
+
+                    let botonesAccion = '';
+                    if (estadoValidado === 'confirmada') {
+                        botonesAccion = `
+                            <div style="text-align: center; padding: 1rem; background: linear-gradient(135deg, rgba(95, 123, 105, 0.14) 0%, rgba(95, 123, 105, 0.08) 100%); border-radius: var(--radius-md); color: var(--success-dark);">
+                                <h4 style="margin: 0 0 0.5rem 0; font-size: 1.2rem;">🎉 ¡Ya Estás Participando!</h4>
+                                <p style="margin: 0; font-size: 0.95rem;">Tu compra está registrada correctamente.</p>
+                            </div>
+                        `;
+                    } else if (estadoValidado === 'cancelada') {
+                        botonesAccion = `
+                            <div style="display: flex; justify-content: center;">
+                                <button class="btn btn-outline" disabled style="cursor: not-allowed; display: flex; align-items: center; gap: 0.5rem;">
+                                    Orden Cancelada <i class="fas fa-times-circle"></i>
+                                </button>
+                            </div>
+                        `;
+                    } else if (comprobanteSubido) {
+                        botonesAccion = `
+                            <div style="display: flex; justify-content: center;">
+                                <button class="btn btn-outline" disabled style="cursor: not-allowed; display: flex; align-items: center; gap: 0.5rem;">
+                                    Pendiente de Confirmación <i class="fas fa-clock"></i>
+                                </button>
+                            </div>
+                        `;
+                    } else {
+                        botonesAccion = `
+                            <div style="display: flex; justify-content: center;">
+                                <button class="btn btn-outline" disabled style="cursor: not-allowed; display: flex; align-items: center; gap: 0.5rem;">
+                                    Orden Pendiente <i class="fas fa-hourglass-half"></i>
+                                </button>
+                            </div>
+                        `;
+                    }
+
+                    const ordenCard = document.createElement('div');
+                    ordenCard.className = 'orden-card orden-card--ticket';
+                    ordenCard.innerHTML = `
+                        <div class="orden-header-top">
+                            <div class="orden-header-top-left">
+                                <img src="${logoOrganizador}" alt="Logo" onerror="this.src='images/placeholder-logo.svg'">
+                                <div class="orden-estado-badge ${estadoValidado} ${estadoValidado === 'pendiente' && comprobanteSubido ? 'en-revision' : ''}">
+                                    ${estadoValidado === 'confirmada' ? 'CONFIRMADA' : estadoValidado === 'cancelada' ? 'CANCELADA' : comprobanteSubido ? 'EN REVISIÓN' : 'PENDIENTE'}
+                                </div>
+                            </div>
+                            <div class="orden-header-top-right">
+                                <div class="orden-id-numero">#${ordenId}</div>
+                                <div class="orden-fecha-hora">${fechaFormato}</div>
+                            </div>
+                        </div>
+
+                        <div class="orden-imagen-principal">
+                            <div class="orden-imagen-principal-titulo">${nombreSorteo}</div>
+                            <img class="orden-imagen-dinamica" src="${imagenPrincipal}" alt="${nombreSorteo}" loading="lazy" onerror="this.src='images/placeholder-cover.svg'; this.style.opacity='0.5';">
+                            <div class="orden-imagen-principal-fecha"><strong>Fecha del sorteo:</strong> <span>${fechaSorteoFormato}</span></div>
+                        </div>
+
+                        <div class="orden-body">
+                            <div class="orden-seccion">
+                                <div class="orden-seccion-titulo">👤 Cliente</div>
+                                <div class="orden-info">
+                                    <div class="orden-info-item">
+                                        <div class="orden-info-label">Nombre</div>
+                                        <div class="orden-info-value">${nombreCliente} ${apellidosCliente}</div>
+                                    </div>
+                                    ${ciudadCliente ? `<div class="orden-info-item"><div class="orden-info-label">Ciudad</div><div class="orden-info-value">${ciudadCliente}</div></div>` : ''}
+                                    ${estadoCliente ? `<div class="orden-info-item"><div class="orden-info-label">Estado</div><div class="orden-info-value">${estadoCliente}</div></div>` : ''}
+                                </div>
+                            </div>
+
+                            <div class="orden-seccion">
+                                <div class="orden-seccion-titulo">🎫 Compra</div>
+                                <div class="orden-info">
+                                    ${hayPromocionActiva ? `
+                                        <div class="orden-info-item"><div class="orden-info-label">Precio Orig.</div><div class="orden-info-value">$${precioNormalDinamico.toFixed(2)}</div></div>
+                                        <div class="orden-info-item"><div class="orden-info-label">Cantidad</div><div class="orden-info-value">${cantidadProductos} bol.</div></div>
+                                        <div class="orden-info-item" data-full="true" data-separator="true"><div class="orden-info-label">Subtotal</div><div class="orden-info-value">$${subtotalDinamico.toFixed(2)}</div></div>
+                                        <div class="orden-info-item" data-full="true"><div class="orden-info-label orden-info-label-promo"><span class="orden-info-promo-badge">PROMO</span></div><div class="orden-info-value" style="color: #28a745; font-weight: bold;">-$${descuentoDinamico.toFixed(2)}</div></div>
+                                        <div class="orden-info-item orden-info-item-total promocion" data-full="true"><div class="orden-info-label">TOTAL</div><div class="orden-info-value">$${totalDinamico.toFixed(2)}</div></div>
+                                    ` : `
+                                        <div class="orden-info-item"><div class="orden-info-label">Cantidad</div><div class="orden-info-value">${cantidadProductos} bol.</div></div>
+                                        <div class="orden-info-item"><div class="orden-info-label">P. Unit.</div><div class="orden-info-value">$${precioNormalDinamico.toFixed(2)}</div></div>
+                                        <div class="orden-info-item orden-info-item-total" data-full="true"><div class="orden-info-label">Total</div><div class="orden-info-value">$${totalDinamico.toFixed(2)}</div></div>
+                                    `}
+                                </div>
+
+                                <div class="orden-boletos">
+                                    <div class="orden-boletos-titulo">🎫 Boletos (${Array.isArray(boletosArr) ? boletosArr.length : cantidadProductos})</div>
+                                    <div class="orden-boletos-lista">${boletosHtml}</div>
+                                </div>
+
+                                ${oportunidadesHtml}
+                            </div>
+
+                            <div class="orden-acciones-wrap">
+                                ${botonesAccion}
+                            </div>
+                        </div>
+                    `;
+
+                    listaOrdenes.appendChild(ordenCard);
+                });
+
+                listaOrdenes.style.display = 'block';
+            }
 
             async function buscar() {
                 const whatsapp = (whatsappInput.value || '').trim();
@@ -386,138 +1170,99 @@
                     return;
                 }
 
-                try { sessionStorage.setItem('misBoletosWhatsapp', whatsapp); } catch (e) {}
+                try {
+                    sessionStorage.setItem('misBoletosWhatsapp', whatsapp);
+                } catch (e) {}
 
                 estadoCarga.style.display = 'block';
                 btnBuscar.disabled = true;
-                whatsappInput.value = whatsapp.replace(/[^0-9]/g, '').slice(0,10);
-
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                const btnOriginalHTML = btnBuscar.innerHTML;
+                btnBuscar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando...';
+                whatsappInput.value = whatsapp.replace(/[^0-9]/g, '').slice(0, 10);
 
                 try {
-                    const res = await fetch(`http://127.0.0.1:5001/api/public/ordenes-cliente?whatsapp=${encodeURIComponent(whatsapp)}`, { signal: controller.signal });
-                    clearTimeout(timeoutId);
+                    const performSearch = async (retryCount = 0) => {
+                        const timeoutMs = 8000 + (retryCount * 2000);
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+                        const apiBase = window.rifaplusConfig?.backend?.apiBase || window.rifaplusConfig?.obtenerApiBase?.() || window.location.origin;
 
-                    if (res.status === 403) {
-                        sinOrdenes.style.display = 'block';
-                        return;
-                    }
+                        try {
+                            const res = await fetch(`${apiBase}/api/public/ordenes-cliente?whatsapp=${encodeURIComponent(whatsapp)}`, { signal: controller.signal });
+                            clearTimeout(timeoutId);
 
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                            if (res.status === 403) {
+                                mostrarSinOrdenes('No tienes órdenes registradas con ese número de WhatsApp.');
+                                return;
+                            }
 
-                    const data = await res.json();
+                            if (res.status === 400) {
+                                throw new Error('WhatsApp inválido. Verifica el formato.');
+                            }
 
-                    // Accept multiple shapes: array directly, { data: { ordenes: [] } }, or { ordenes: [] }
-                    let ordenes = [];
-                    if (Array.isArray(data)) ordenes = data;
-                    else if (data && Array.isArray(data.data && data.data.ordenes ? data.data.ordenes : data.ordenes)) ordenes = data.data ? data.data.ordenes : data.ordenes;
+                            if (res.status === 500 && retryCount < MAX_SEARCH_RETRIES) {
+                                await new Promise((resolve) => setTimeout(resolve, 1000 * (retryCount + 1)));
+                                return performSearch(retryCount + 1);
+                            }
 
-                    if (!ordenes || ordenes.length === 0) {
-                        sinOrdenes.style.display = 'block';
-                    } else {
-                        // Filtrar solo órdenes confirmadas
-                        const confirmedStatuses = ['confirmada','confirmado','confirmed','paid','pagada','pagado','completed'];
-                        const canceledStatuses = ['cancelada','cancelado','canceled','cancelled'];
+                            if (!res.ok) throw new Error(`Error HTTP ${res.status}`);
 
-                        const ordenesConfirmadas = ordenes.filter(o => {
-                            const s = (o.estado || o.status || o.state || '').toString().toLowerCase();
-                            if (!s) return false;
-                            if (canceledStatuses.includes(s)) return false;
-                            return confirmedStatuses.includes(s);
-                        });
+                            const data = await res.json();
+                            let ordenes = [];
+                            if (Array.isArray(data)) ordenes = data;
+                            else if (data && Array.isArray(data.data && data.data.ordenes ? data.data.ordenes : data.ordenes)) {
+                                ordenes = data.data ? data.data.ordenes : data.ordenes;
+                            } else if (data && data.success === false) {
+                                throw new Error(data.message || 'No fue posible consultar las órdenes.');
+                            }
 
-                        if (!ordenesConfirmadas || ordenesConfirmadas.length === 0) {
-                            sinOrdenes.style.display = 'block';
+                            if (!ordenes || ordenes.length === 0) {
+                                mostrarSinOrdenes('No se encontraron órdenes con ese WhatsApp.');
+                                return;
+                            }
+
+                        const ordenesVisibles = ordenes.sort((a, b) => extractTime(b) - extractTime(a));
+
+                        if (!ordenesVisibles.length) {
+                            mostrarSinOrdenes('No se encontraron órdenes visibles con ese WhatsApp.');
                             return;
                         }
 
-                        // Ordenar por fecha (más reciente primero)
-                        function extractTime(o) {
-                            const candidates = [o.fecha, o.fecha_creacion, o.fechaCreacion, o.created_at, o.createdAt, o.timestamp, o.tiempo, o.date];
-                            for (const c of candidates) {
-                                if (!c) continue;
-                                const t = Date.parse(c);
-                                if (!isNaN(t)) return t;
-                                const n = Number(c);
-                                if (!isNaN(n) && n > 0) return n;
-                            }
-                            const nid = Number(o.id || o.orderId || o.numeroOrden || o.numero);
-                            if (!isNaN(nid)) return nid;
-                            return 0;
+                        renderOrdenes(ordenesVisibles);
+                        } finally {
+                            clearTimeout(timeoutId);
                         }
+                    };
 
-                        ordenesConfirmadas.sort((a,b) => extractTime(b) - extractTime(a));
-
-                        listaOrdenes.innerHTML = '';
-                        ordenesConfirmadas.forEach(o => {
-                            const ordenId = o.id || o.numeroOrden || o.numero || o.orderId || '-';
-                            const estadoText = o.estado || o.status || o.state || 'N/A';
-                            const div = document.createElement('div');
-                            div.className = 'orden-item';
-                            div.style.border = '1px solid #e5e7eb';
-                            div.style.padding = '12px';
-                            div.style.marginBottom = '8px';
-                            div.style.borderRadius = '8px';
-
-                            // Cliente
-                            const clienteNombre = o.nombre_cliente || (o.cliente && (o.cliente.nombre || o.cliente.name)) || o.customerName || o.buyer_name || o.nombre || o.client_name || 'Cliente desconocido';
-
-                            // Extraer boletos de múltiples posibles campos
-                            let boletosArr = o.boletos || o.tickets || o.items || o.detalle || o.order_items || o.purchasedTickets || null;
-                            if (!Array.isArray(boletosArr)) {
-                                if (o.numeros && typeof o.numeros === 'string') boletosArr = o.numeros.split(/[,;\s]+/).filter(Boolean);
-                                else if (o.numero_boleto || o.boleto_numero || o.numeroBoleto) boletosArr = [o.numero_boleto || o.boleto_numero || o.numeroBoleto];
-                                else if (typeof o.cantidad === 'number' && o.cantidad > 0) boletosArr = null;
-                                else boletosArr = null;
-                            }
-
-                            let boletosHtml = '';
-                            if (Array.isArray(boletosArr) && boletosArr.length > 0) {
-                                const items = boletosArr.map(b => {
-                                    if (b == null) return null;
-                                    if (typeof b === 'object') return b.numero || b.numero_boleto || b.id || b.n || b.name || JSON.stringify(b);
-                                    return String(b);
-                                }).filter(Boolean);
-
-                                const ticketsHtml = items.map(x => `
-                                    <div style="display:inline-block;background:var(--primary,#0F3A7D);color:#fff;padding:8px 12px;border-radius:8px;margin-right:8px;margin-bottom:8px;font-weight:700;min-width:48px;text-align:center;">${x}</div>
-                                `).join('');
-
-                                boletosHtml = `<div style="font-weight:600;margin-top:8px;">Boletos:</div><div style="margin-top:6px;">${ticketsHtml}</div>`;
-                            } else if (typeof o.cantidad === 'number') {
-                                boletosHtml = `<div style="margin-top:8px;">Cantidad de boletos: <span style="background:var(--primary,#0F3A7D);color:#fff;padding:6px 10px;border-radius:8px;font-weight:700">${o.cantidad}</span></div>`;
-                            } else {
-                                boletosHtml = `<div style="margin-top:8px;color:#6B7280;">No hay detalle de boletos disponible para esta orden.</div>`;
-                            }
-
-                            div.innerHTML = `
-                                <div>
-                                    <div style="font-weight:700;color:#0F3A7D;">Orden: ${ordenId}</div>
-                                    <div style="color:#374151;font-size:0.95rem;margin-top:6px;">Cliente: ${clienteNombre}</div>
-                                    <div style="color:#6B7280;font-size:0.95rem;margin-top:6px;">Estado: ${estadoText}</div>
-                                    <div style="margin-top:8px;">${boletosHtml}</div>
-                                </div>
-                            `;
-
-                            listaOrdenes.appendChild(div);
-                        });
-                        listaOrdenes.style.display = 'block';
-                    }
+                    await performSearch(0);
                 } catch (err) {
                     console.error('Error buscando órdenes:', err);
-                    sinOrdenes.style.display = 'block';
+                    mostrarSinOrdenes(err.message || 'No se pudieron consultar las órdenes en este momento.');
                 } finally {
-                    clearTimeout(timeoutId);
                     estadoCarga.style.display = 'none';
                     btnBuscar.disabled = false;
+                    btnBuscar.innerHTML = btnOriginalHTML;
                 }
             }
 
             if (btnBuscar) btnBuscar.addEventListener('click', buscar);
             if (whatsappInput) {
-                whatsappInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') buscar(); });
-                whatsappInput.addEventListener('input', function() { this.value = this.value.replace(/[^0-9]/g, '').slice(0,10); });
+                whatsappInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') buscar();
+                });
+                whatsappInput.addEventListener('input', function() {
+                    this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);
+                });
+            }
+
+            if (volverBtn) {
+                volverBtn.addEventListener('click', () => {
+                    try {
+                        sessionStorage.setItem('rifaplus_allow_restricted', '1');
+                        sessionStorage.removeItem('rifaplus_modal_suppressed_until');
+                    } catch (e) {}
+                    window.location.href = 'index.html';
+                });
             }
 
             try {
@@ -531,35 +1276,6 @@
                     whatsappInput.value = fromSession;
                 }
             } catch (e) {}
-
-            // Agregar botón 'Volver al modal' que quita la supresión y vuelve a index
-            try {
-                const volverBtn = document.createElement('button');
-                volverBtn.type = 'button';
-                volverBtn.id = 'btnVolverModalRestricted';
-                volverBtn.textContent = '← Volver';
-                volverBtn.style.background = 'var(--primary, #0F3A7D)';
-                volverBtn.style.color = '#fff';
-                volverBtn.style.border = 'none';
-                volverBtn.style.padding = '6px 10px';
-                volverBtn.style.borderRadius = '6px';
-                volverBtn.style.cursor = 'pointer';
-                volverBtn.style.marginBottom = '12px';
-                volverBtn.style.display = 'inline-flex';
-                volverBtn.style.alignItems = 'center';
-                volverBtn.style.gap = '8px';
-
-                volverBtn.addEventListener('click', () => {
-                    try {
-                        sessionStorage.setItem('rifaplus_allow_restricted', '1');
-                        sessionStorage.removeItem('rifaplus_modal_suppressed_until');
-                    } catch (e) {}
-                    window.location.href = 'index.html';
-                });
-
-                if (listaOrdenes && listaOrdenes.parentNode) listaOrdenes.parentNode.insertBefore(volverBtn, listaOrdenes);
-                else document.body.insertBefore(volverBtn, document.body.firstChild);
-            } catch (e) { console.warn('No se pudo agregar boton Volver al modal', e); }
         }
     </script>
 </body>

@@ -1,10 +1,35 @@
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* ====================================
    ESTILOS MODAL ORDEN FORMAL (PDF)
    ==================================== */
 
 .modal-orden-formal {
     position: fixed;
-    inset: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
     background: rgba(0, 0, 0, 0.7);
     display: none;
     align-items: center;
@@ -12,12 +37,11 @@
     z-index: 3000;
     padding: 1rem;
     backdrop-filter: blur(5px);
-    animation: fadeIn var(--transition-normal);
-    overflow-y: auto;
 }
 
 .modal-orden-formal.show {
     display: flex;
+    animation: fadeIn 0.3s ease-out;
 }
 
 /* Contenedor principal de la orden */
@@ -32,6 +56,7 @@
     animation: slideUp 0.3s ease-out;
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
 /* Header del modal */
@@ -65,6 +90,7 @@
     flex: 1;
     overflow-y: auto;
     line-height: 1.6;
+    min-height: 0;
 }
 
 /* Estilos para impresión/PDF */
@@ -380,6 +406,65 @@
     justify-content: center;
     gap: 0.5rem;
     border-radius: var(--radius-md);
+}
+
+#btnContinuarOrdenFormal {
+    position: relative;
+    border: 1.5px solid rgba(255, 255, 255, 0.55);
+    box-shadow:
+        0 10px 22px rgba(230, 57, 70, 0.24),
+        0 0 0 0 rgba(255, 255, 255, 0.18);
+    animation: ordenFormalContinueBuzz 3.2s ease-in-out infinite;
+}
+
+#btnContinuarOrdenFormal i {
+    animation: ordenFormalContinueArrowBuzz 3.2s ease-in-out infinite;
+}
+
+@keyframes ordenFormalContinueBuzz {
+    0%, 70%, 100% {
+        transform: translateX(0) scale(1);
+        box-shadow:
+            0 10px 22px rgba(230, 57, 70, 0.24),
+            0 0 0 0 rgba(255, 255, 255, 0.18);
+    }
+    74% {
+        transform: translateX(-2px) scale(1.012);
+    }
+    78% {
+        transform: translateX(2px) scale(1.02);
+        box-shadow:
+            0 12px 28px rgba(230, 57, 70, 0.3),
+            0 0 0 3px rgba(255, 255, 255, 0.16),
+            0 0 16px rgba(255, 255, 255, 0.22);
+    }
+    82% {
+        transform: translateX(-2px) scale(1.012);
+    }
+    86% {
+        transform: translateX(2px) scale(1.016);
+        box-shadow:
+            0 12px 28px rgba(230, 57, 70, 0.28),
+            0 0 0 2px rgba(255, 255, 255, 0.14),
+            0 0 12px rgba(255, 255, 255, 0.18);
+    }
+    90% {
+        transform: translateX(0) scale(1);
+        box-shadow:
+            0 10px 22px rgba(230, 57, 70, 0.24),
+            0 0 0 0 rgba(255, 255, 255, 0.18);
+    }
+}
+
+@keyframes ordenFormalContinueArrowBuzz {
+    0%, 70%, 100% {
+        transform: translateX(0);
+        opacity: 0.94;
+    }
+    78%, 86% {
+        transform: translateX(4px);
+        opacity: 1;
+    }
 }
 
 .btn-descargar {
@@ -910,9 +995,12 @@
     font-family: 'Courier New', monospace;
     font-size: 0.85rem;
     color: var(--text-dark);
-    line-height: 1.5;
+    line-height: 1.6;
     word-wrap: break-word;
     white-space: normal;
+    word-break: normal;
+    hyphens: none;
+    overflow-wrap: break-word;
 }
 
 .orden-totales {

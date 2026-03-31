@@ -53,6 +53,14 @@ class ConfigManager {
    */
   getDefaultConfig() {
     return {
+      // ✅ CRÍTICO: Información del cliente con prefijo de orden
+      cliente: {
+        id: 'Sorteos_El_Trebol',
+        nombre: 'SORTEOS TORRES',
+        prefijoOrden: 'SS',  // ✅ Fallback: SIEMPRE debe tener al menos 2 caracteres
+        email: '',
+        telefono: ''
+      },
       rifa: {
         totalBoletos: 1000000,
         precioBoleto: 4,

@@ -299,3 +299,362 @@ nav.admin-nav a.active, nav.admin-nav a:hover{ background:var(--card); box-shado
 .form-actions .btn-secondary:hover {
   background: #e0e7ff;
 }
+
+/* ========================================================== */
+/* PREMIOS Y GANADORES STYLES */
+/* ========================================================== */
+
+.premios-seccion {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.premios-seccion:last-of-type {
+  border-bottom: none;
+}
+
+.section-subheader {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.premios-lista {
+  margin-bottom: 1rem;
+}
+
+.premio-item {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  transition: all 0.2s ease;
+}
+
+.premio-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-color: var(--primary);
+}
+
+.premio-item .form-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: white;
+  color: #111827;
+  transition: all 0.2s ease;
+}
+
+.premio-item .form-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(15, 58, 125, 0.1);
+}
+
+.premio-item label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #4b5563;
+  margin-bottom: 0.5rem;
+}
+
+.form-toggle {
+  display: inline-flex;
+  align-items: center;
+}
+
+.toggle-switch {
+  width: 50px;
+  height: 28px;
+  border-radius: 14px;
+  border: none;
+  background: var(--border);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s ease;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+}
+
+.toggle-switch::before {
+  content: '';
+  width: 24px;
+  height: 24px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  left: 2px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-switch.active {
+  background: var(--success);
+}
+
+.toggle-switch.active::before {
+  left: calc(100% - 26px);
+}
+
+/* Button styles for small buttons */
+.btn-small {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #b91c1c;
+  transform: translateY(-1px);
+}
+
+#btn-guardar-premios {
+  width: 100%;
+  max-width: 300px;
+  padding: 1rem;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+#btn-guardar-premios:hover {
+  background: var(--primary-600);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(15, 58, 125, 0.3);
+}
+
+#btn-guardar-premios.loading {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+#btn-guardar-premios:disabled {
+  cursor: not-allowed;
+}
+
+/* ESTILOS PARA INFORMACIÓN DEL SORTEO */
+.informacion-sorteo-lista {
+  margin-bottom: 1rem;
+}
+
+.informacion-sorteo-item {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  transition: all 0.2s ease;
+}
+
+.informacion-sorteo-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-color: var(--primary);
+}
+
+.informacion-sorteo-item .form-group-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.informacion-sorteo-item .form-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: white;
+  color: #111827;
+  transition: all 0.2s ease;
+}
+
+.informacion-sorteo-item .form-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(15, 58, 125, 0.1);
+}
+
+.informacion-sorteo-item textarea.form-input {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.informacion-sorteo-item .btn-eliminar {
+  background: #fee2e2;
+  color: var(--danger);
+  border: 1px solid #fecaca;
+  padding: 0.65rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.informacion-sorteo-item .btn-eliminar:hover {
+  background: #fecaca;
+  border-color: #f87171;
+}
+
+#btn-guardar-informacion-sorteo {
+  background: var(--success);
+  color: white;
+  border: none;
+  padding: 0.85rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+#btn-guardar-informacion-sorteo:hover {
+  background: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+#btn-guardar-informacion-sorteo.loading {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+#btn-guardar-informacion-sorteo:disabled {
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .informacion-sorteo-item .form-group-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .informacion-sorteo-item .btn-eliminar {
+    width: 100%;
+  }
+}
+
+/* BONOS */
+.bono-item {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  transition: all 0.2s ease;
+  border-left: 4px solid var(--primary);
+}
+
+.bono-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-color: var(--primary);
+}
+
+.bono-item .form-group-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr auto;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.bono-item .form-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: white;
+  color: #111827;
+  transition: all 0.2s ease;
+}
+
+.bono-item .form-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(15, 58, 125, 0.1);
+}
+
+.bono-item textarea.form-input {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.bono-item select.form-input {
+  cursor: pointer;
+}
+
+.bono-item .btn-eliminar {
+  background: #fee2e2;
+  color: var(--danger);
+  border: 1px solid #fecaca;
+  padding: 0.65rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.bono-item .btn-eliminar:hover {
+  background: #fecaca;
+  border-color: #f87171;
+}
+
+#btn-guardar-bonos {
+  background: var(--success);
+  color: white;
+  border: none;
+  padding: 0.85rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+#btn-guardar-bonos:hover {
+  background: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+#btn-guardar-bonos:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+@media (max-width: 768px) {
+  .bono-item .form-group-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .bono-item .btn-eliminar {
+    width: 100%;
+  }
+}

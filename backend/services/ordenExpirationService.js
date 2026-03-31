@@ -88,11 +88,11 @@ class OrdenExpirationService {
      * LÓGICA DE EXPIRACIÓN (CONTUNDENTE Y PROFESIONAL):
      * - Busca órdenes en estado 'pendiente' ÚNICAMENTE
      * - Que fueron creadas hace más de X horas (config.js)
-     * - Sin comprobante subido
+     * - Sin comprobante_path (comprobante_path IS NULL)
      * - Las libera de vuelta a disponibles y marca como 'cancelada'
      * 
-     * ⚠️ IMPORTANTE: Las órdenes con 'comprobante_recibido' NO expiran
-     * porque ya hay evidencia de pago siendo revisada por el admin
+     * ⚠️ IMPORTANTE: Las órdenes con comprobante_path (tiene comprobante subido) NO expiran
+     * porque están esperando revisión del admin
      */
     async limpiarOrdenesExpiradas() {
         // Prevenir ejecuciones concurrentes
@@ -113,16 +113,17 @@ class OrdenExpirationService {
             // Log del inicio
             console.log(`\n[${ahora.toISOString()}] 🔍 [ExpService] INICIANDO LIMPIEZA`);
             console.log(`   Límite: ${tiempoLimite.toISOString()}`);
-            console.log(`   Búsqueda: órdenes 'pendiente' creadas ANTES de ${tiempoLimite.toISOString()}`);
-            console.log(`   NOTA: Órdenes con 'comprobante_recibido' NO expiran`);
+            console.log(`   Búsqueda: órdenes 'pendiente' sin comprobante recibido creadas ANTES de ${tiempoLimite.toISOString()}`);
+            console.log(`   NOTA: Órdenes con comprobante recibido NO expiran (esperan revisión de admin)`);
 
-            // ✅ CORRECCIÓN: Buscar SOLO órdenes sin comprobante ('pendiente')
-            // NO incluir 'comprobante_recibido' porque tienen evidencia de pago
+            // ✅ CORRECCIÓN: Buscar SOLO órdenes en estado 'pendiente' SIN comprobante recibido
+            // Las 'confirmada' O las con 'comprobante_path' NO expiran (están esperando revisión de admin)
             let ordenesIncompletas;
             try {
                 ordenesIncompletas = await db('ordenes')
                     .select('id', 'numero_orden', 'estado', 'boletos', 'comprobante_path', 'created_at')
-                    .where('estado', 'pendiente')  // SOLO pendiente, sin comprobante
+                    .where('estado', 'pendiente')  // SOLO pendiente
+                    .whereNull('comprobante_path')  // SIN comprobante subido
                     .timeout(10000); // Timeout de 10 segundos
             } catch (dbError) {
                 console.error('❌ [ExpService] Error consultando BD:', dbError.message);
@@ -131,7 +132,7 @@ class OrdenExpirationService {
             }
 
             if (!ordenesIncompletas || ordenesIncompletas.length === 0) {
-                console.log(`✅ [ExpService] No hay órdenes pendientes sin comprobante (órdenes con comprobante están protegidas)`);
+                console.log(`✅ [ExpService] No hay órdenes pendientes (todas están confirmadas o canceladas)`);
                 this.stats.totalEjecuciones++;
                 this.stats.ultimaEjecucion = new Date();
                 this.stats.proximaEjecucion = new Date(Date.now() + this.intervaloMs);
@@ -283,8 +284,6 @@ class OrdenExpirationService {
                     .update({
                         estado: 'disponible',
                         numero_orden: null,
-                        reservado_en: null,
-                        vendido_en: null,
                         updated_at: new Date()
                     });
 
@@ -349,7 +348,6 @@ class OrdenExpirationService {
                 total_pendientes: 0,
                 total_confirmadas: 0,
                 total_canceladas: 0,
-                total_comprobante_recibido: 0,
                 boletos_apartados_sin_pago: 0,
                 ordenes_proximas_expirar: 0,
                 detalles: []
@@ -366,7 +364,6 @@ class OrdenExpirationService {
                 if (row.estado === 'pendiente') stats.total_pendientes = row.cantidad;
                 if (row.estado === 'confirmada') stats.total_confirmadas = row.cantidad;
                 if (row.estado === 'cancelada') stats.total_canceladas = row.cantidad;
-                if (row.estado === 'comprobante_recibido') stats.total_comprobante_recibido = row.cantidad;
             }
 
             // Órdenes pendientes sin comprobante (próximas a expirar)

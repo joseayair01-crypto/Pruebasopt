@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:* http://localhost:*; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://cdn.sheetjs.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' http://127.0.0.1:* http://localhost:* https:; img-src 'self' data: https:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:* http://localhost:*; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://cdn.sheetjs.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' http://127.0.0.1:* http://localhost:* https:; img-src 'self' data: https:; object-src 'none'; base-uri 'self'; form-action 'self';">
     <title>Panel Admin - SORTEOS YEPE</title>
-    <link rel="icon" href="images/logo.png" sizes="32x32">
-    <link rel="preload" as="image" href="images/logo.png" fetchpriority="high">
-    <link rel="apple-touch-icon" href="images/logo.png">
+    <link rel="icon" href="images/placeholder-logo.svg" sizes="32x32">
+    <link rel="preload" as="image" href="images/placeholder-logo.svg" fetchpriority="high">
+    <link rel="apple-touch-icon" href="images/placeholder-logo.svg">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/admin-layout.css?v=20251221">
@@ -48,8 +48,10 @@
         })();
     </script>
     <script src="js/config.js?v=20251228.15"></script>
+    <script src="js/config-sync.js"></script>
     <script src="js/theme-dynamic.js"></script>
     <script src="js/admin-layout.js?v=20251228.15"></script>
+    <script src="js/admin-header-user.js"></script>
     <script>
         // Aplicar estado de visibilidad de ingresos ANTES de renderizar el DOM
         // Esto evita el "flash" donde se muestra la cantidad antes de ocultarse
@@ -452,6 +454,60 @@
             box-shadow: 0 4px 8px rgba(24, 119, 242, 0.25);
         }
 
+        /* ===== INFORMACIÓN DE USUARIO EN HEADER ===== */
+        /**
+         * Contenedor de info del usuario (avatar + nombre/rol)
+         */
+        .admin-user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 1rem;
+            background: rgba(24, 119, 242, 0.05);
+            border-radius: 0.5rem;
+            border: 1px solid rgba(24, 119, 242, 0.1);
+        }
+
+        /**
+         * Avatar circular con icono
+         */
+        .admin-user-avatar {
+            font-size: 1.5rem;
+            color: var(--color-primario);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /**
+         * Contenedor de nombre y rol del usuario
+         */
+        .admin-user-details {
+            display: flex;
+            flex-direction: column;
+            min-width: 120px;
+        }
+
+        /**
+         * Nombre del usuario
+         */
+        .admin-user-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--color-texto-oscuro);
+        }
+
+        /**
+         * Rol del usuario
+         */
+        .admin-user-role {
+            font-size: 0.75rem;
+            color: var(--color-texto-normal);
+            text-transform: capitalize;
+        }
+
         /* ========================================================== */
         /* SECCIÓN 5: BARRA DE NAVEGACIÓN SUPERIOR                    */
         /* ========================================================== */
@@ -614,7 +670,7 @@
         /* Usar el ID del nuevo main content */
         #adminMain {
             width: 100%;
-            padding-top: 6rem;
+            padding-top: calc(var(--header-height) + 1.5rem);
             padding-right: 2rem;
             padding-bottom: 2rem;
             padding-left: 2rem;
@@ -865,49 +921,93 @@
 
         /* ===== SALES FORECAST SECTION ===== */
         .forecast-section {
-            background: linear-gradient(135deg, #FFFFFF 0%, #F8F9FA 100%);
-            padding: 1.5rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            background: linear-gradient(135deg, #FFFFFF 0%, #F8FBFF 100%);
+            padding: 1.35rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 24px rgba(16, 24, 40, 0.06);
             margin-bottom: 1.5rem;
-            border: 1px solid var(--border-color);
+            border: 1px solid rgba(24, 119, 242, 0.1);
         }
 
         .forecast-header {
             display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
             margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .forecast-title-wrap {
+            min-width: 0;
+        }
+
+        .forecast-header-title {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            margin-bottom: 0.25rem;
             font-size: 1rem;
-            font-weight: 700;
+            font-weight: 800;
             color: var(--text-dark);
         }
 
-        .forecast-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1.5rem;
+        .forecast-header-subtitle {
+            font-size: 0.84rem;
+            color: var(--text-light);
+            line-height: 1.4;
         }
 
-        .forecast-metric {
+        .forecast-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 999px;
+            background: rgba(24, 119, 242, 0.08);
+            color: var(--primary);
+            font-size: 0.76rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .forecast-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.85rem;
+            margin-bottom: 1rem;
+        }
+
+        .forecast-card {
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
+            gap: 0.45rem;
+            padding: 0.9rem;
+            border-radius: 0.9rem;
+            border: 1px solid rgba(24, 119, 242, 0.08);
+            background: #ffffff;
+            min-width: 0;
         }
 
-        .forecast-label {
-            font-size: 0.8125rem;
+        .forecast-card-label {
+            font-size: 0.78rem;
             color: var(--text-lighter);
-            font-weight: 600;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
 
-        .forecast-value {
-            font-size: 1.5rem;
-            font-weight: 700;
+        .forecast-card-value {
+            font-size: 1.22rem;
+            font-weight: 800;
             color: var(--text-dark);
-            font-family: 'Courier New', monospace;
+            line-height: 1.1;
+        }
+
+        .forecast-card-subtext {
+            font-size: 0.78rem;
+            color: var(--text-light);
+            line-height: 1.35;
         }
 
         .forecast-progress-bar {
@@ -927,23 +1027,90 @@
             width: 0%;
         }
 
-        .forecast-status {
+        .forecast-detail-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.95fr);
+            gap: 1rem;
+            align-items: stretch;
+        }
+
+        .forecast-panel {
+            border: 1px solid rgba(24, 119, 242, 0.08);
+            border-radius: 0.95rem;
+            background: #ffffff;
+            padding: 1rem;
+        }
+
+        .forecast-panel-title {
+            font-size: 0.9rem;
+            font-weight: 800;
+            color: var(--text-dark);
+            margin-bottom: 0.8rem;
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            font-size: 0.9375rem;
-            font-weight: 600;
-            padding: 1rem;
-            border-radius: 0.375rem;
+            gap: 0.5rem;
+        }
+
+        .forecast-status {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            align-items: start;
+            gap: 0.85rem;
+            padding: 0.95rem;
+            border-radius: 0.85rem;
             background: #F0F6FF;
             border: 1px solid #D0E3F5;
             color: var(--text-dark);
-            grid-column: 1 / -1;
-            margin-top: 0.5rem;
+            margin-top: 0.9rem;
         }
 
         .forecast-status-icon {
             font-size: 1.5rem;
+        }
+
+        .forecast-status-title {
+            font-size: 0.86rem;
+            font-weight: 800;
+            color: var(--text-dark);
+            margin-bottom: 0.15rem;
+        }
+
+        .forecast-status-text {
+            font-size: 0.82rem;
+            line-height: 1.45;
+            color: var(--text-light);
+        }
+
+        .forecast-list {
+            display: grid;
+            gap: 0.7rem;
+        }
+
+        .forecast-list-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: baseline;
+            padding-bottom: 0.65rem;
+            border-bottom: 1px solid var(--divider);
+        }
+
+        .forecast-list-item:last-child {
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .forecast-list-label {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--text-light);
+        }
+
+        .forecast-list-value {
+            font-size: 0.92rem;
+            font-weight: 800;
+            color: var(--text-dark);
+            text-align: right;
         }
 
         .countdown-progress-section {
@@ -1004,6 +1171,38 @@
             border-radius: 999px;
             transition: width 0.4s ease;
             box-shadow: 0 2px 6px rgba(24, 119, 242, 0.4);
+        }
+
+        .progress-kpis {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+
+        .progress-kpi {
+            background: rgba(24, 119, 242, 0.04);
+            border: 1px solid rgba(24, 119, 242, 0.08);
+            border-radius: 0.85rem;
+            padding: 0.8rem 0.85rem;
+            min-width: 0;
+        }
+
+        .progress-kpi-label {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--text-light);
+            margin-bottom: 0.28rem;
+        }
+
+        .progress-kpi-value {
+            display: block;
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--text-dark);
+            line-height: 1.1;
         }
 
         .countdown-compact {
@@ -1080,6 +1279,38 @@
             text-align: center;
             margin-top: 0.5rem;
             font-weight: 500;
+        }
+
+        .countdown-status {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+            padding: 0.48rem 0.78rem;
+            border-radius: 999px;
+            background: rgba(24, 119, 242, 0.08);
+            color: var(--primary);
+            font-size: 0.76rem;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .countdown-status.warning {
+            background: rgba(180, 116, 12, 0.12);
+            color: var(--warning);
+        }
+
+        .countdown-status.danger {
+            background: rgba(217, 48, 37, 0.12);
+            color: var(--danger);
+        }
+
+        .countdown-note {
+            font-size: 0.8rem;
+            line-height: 1.4;
+            color: var(--text-light);
+            text-align: center;
+            max-width: 320px;
         }
 
         /* ===== ORDERS SECTION ===== */
@@ -1238,6 +1469,154 @@
             font-size: 0.95rem;
         }
 
+        .dashboard-overview {
+            background: linear-gradient(135deg, rgba(24, 119, 242, 0.06) 0%, rgba(24, 119, 242, 0.02) 100%);
+            border: 1px solid rgba(24, 119, 242, 0.12);
+            border-radius: 1rem;
+            padding: 1.1rem 1.25rem;
+            margin-bottom: 1.2rem;
+            display: grid;
+            grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.9fr);
+            gap: 1rem;
+            align-items: stretch;
+        }
+
+        .overview-hero {
+            min-width: 0;
+        }
+
+        .overview-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.3rem 0.65rem;
+            border-radius: 999px;
+            background: rgba(24, 119, 242, 0.1);
+            color: var(--primary);
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 0.8rem;
+        }
+
+        .overview-title {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--text-dark);
+            margin-bottom: 0.35rem;
+            line-height: 1.15;
+        }
+
+        .overview-meta {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+
+        .overview-meta-card {
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(24, 119, 242, 0.08);
+            border-radius: 0.85rem;
+            padding: 0.8rem 0.9rem;
+            min-width: 0;
+        }
+
+        .overview-meta-label {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-light);
+            margin-bottom: 0.35rem;
+        }
+
+        .overview-meta-value {
+            display: block;
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--text-dark);
+            line-height: 1.2;
+            word-break: break-word;
+        }
+
+        .overview-panel {
+            background: #ffffff;
+            border: 1px solid var(--divider);
+            border-radius: 0.95rem;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .overview-panel-title {
+            font-size: 0.9rem;
+            font-weight: 800;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+        }
+
+        .overview-alerts {
+            display: grid;
+            gap: 0.7rem;
+        }
+
+        .overview-alert {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.75rem;
+            align-items: start;
+            padding: 0.78rem 0.85rem;
+            border-radius: 0.85rem;
+            border: 1px solid var(--divider);
+            background: var(--bg-white);
+        }
+
+        .overview-alert-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 0.7rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.92rem;
+            background: rgba(24, 119, 242, 0.1);
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        .overview-alert.warning .overview-alert-icon {
+            background: rgba(180, 116, 12, 0.12);
+            color: var(--warning);
+        }
+
+        .overview-alert.danger .overview-alert-icon {
+            background: rgba(217, 48, 37, 0.12);
+            color: var(--danger);
+        }
+
+        .overview-alert.success .overview-alert-icon {
+            background: rgba(31, 157, 85, 0.12);
+            color: var(--success);
+        }
+
+        .overview-alert-title {
+            font-size: 0.84rem;
+            font-weight: 800;
+            color: var(--text-dark);
+            margin-bottom: 0.12rem;
+        }
+
+        .overview-alert-text {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            line-height: 1.45;
+        }
+
         /* ========================================================== */
         /* SECCIÓN 10: GRÁFICAS Y VISUALIZACIÓN DE DATOS              */
         /* ========================================================== */
@@ -1270,6 +1649,45 @@
             gap: 0.75rem;
         }
 
+        .charts-subtitle {
+            font-size: 0.88rem;
+            color: var(--text-light);
+            margin-top: 0.35rem;
+            line-height: 1.45;
+        }
+
+        .charts-insights {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.85rem;
+            margin-bottom: 1.2rem;
+        }
+
+        .charts-insight {
+            background: linear-gradient(135deg, #FFFFFF 0%, #F8FBFF 100%);
+            border: 1px solid rgba(24, 119, 242, 0.08);
+            border-radius: 0.9rem;
+            padding: 0.9rem 1rem;
+        }
+
+        .charts-insight-label {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--text-light);
+            margin-bottom: 0.28rem;
+        }
+
+        .charts-insight-value {
+            display: block;
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--text-dark);
+            line-height: 1.3;
+        }
+
         .filter-buttons {
             display: flex;
             gap: 0.5rem;
@@ -1299,6 +1717,40 @@
             border-color: var(--primary);
         }
 
+        .chart-filter-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.25rem;
+            border-radius: 999px;
+            background: #F3F7FD;
+            border: 1px solid #D8E5F3;
+        }
+
+        .chart-filter-btn {
+            border: none;
+            background: transparent;
+            color: var(--text-light);
+            font-size: 0.76rem;
+            font-weight: 700;
+            padding: 0.45rem 0.8rem;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .chart-filter-btn:hover {
+            color: var(--primary);
+            background: rgba(24, 119, 242, 0.08);
+        }
+
+        .chart-filter-btn.active {
+            background: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 6px 14px rgba(24, 119, 242, 0.2);
+        }
+
         .charts-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -1316,13 +1768,28 @@
             border: 1px solid var(--border-color);
         }
 
+        .chart-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
         .chart-title {
             font-size: 0.9375rem;
             font-weight: 700;
             color: var(--text-dark);
-            margin-bottom: 1rem;
-            text-align: center;
+            margin-bottom: 0;
             letter-spacing: 0.02em;
+        }
+
+        .chart-meta {
+            font-size: 0.76rem;
+            font-weight: 700;
+            color: var(--text-light);
+            text-align: right;
+            line-height: 1.35;
         }
 
         .chart-container canvas {
@@ -1340,12 +1807,34 @@
          */
         @media (max-width: 1024px) {
             #adminMain {
-                padding-top: 5rem;
+                padding-top: calc(var(--header-height) + 1.35rem);
             }
 
-            .forecast-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }            .countdown-progress-section {
+            .dashboard-overview {
+                grid-template-columns: 1fr;
+            }
+
+            .overview-meta {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .forecast-summary-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .forecast-detail-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .progress-kpis {
+                grid-template-columns: 1fr;
+            }
+
+            .charts-insights {
+                grid-template-columns: 1fr;
+            }
+
+            .countdown-progress-section {
                 grid-template-columns: 1fr;
                 gap: 2rem;
                 padding: 2rem;
@@ -1363,7 +1852,7 @@
 
         @media (max-width: 850px) {
             #adminMain {
-                padding-top: 5rem;
+                padding-top: calc(var(--header-height) + 1.25rem);
             }
 
             .countdown-progress-section {
@@ -1437,10 +1926,6 @@
                 font-size: 1.75rem;
             }
 
-            .forecast-grid {
-                grid-template-columns: 1fr;
-            }
-
             .container {
                 padding: 1rem;
             }
@@ -1495,13 +1980,40 @@
                 padding: 1rem;
             }
 
-            .forecast-grid {
+            .dashboard-overview {
+                padding: 1rem;
+            }
+
+            .overview-title {
+                font-size: 1.15rem;
+            }
+
+            .overview-meta {
+                grid-template-columns: 1fr;
+            }
+
+            .forecast-summary-grid {
                 grid-template-columns: 1fr;
                 gap: 1rem;
             }
 
-            .forecast-value {
-                font-size: 1.25rem;
+            .chart-head {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .chart-meta {
+                text-align: left;
+            }
+
+            .chart-filter-group {
+                width: 100%;
+                justify-content: flex-start;
+                overflow-x: auto;
+            }
+
+            .forecast-card-value {
+                font-size: 1.1rem;
             }
 
             .forecast-status {
@@ -1512,7 +2024,7 @@
 
         @media (max-width: 480px) {
             #adminMain {
-                padding-top: 5rem;
+                padding-top: calc(var(--header-height) + 1.2rem);
             }
 
             .header-content {
@@ -1526,6 +2038,11 @@
 
             .countdown-display-compact {
                 gap: 0.5rem;
+            }
+
+            .countdown-status,
+            .countdown-note {
+                width: 100%;
             }
 
             .countdown-unit-compact {
@@ -1552,13 +2069,14 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="css/admin-theme.css?v=20260321.01">
 </head>
 <body>
     <!-- LOGIN SCREEN -->
     <div id="loginScreen" class="login-container">
         <div class="login-box">
             <div class="login-logo">
-                <img src="images/logo.png" alt="Logo" id="loginLogo" width="100" height="50">
+                <img src="images/placeholder-logo.svg" alt="Logo" id="loginLogo" width="100" height="50">
             </div>
             <h1 id="loginTitle">Panel Admin</h1>
             <p class="login-subtitle">Acceso para administradores</p>
@@ -1584,14 +2102,23 @@
             <div class="admin-header-content">
                 <div class="admin-header-left">
                     <div class="admin-logo-container">
-                        <img src="images/logo.png" alt="Logo" id="dashboardLogo">
+                        <img src="images/placeholder-logo.svg" alt="Logo" id="dashboardLogo">
                     </div>
                     <div class="admin-header-title">
                         <div class="admin-header-title-main">Panel de Administración</div>
-                        <div class="admin-header-title-sub">SORTEOS YEPE</div>
+                        <div class="admin-header-title-sub">SORTEO</div>
                     </div>
                 </div>
                 <div class="admin-header-right">
+                    <div class="admin-user-info" id="userInfoContainer">
+                        <div class="admin-user-avatar">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <div class="admin-user-details">
+                            <div class="admin-user-name" id="userDisplayName">-</div>
+                            <div class="admin-user-role" id="userDisplayRole" style="font-size: 0.75rem; opacity: 0.7;">-</div>
+                        </div>
+                    </div>
                     <button class="admin-logout-btn" id="logoutBtn">
                         <i class="fas fa-sign-out-alt"></i> <span>Cerrar Sesión</span>
                     </button>
@@ -1627,7 +2154,7 @@
                         <i class="fas fa-cog"></i>
                         <span>Configuración</span>
                     </a>
-                    <a href="ayuda.html" class="admin-nav-btn" id="navAyuda">
+                    <a href="admin-ayuda.html" class="admin-nav-btn" id="navAyuda">
                         <i class="fas fa-question-circle"></i>
                         <span>Ayuda</span>
                     </a>
@@ -1731,36 +2258,127 @@
                 </div>
             </div>
 
+            <div class="dashboard-overview">
+                <div class="overview-hero">
+                <div class="overview-eyebrow">
+                        <i class="fas fa-bolt"></i>
+                        Centro de control
+                    </div>
+                    <h2 class="overview-title" id="overviewTitle">Resumen del sorteo activo</h2>
+                    <div class="overview-meta">
+                        <div class="overview-meta-card">
+                            <span class="overview-meta-label">Precio actual</span>
+                            <span class="overview-meta-value" id="overviewTicketPrice">$0</span>
+                        </div>
+                        <div class="overview-meta-card">
+                            <span class="overview-meta-label">Fecha del sorteo</span>
+                            <span class="overview-meta-value" id="overviewDrawDate">-</span>
+                        </div>
+                        <div class="overview-meta-card">
+                            <span class="overview-meta-label">Avance real</span>
+                            <span class="overview-meta-value" id="overviewSellRate">0%</span>
+                        </div>
+                        <div class="overview-meta-card">
+                            <span class="overview-meta-label">Modo actual</span>
+                            <span class="overview-meta-value" id="overviewMode">Boletos directos</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overview-panel">
+                    <div class="overview-panel-title">
+                        <i class="fas fa-siren-on"></i>
+                        Atención ahora
+                    </div>
+                    <div class="overview-alerts" id="overviewAlerts">
+                        <div class="overview-alert">
+                            <span class="overview-alert-icon"><i class="fas fa-spinner fa-spin"></i></span>
+                            <div>
+                                <div class="overview-alert-title">Cargando resumen operativo</div>
+                                <div class="overview-alert-text">Estamos preparando los indicadores prioritarios del dashboard.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- SALES FORECAST SECTION -->
             <div class="forecast-section">
                 <div class="forecast-header">
-                    <i class="fas fa-chart-line"></i>
-                    Pronóstico de Ventas
-                </div>
-                <div class="forecast-grid">
-                    <div class="forecast-metric">
-                        <div class="forecast-label">Velocidad de Venta</div>
-                        <div class="forecast-value" id="forecastSpeed">0</div>
-                        <div class="forecast-label" style="font-size: 0.75rem; margin-top: 0.25rem;">boletos/día</div>
+                    <div class="forecast-title-wrap">
+                        <div class="forecast-header-title">
+                            <i class="fas fa-chart-line"></i>
+                            Pronóstico de ventas
+                        </div>
+                        <div class="forecast-header-subtitle">Mide el ritmo actual, la proyección al cierre y lo que falta vender por día.</div>
                     </div>
-                    <div class="forecast-metric">
-                        <div class="forecast-label">Proyección Final</div>
-                        <div class="forecast-value" id="forecastProjection">0</div>
+                    <div class="forecast-chip">
+                        <i class="fas fa-calendar-day"></i>
+                        Actualizado con el sorteo activo
+                    </div>
+                </div>
+                <div class="forecast-summary-grid">
+                    <div class="forecast-card">
+                        <div class="forecast-card-label">Velocidad actual</div>
+                        <div class="forecast-card-value" id="forecastSpeed">0</div>
+                        <div class="forecast-card-subtext">boletos vendidos por día</div>
+                    </div>
+                    <div class="forecast-card">
+                        <div class="forecast-card-label">Proyección final</div>
+                        <div class="forecast-card-value" id="forecastProjection">0</div>
+                        <div class="forecast-card-subtext">estimado al cierre del sorteo</div>
+                    </div>
+                    <div class="forecast-card">
+                        <div class="forecast-card-label">Meta diaria</div>
+                        <div class="forecast-card-value" id="forecastTargetDaily">0</div>
+                        <div class="forecast-card-subtext">boletos por día para agotar inventario</div>
+                    </div>
+                    <div class="forecast-card">
+                        <div class="forecast-card-label">Ingreso proyectado</div>
+                        <div class="forecast-card-value" id="forecastRevenue">0</div>
+                        <div class="forecast-card-subtext">si el ritmo actual se mantiene</div>
+                    </div>
+                </div>
+                <div class="forecast-detail-grid">
+                    <div class="forecast-panel">
+                        <div class="forecast-panel-title">
+                            <i class="fas fa-signal"></i>
+                            Ritmo de cierre
+                        </div>
                         <div class="forecast-progress-bar">
                             <div class="forecast-progress-fill" id="forecastProgressFill"></div>
                         </div>
+                        <div class="forecast-status">
+                            <span class="forecast-status-icon" id="forecastStatusIcon">📊</span>
+                            <div>
+                                <div class="forecast-status-title" id="forecastStatusTitle">Cargando estado del ritmo</div>
+                                <div class="forecast-status-text" id="forecastStatusText">Estamos calculando la proyección con base en la venta actual.</div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="forecast-metric">
-                        <div class="forecast-label">Días Restantes</div>
-                        <div class="forecast-value" id="forecastDaysLeft">0</div>
-                    </div>
-                    <div class="forecast-metric">
-                        <div class="forecast-label">% Proyectado</div>
-                        <div class="forecast-value" id="forecastPercentage">0%</div>
-                    </div>
-                    <div class="forecast-status">
-                        <span class="forecast-status-icon" id="forecastStatusIcon">📊</span>
-                        <span id="forecastStatusText">Cargando datos...</span>
+                    <div class="forecast-panel">
+                        <div class="forecast-panel-title">
+                            <i class="fas fa-list-check"></i>
+                            Lectura rápida
+                        </div>
+                        <div class="forecast-list">
+                            <div class="forecast-list-item">
+                                <span class="forecast-list-label">Días restantes</span>
+                                <span class="forecast-list-value" id="forecastDaysLeft">0</span>
+                            </div>
+                            <div class="forecast-list-item">
+                                <span class="forecast-list-label">% proyectado</span>
+                                <span class="forecast-list-value" id="forecastPercentage">0%</span>
+                            </div>
+                            <div class="forecast-list-item">
+                                <span class="forecast-list-label">Inventario pendiente</span>
+                                <span class="forecast-list-value" id="forecastRemaining">0</span>
+                            </div>
+                            <div class="forecast-list-item">
+                                <span class="forecast-list-label">Boletos comprometidos</span>
+                                <span class="forecast-list-value" id="forecastCommitted">0</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1775,9 +2393,27 @@
                     <div class="progress-bar-wrapper">
                         <div class="progress-bar" id="progressBar" style="width: 0%"></div>
                     </div>
+                    <div class="progress-kpis">
+                        <div class="progress-kpi">
+                            <span class="progress-kpi-label">Vendidos</span>
+                            <span class="progress-kpi-value" id="progressSold">0</span>
+                        </div>
+                        <div class="progress-kpi">
+                            <span class="progress-kpi-label">Apartados</span>
+                            <span class="progress-kpi-value" id="progressReserved">0</span>
+                        </div>
+                        <div class="progress-kpi">
+                            <span class="progress-kpi-label">Por vender</span>
+                            <span class="progress-kpi-value" id="progressRemaining">0</span>
+                        </div>
+                    </div>
                 </div>
                 <div class="countdown-compact">
                     <div class="countdown-title">⏰ Tiempo Restante</div>
+                    <div class="countdown-status" id="countdownStatus">
+                        <i class="fas fa-clock"></i>
+                        Seguimiento normal
+                    </div>
                     <div class="countdown-display-compact">
                         <div class="countdown-unit-compact">
                             <div class="countdown-value-compact" id="countdownDays">00</div>
@@ -1797,6 +2433,7 @@
                         </div>
                     </div>
                     <div class="countdown-date" id="countdownDate">Cargando fecha del sorteo...</div>
+                    <div class="countdown-note" id="countdownNote">Estamos preparando la lectura del tiempo restante para el sorteo activo.</div>
                 </div>
             </div>
 
@@ -1817,18 +2454,44 @@
             <!-- CHARTS SECTION -->
             <div class="charts-section">
                 <div class="charts-header">
-                    <div class="charts-title">
-                        <i class="fas fa-chart-pie"></i>
-                        Análisis de Datos
+                    <div>
+                        <div class="charts-title">
+                            <i class="fas fa-chart-pie"></i>
+                            Análisis de Datos
+                        </div>
+                        <div class="charts-subtitle">Lee de un vistazo cómo está repartido el inventario y cómo se han movido las ventas recientes.</div>
+                    </div>
+                </div>
+                <div class="charts-insights">
+                    <div class="charts-insight">
+                        <span class="charts-insight-label">Inventario</span>
+                        <span class="charts-insight-value" id="chartInventoryInsight">Cargando distribución actual...</span>
+                    </div>
+                    <div class="charts-insight">
+                        <span class="charts-insight-label">Tendencia</span>
+                        <span class="charts-insight-value" id="chartTrendInsight">Cargando actividad reciente...</span>
                     </div>
                 </div>
                 <div class="charts-grid">
                     <div class="chart-container">
-                        <h3 class="chart-title">Estado de Boletos</h3>
+                        <div class="chart-head">
+                            <h3 class="chart-title">Estado de Boletos</h3>
+                            <div class="chart-meta" id="distributionMeta">Lectura del inventario actual</div>
+                        </div>
                         <canvas id="distributionChart"></canvas>
                     </div>
                     <div class="chart-container">
-                        <h3 class="chart-title">Tendencia de Ventas (7 días)</h3>
+                        <div class="chart-head">
+                            <div>
+                                <h3 class="chart-title" id="trendChartTitle">Tendencia de Ventas (7 días)</h3>
+                                <div class="chart-meta" id="trendMeta">Actividad reciente del sorteo</div>
+                            </div>
+                            <div class="chart-filter-group" role="group" aria-label="Filtro de tendencia">
+                                <button type="button" class="chart-filter-btn" data-chart-range="1">Hoy</button>
+                                <button type="button" class="chart-filter-btn active" data-chart-range="7">7 días</button>
+                                <button type="button" class="chart-filter-btn" data-chart-range="30">30 días</button>
+                            </div>
+                        </div>
                         <canvas id="trendChart"></canvas>
                     </div>
                 </div>
@@ -1852,7 +2515,9 @@
         // Obtener URL de API desde config si está disponible, sino usar default
         const URL_API = (window.rifaplusConfig && window.rifaplusConfig.backend) 
             ? window.rifaplusConfig.backend.apiBase 
-            : 'http://127.0.0.1:5001';
+            : ((window.rifaplusConfig && typeof window.rifaplusConfig.obtenerApiBase === 'function')
+                ? window.rifaplusConfig.obtenerApiBase()
+                : window.location.origin);
         
         // 🔐 FUNCIÓN CENTRAL: Obtener token dinámicamente del localStorage
         // Esto asegura que siempre se use el token más actualizado
@@ -1863,6 +2528,24 @@
                    localStorage.getItem('token') ||
                    null;
         }
+
+        function escapeHtmlAdmin(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function escapeJsSingleQuote(value) {
+            return String(value ?? '')
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/\r/g, '\\r')
+                .replace(/\n/g, '\\n')
+                .replace(/<\/script/gi, '<\\/script');
+        }
         
         let tokenAutenticacion = null; // Variable para compatibilidad, pero usar obtenerTokenActual()
         let intervaloConteoRegresivo = null;
@@ -1871,14 +2554,20 @@
         let graficoTendencia = null;
         let rangoActual = '7';
 
+        function actualizarFiltroTendenciaActivo(rango = '7') {
+            document.querySelectorAll('[data-chart-range]').forEach(boton => {
+                boton.classList.toggle('active', boton.dataset.chartRange === String(rango));
+            });
+        }
+
         /**
          * Inicializar configuración global del dashboard
          * Establece el nombre y logo de la organización desde config
          */
         function inicializarConfiguracion() {
             const config = window.rifaplusConfig || {};
-            const nombreCliente = config.cliente?.nombre || 'SORTEOS YEPE';
-            const logoCliente = config.cliente?.logo || 'images/logo.png';
+            const nombreCliente = config.cliente?.nombre || 'SORTEO';
+            const logoCliente = config.cliente?.logo || config.cliente?.logotipo || 'images/placeholder-logo.svg';
 
             document.getElementById('loginTitle').textContent = `${nombreCliente} - Admin`;
             document.getElementById('loginLogo').src = logoCliente;
@@ -1923,6 +2612,16 @@
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('dashboard').classList.add('logged-in');
 
+                // Mostrar usuario en header (dashboard)
+                mostrarUsuarioEnHeader();
+                
+                // Actualizar header components (admin-header-user.js)
+                if (window.AdminHeaderManager) {
+                    window.AdminHeaderManager.reload();
+                }
+                
+                restringirAccesoConfiguracion();
+
                 // Si hay un redirect pendiente, ir a esa página
                 const redirectPendiente = localStorage.getItem('redirectAfterLogin');
                 if (redirectPendiente) {
@@ -1957,6 +2656,181 @@
             originalLogout();
         };
 
+        /**
+         * Decodificar JWT y obtener información del usuario
+         * @returns {object} Datos del usuario: { id, username, email, rol } o null
+         */
+        function decodificarTokenJWT() {
+            try {
+                const token = localStorage.getItem('rifaplus_token') || localStorage.getItem('rifaplus_admin_token');
+                if (!token) return null;
+                
+                // JWT tiene formato: header.payload.signature
+                const partes = token.split('.');
+                if (partes.length !== 3) return null;
+                
+                // Decodificar payload (segunda parte)
+                const payload = partes[1];
+                const payloadDecodificado = JSON.parse(atob(payload));
+                
+                window.currentUser = {
+                    id: payloadDecodificado.id,
+                    username: payloadDecodificado.username,
+                    email: payloadDecodificado.email,
+                    rol: payloadDecodificado.rol  // ✅ Sin default - validado en backend
+                };
+                
+                return window.currentUser;
+            } catch (error) {
+                console.error('Error decodificando JWT:', error);
+                return null;
+            }
+        }
+
+        /**
+         * Mostrar información del usuario en el header
+         */
+        function mostrarUsuarioEnHeader() {
+            const usuario = decodificarTokenJWT();
+            if (!usuario) return;
+            
+            const nombreDisplay = document.getElementById('userDisplayName');
+            const rolDisplay = document.getElementById('userDisplayRole');
+            
+            if (nombreDisplay) nombreDisplay.textContent = usuario.username;
+            if (rolDisplay) {
+                const rolMensaje = usuario.rol === 'administrador' ? 'Administrador' : 'Gestor de Órdenes';
+                rolDisplay.textContent = rolMensaje;
+            }
+        }
+
+        /**
+         * Verificar si el usuario actual es administrador
+         * @returns {boolean} true si es admin, false en caso contrario
+         */
+        function esAdministrador() {
+            const usuario = decodificarTokenJWT();
+            return usuario && usuario.rol === 'administrador';
+        }
+
+        function actualizarResumenEjecutivo({
+            vendidos = 0,
+            apartados = 0,
+            disponibles = 0,
+            pendientes = 0,
+            ingresosConfirmados = 0,
+            totalBoletos = 0
+        } = {}) {
+            const config = window.rifaplusConfig || {};
+            const rifa = config.rifa || {};
+            const porcentajeVendido = totalBoletos > 0 ? Math.round((vendidos / totalBoletos) * 100) : 0;
+            const fechaSorteo = typeof config.obtenerFechaSorteoFormato === 'function'
+                ? config.obtenerFechaSorteoFormato()
+                : (rifa.fechaSorteoFormato || '-');
+            const oportunidadesActivas = rifa.oportunidades?.enabled === true;
+
+            const overviewTitle = document.getElementById('overviewTitle');
+            const overviewTicketPrice = document.getElementById('overviewTicketPrice');
+            const overviewDrawDate = document.getElementById('overviewDrawDate');
+            const overviewSellRate = document.getElementById('overviewSellRate');
+            const overviewMode = document.getElementById('overviewMode');
+            const overviewAlerts = document.getElementById('overviewAlerts');
+
+            if (overviewTitle) {
+                overviewTitle.textContent = rifa.nombreSorteo || 'Resumen del sorteo activo';
+            }
+
+            if (overviewTicketPrice) {
+                overviewTicketPrice.textContent = `$${Number(rifa.precioBoleto || 0).toLocaleString('es-MX', { maximumFractionDigits: 2 })}`;
+            }
+
+            if (overviewDrawDate) {
+                overviewDrawDate.textContent = fechaSorteo || '-';
+            }
+
+            if (overviewSellRate) {
+                overviewSellRate.textContent = `${porcentajeVendido}%`;
+            }
+
+            if (overviewMode) {
+                overviewMode.textContent = oportunidadesActivas ? 'Boletos + oportunidades' : 'Boletos directos';
+            }
+
+            if (!overviewAlerts) return;
+
+            const timestampSorteo = typeof config.obtenerTimestampSorteo === 'function'
+                ? config.obtenerTimestampSorteo()
+                : null;
+            const diasRestantes = timestampSorteo
+                ? Math.max(0, Math.ceil((timestampSorteo - Date.now()) / (1000 * 60 * 60 * 24)))
+                : null;
+            const porcentajeApartado = totalBoletos > 0 ? Math.round(((vendidos + apartados) / totalBoletos) * 100) : 0;
+
+            const alertas = [];
+
+            alertas.push({
+                tipo: pendientes > 0 ? 'danger' : 'success',
+                icono: pendientes > 0 ? 'fa-clock' : 'fa-check-circle',
+                titulo: pendientes > 0 ? `${pendientes.toLocaleString()} órdenes requieren revisión` : 'Sin órdenes críticas pendientes',
+                texto: pendientes > 0 ? 'Conviene revisar comprobantes y liberar cuellos de botella cuanto antes.' : 'La cola operativa está controlada en este momento.'
+            });
+
+            alertas.push({
+                tipo: porcentajeVendido >= 70 ? 'success' : (porcentajeVendido >= 35 ? 'warning' : 'danger'),
+                icono: porcentajeVendido >= 70 ? 'fa-chart-line' : (porcentajeVendido >= 35 ? 'fa-gauge-high' : 'fa-bullhorn'),
+                titulo: `Avance actual: ${porcentajeVendido}% vendido`,
+                texto: porcentajeVendido >= 70
+                    ? 'El sorteo va en muy buen ritmo y se acerca a cierre fuerte.'
+                    : (porcentajeVendido >= 35
+                        ? 'El ritmo es aceptable, pero todavía hay margen para empujar conversión.'
+                        : 'El sorteo necesita más empuje comercial para acercarse a meta.')
+            });
+
+            alertas.push({
+                tipo: diasRestantes !== null && diasRestantes <= 2 ? 'warning' : 'success',
+                icono: diasRestantes !== null && diasRestantes <= 2 ? 'fa-hourglass-half' : 'fa-calendar-check',
+                titulo: diasRestantes !== null ? `${diasRestantes} día(s) para el sorteo` : 'Fecha de sorteo disponible',
+                texto: diasRestantes !== null
+                    ? `Ya está comprometido el ${porcentajeApartado}% del inventario entre vendidos y apartados.`
+                    : 'Confirma la fecha del sorteo para mejorar la planeación operativa.'
+            });
+
+            overviewAlerts.innerHTML = alertas.map(alerta => `
+                <div class="overview-alert ${alerta.tipo}">
+                    <span class="overview-alert-icon"><i class="fas ${alerta.icono}"></i></span>
+                    <div>
+                        <div class="overview-alert-title">${alerta.titulo}</div>
+                        <div class="overview-alert-text">${alerta.texto}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        /**
+         * Restringir acceso a admin-configuracion solo para administradores
+         */
+        function restringirAccesoConfiguracion() {
+            // Si está intentando acceder a admin-configuracion.html
+            if (window.location.pathname.includes('admin-configuracion')) {
+                if (!esAdministrador()) {
+                    alert('❌ Acceso denegado: Solo los administradores pueden acceder a Configuración');
+                    window.location.href = 'admin-dashboard.html';
+                    return;
+                }
+                // Si es admin, desactivar botón en sidebar de usuarios que no sean admin
+                const botónConfig = document.getElementById('navConfig');
+                if (botónConfig && !esAdministrador()) {
+                    botónConfig.style.display = 'none';
+                }
+            }
+            
+            // Ocultar botón de configuración en sidebar si no es admin
+            const botónConfig = document.getElementById('navConfig');
+            if (botónConfig && !esAdministrador()) {
+                botónConfig.style.display = 'none';
+            }
+        }
+
         /* ============================================================ */
         /* SECCIÓN 3: CUENTA REGRESIVA HACIA EL SORTEO                */
         /* ============================================================ */
@@ -1978,41 +2852,91 @@
 
                 const boletosVendidos = parseInt(statVendidos.textContent.replace(/,/g, '') || 0);
                 const totalBoletos = parseInt(statTotal.textContent.replace(/,/g, '') || 500);
-                
-                // Obtener fecha de creación (asumiendo hoy como fecha inicial)
-                // Idealmente esto vendría de la BD, por ahora usamos un estimado de 3 días
-                const diasTranscurridos = Math.max(1, 3); // Mínimo 1 día
-                const velocidad = Math.round(boletosVendidos / diasTranscurridos); // boletos/día
-                
-                // Calcular días restantes hasta sorteo
+                const statReserved = document.getElementById('statReserved');
+                const apartados = parseInt(statReserved?.textContent?.replace(/,/g, '') || 0);
+                const precioBoleto = Number(window.rifaplusConfig?.rifa?.precioBoleto || 0);
+
                 const timestampSorteo = window.rifaplusConfig?.obtenerTimestampSorteo?.();
                 const ahora = new Date().getTime();
-                const diasRestantes = Math.max(0, Math.ceil((timestampSorteo - ahora) / (1000 * 60 * 60 * 24)));
-                
+                const unDiaMs = 1000 * 60 * 60 * 24;
+                const diasRestantes = timestampSorteo
+                    ? Math.max(0, Math.ceil((timestampSorteo - ahora) / unDiaMs))
+                    : 0;
+
+                const posiblesInicios = [
+                    window.rifaplusConfig?.rifa?.fechaInicio,
+                    window.rifaplusConfig?.createdAt,
+                    window.rifaplusConfig?.rifa?.descuentoPorcentaje?.fechaInicio,
+                    window.rifaplusConfig?.rifa?.promocionPorTiempo?.fechaInicio
+                ]
+                    .filter(Boolean)
+                    .map(fecha => new Date(fecha).getTime())
+                    .filter(timestamp => Number.isFinite(timestamp) && timestamp < ahora);
+
+                const inicioOperativo = posiblesInicios.length > 0
+                    ? Math.min(...posiblesInicios)
+                    : (timestampSorteo
+                        ? Math.max(ahora - unDiaMs, timestampSorteo - (2 * unDiaMs))
+                        : ahora - unDiaMs);
+
+                const diasTranscurridos = Math.max(1, Math.ceil((ahora - inicioOperativo) / unDiaMs));
+                const velocidad = Math.max(0, Math.round(boletosVendidos / diasTranscurridos));
+
                 // Proyección: vendidos actuales + (velocidad × días restantes)
                 const proyeccion = boletosVendidos + (velocidad * diasRestantes);
                 const proyeccionFinal = Math.min(proyeccion, totalBoletos); // No exceder total
-                const porcentajeProyectado = Math.round((proyeccionFinal / totalBoletos) * 100);
+                const porcentajeProyectado = totalBoletos > 0
+                    ? Math.round((proyeccionFinal / totalBoletos) * 100)
+                    : 0;
+                const boletosRestantes = Math.max(0, totalBoletos - boletosVendidos);
+                const metaDiaria = diasRestantes > 0 ? Math.ceil(boletosRestantes / diasRestantes) : boletosRestantes;
+                const ingresoProyectado = proyeccionFinal * precioBoleto;
+                const comprometidos = boletosVendidos + apartados;
                 
                 // Determinar estado
-                let estado = { icon: '📊', texto: 'Cargando...', color: '#1877F2' };
+                let estado = { icon: '📊', titulo: 'Lectura general del ritmo', texto: 'Cargando...', color: '#1877F2' };
                 
                 if (porcentajeProyectado >= 80) {
-                    estado = { icon: '🔥', texto: '¡Muy caliente! Proyectado ' + porcentajeProyectado + '% vendido', color: '#E4163A' };
+                    estado = {
+                        icon: '🔥',
+                        titulo: 'Muy buen cierre proyectado',
+                        texto: `Si sostienes este ritmo, cerrarías cerca del ${porcentajeProyectado}% vendido. Conviene enfocarse en confirmar apartados y cuidar seguimiento.`,
+                        color: '#E4163A'
+                    };
                 } else if (porcentajeProyectado >= 60) {
-                    estado = { icon: '✅', texto: 'En buen camino. Proyectado ' + porcentajeProyectado + '% vendido', color: '#31A24C' };
+                    estado = {
+                        icon: '✅',
+                        titulo: 'Buen camino, pero con margen de mejora',
+                        texto: `La proyección ronda el ${porcentajeProyectado}%. Un empuje comercial puntual todavía puede mejorar bastante el cierre.`,
+                        color: '#31A24C'
+                    };
                 } else if (porcentajeProyectado >= 40) {
-                    estado = { icon: '⚠️', texto: 'Ritmo lento. Proyectado ' + porcentajeProyectado + '% vendido', color: '#B4740C' };
+                    estado = {
+                        icon: '⚠️',
+                        titulo: 'Ritmo moderado',
+                        texto: `Con el paso actual cerrarías alrededor del ${porcentajeProyectado}%. Conviene reforzar difusión y revisar cuellos de confirmación.`,
+                        color: '#B4740C'
+                    };
                 } else {
-                    estado = { icon: '🚨', texto: 'Riesgo bajo de sold out. Aumenta promoción', color: '#E4163A' };
+                    estado = {
+                        icon: '🚨',
+                        titulo: 'Riesgo de cierre bajo',
+                        texto: `La proyección actual es de ${porcentajeProyectado}%. Hace falta mover promoción, acelerar pagos y reforzar seguimiento comercial.`,
+                        color: '#E4163A'
+                    };
                 }
                 
                 // Actualizar DOM
-                document.getElementById('forecastSpeed').textContent = velocidad;
+                document.getElementById('forecastSpeed').textContent = velocidad.toLocaleString();
                 document.getElementById('forecastProjection').textContent = `${Math.round(proyeccionFinal)} / ${totalBoletos}`;
+                document.getElementById('forecastTargetDaily').textContent = metaDiaria.toLocaleString();
+                document.getElementById('forecastRevenue').textContent = `$${Number(ingresoProyectado).toLocaleString('es-MX', { maximumFractionDigits: 0 })}`;
                 document.getElementById('forecastPercentage').textContent = porcentajeProyectado + '%';
                 document.getElementById('forecastDaysLeft').textContent = diasRestantes;
+                document.getElementById('forecastRemaining').textContent = boletosRestantes.toLocaleString();
+                document.getElementById('forecastCommitted').textContent = comprometidos.toLocaleString();
                 document.getElementById('forecastStatusIcon').textContent = estado.icon;
+                document.getElementById('forecastStatusTitle').textContent = estado.titulo;
                 document.getElementById('forecastStatusText').textContent = estado.texto;
                 
                 // Actualizar barra de progreso
@@ -2041,11 +2965,29 @@
                 return;
             }
 
+            if (intervaloConteoRegresivo) {
+                clearInterval(intervaloConteoRegresivo);
+                intervaloConteoRegresivo = null;
+            }
+
             // Validar la fecha
             const validacion = window.rifaplusConfig.validarFechaSorteo?.();
             if (!validacion || !validacion.valida) {
-                console.error('❌ [AdminCountdown] Fecha del sorteo inválida:', validacion?.mensaje);
-                document.getElementById('countdownDate').textContent = 'Fecha no configurada';
+                console.warn('⏳ [AdminCountdown] Fecha aún no disponible:', validacion?.mensaje);
+                document.getElementById('countdownDays').textContent = '--';
+                document.getElementById('countdownHours').textContent = '--';
+                document.getElementById('countdownMinutes').textContent = '--';
+                document.getElementById('countdownSeconds').textContent = '--';
+                document.getElementById('countdownDate').textContent = '⏳ Sincronizando fecha desde servidor...';
+                const countdownStatus = document.getElementById('countdownStatus');
+                const countdownNote = document.getElementById('countdownNote');
+                if (countdownStatus) {
+                    countdownStatus.className = 'countdown-status';
+                    countdownStatus.innerHTML = '<i class="fas fa-sync-alt"></i> Esperando configuración';
+                }
+                if (countdownNote) {
+                    countdownNote.textContent = 'El panel está esperando la fecha oficial del sorteo desde el servidor para iniciar la cuenta regresiva.';
+                }
                 return;
             }
 
@@ -2073,6 +3015,15 @@
                     document.getElementById('countdownMinutes').textContent = 'O';
                     document.getElementById('countdownSeconds').textContent = 'R';
                     document.getElementById('countdownDate').textContent = 'SORTEO COMPLETADO';
+                    const countdownStatus = document.getElementById('countdownStatus');
+                    const countdownNote = document.getElementById('countdownNote');
+                    if (countdownStatus) {
+                        countdownStatus.className = 'countdown-status';
+                        countdownStatus.innerHTML = '<i class="fas fa-flag-checkered"></i> Sorteo finalizado';
+                    }
+                    if (countdownNote) {
+                        countdownNote.textContent = 'La cuenta regresiva terminó. Desde aquí ya conviene revisar cierre, resultados y seguimiento posterior.';
+                    }
                     clearInterval(intervaloConteoRegresivo);
                     return;
                 }
@@ -2089,6 +3040,33 @@
                 
                 const objetivo = new Date(timestampObjetivo);
                 document.getElementById('countdownDate').textContent = `Sorteo: ${objetivo.toLocaleDateString('es-MX')} a las ${objetivo.toLocaleTimeString('es-MX')}`;
+
+                const countdownStatus = document.getElementById('countdownStatus');
+                const countdownNote = document.getElementById('countdownNote');
+                const horasTotales = Math.floor(diferencia / (1000 * 60 * 60));
+
+                if (countdownStatus) {
+                    if (dias <= 1) {
+                        countdownStatus.className = 'countdown-status danger';
+                        countdownStatus.innerHTML = '<i class="fas fa-bolt"></i> Cierre muy cercano';
+                    } else if (dias <= 3) {
+                        countdownStatus.className = 'countdown-status warning';
+                        countdownStatus.innerHTML = '<i class="fas fa-hourglass-half"></i> Ventana final';
+                    } else {
+                        countdownStatus.className = 'countdown-status';
+                        countdownStatus.innerHTML = '<i class="fas fa-clock"></i> Seguimiento normal';
+                    }
+                }
+
+                if (countdownNote) {
+                    if (dias <= 1) {
+                        countdownNote.textContent = `Quedan ${horasTotales} hora(s) para el sorteo. Es buen momento para reforzar seguimiento y convertir apartados.`;
+                    } else if (dias <= 3) {
+                        countdownNote.textContent = `Ya entraste en la etapa final del sorteo. Conviene monitorear pagos, pendientes y empuje comercial.`;
+                    } else {
+                        countdownNote.textContent = `El sorteo sigue activo con tiempo para mover ventas y revisar el ritmo con calma.`;
+                    }
+                }
             }
 
             actualizarCuentaRegresiva();
@@ -2125,19 +3103,19 @@
                 const config = window.rifaplusConfig || {};
                 const totalBoletosDisponibles = Number(config.rifa?.totalBoletos || 500);
 
-                // Obtener datos reales de boletos
+                // Obtener datos resumidos de boletos desde endpoint liviano
                 let vendidos = 0, apartados = 0;
                 try {
-                    const respBoletosPublicos = await fetch(`${URL_API}/api/public/boletos`);
-                    const datosBoletosPublicos = await respBoletosPublicos.json();
-                    if (datosBoletosPublicos.success) {
-                        vendidos = (datosBoletosPublicos.data?.sold || []).length;
-                        // ✅ AHORA: Solo contar boletos REALES apartados (estado='apartado')
-                        // NO incluir oportunidades (250000+) que están en .data.oportunidades
-                        apartados = (datosBoletosPublicos.data?.reserved || []).length;
+                    const respBoletosStats = await fetch(`${URL_API}/api/public/boletos/stats`, {
+                        cache: 'no-store'
+                    });
+                    const datosBoletosStats = await respBoletosStats.json();
+                    if (datosBoletosStats.success) {
+                        vendidos = Number(datosBoletosStats.data?.vendidos || 0);
+                        apartados = Number(datosBoletosStats.data?.apartados || 0);
                     }
                 } catch (error) {
-                    console.warn('Error cargando boletos reales:', error);
+                    console.warn('Error cargando resumen de boletos:', error);
                 }
 
                 const disponibles = Math.max(0, Number(totalBoletosDisponibles) - (Number(vendidos) + Number(apartados)));
@@ -2149,21 +3127,10 @@
                 const cantidadComprobante = Number(estadisticas.por_estado?.find(e => e.estado === 'comprobante_recibido')?.cantidad || 0);
                 const pendientes = cantidadPendiente + cantidadComprobante;
                 
-                // Calcular ingresos confirmados
+                // Calcular ingresos confirmados usando stats agregadas
                 let ingresosConfirmados = parseFloat(estadisticas.ingresos_confirmados || 0);
-                const tokenCalculo = obtenerTokenActual();
-                if ((!estadisticas.ingresos_confirmados || isNaN(ingresosConfirmados)) && tokenCalculo) {
-                    try {
-                        const respOrdenes = await fetch(`${URL_API}/api/ordenes?estado=confirmada&limit=1000`, { 
-                            headers: { 'Authorization': `Bearer ${tokenCalculo}` } 
-                        });
-                        const datosOrdenes = await respOrdenes.json();
-                        if (datosOrdenes && datosOrdenes.success && Array.isArray(datosOrdenes.data)) {
-                            ingresosConfirmados = datosOrdenes.data.reduce((acumulado, orden) => acumulado + (parseFloat(orden.total) || 0), 0);
-                        }
-                    } catch (error) {
-                        ingresosConfirmados = parseFloat(estadisticas.ingresos_totales || 0);
-                    }
+                if (isNaN(ingresosConfirmados)) {
+                    ingresosConfirmados = parseFloat(estadisticas.ingresos_totales || 0);
                 }
 
                 // Actualizar estadísticas en la interfaz
@@ -2184,12 +3151,20 @@
                 document.getElementById('statTotalOrders').textContent = Number(estadisticas.total_ordenes || 0).toLocaleString();
                 document.getElementById('totalTickets').textContent = Number(totalBoletosDisponibles).toLocaleString();
 
+                const progressSold = document.getElementById('progressSold');
+                const progressReserved = document.getElementById('progressReserved');
+                const progressRemaining = document.getElementById('progressRemaining');
+
+                if (progressSold) progressSold.textContent = Number(vendidos).toLocaleString();
+                if (progressReserved) progressReserved.textContent = Number(apartados).toLocaleString();
+                if (progressRemaining) progressRemaining.textContent = Number(disponibles).toLocaleString();
+
                 // Actualizar barra de progreso
                 document.getElementById('progressPercentage').textContent = `${porcentaje}%`;
                 document.getElementById('progressBar').style.width = `${porcentaje}%`;
 
                 // ✨ CARGAR ESTADÍSTICAS DE OPORTUNIDADES si están habilitadas
-                const oportunidadesHabilitadas = config.rifa?.oportunidadesHabilitadas === true;
+                const oportunidadesHabilitadas = config.rifa?.oportunidades?.enabled === true;
                 console.log('🔍 [cargarEstadisticas] Debug - config.rifa:', config.rifa);
                 console.log('🔍 [cargarEstadisticas] oportunidadesHabilitadas:', oportunidadesHabilitadas);
                 
@@ -2207,6 +3182,14 @@
                 
                 // 🎯 Actualizar pronóstico después de cargar stats
                 calcularPronosticoVentas();
+                actualizarResumenEjecutivo({
+                    vendidos,
+                    apartados,
+                    disponibles,
+                    pendientes,
+                    ingresosConfirmados,
+                    totalBoletos: Number(totalBoletosDisponibles)
+                });
                 
             } catch (error) {
                 console.error('Error cargando estadísticas:', error);
@@ -2253,14 +3236,12 @@
                     }
                 });
 
-                console.log(`📡 [cargarEstadisticasOportunidades] Response status: ${respuesta.status}`);
 
                 if (!respuesta.ok) {
                     throw new Error(`Endpoint retornó ${respuesta.status}`);
                 }
 
                 const datos = await respuesta.json();
-                console.log('✅ [cargarEstadisticasOportunidades] Datos obtenidos:', datos.data);
 
                 if (!datos.success || !datos.data) {
                     throw new Error('Respuesta inválida del endpoint');
@@ -2277,7 +3258,6 @@
                 if (elemAssigned) elemAssigned.textContent = Number(stats.asignadas || 0).toLocaleString();
                 if (elemReserved) elemReserved.textContent = Number(stats.apartadas || 0).toLocaleString();
 
-                console.log('✅ [cargarEstadisticasOportunidades] Cards actualizadas');
                 console.log(`   - Disponibles: ${stats.disponibles}`);
                 console.log(`   - Asignadas: ${stats.asignadas}`);
                 console.log(`   - Apartadas: ${stats.apartadas}`);
@@ -2299,16 +3279,7 @@
         }
 
         /**
-         * ⚠️ DEPRECATED: Esta función es un fallback obsoleto
-         * Ahora usamos directamente GET /api/admin/oportunidades-stats que consulta la BD
-         * Se mantiene comentada por referencia histórica
-         * 
-         * async function calcularOportunidadesDesdeOrdenes(token) { ... }
-         */
-
-        /**
-         * FUNCIÓN DE DEBUGGING: Mostrar tarjetas manualmente desde consola
-         * Uso: mostrarOportunidadesTest()
+         * FUNCIÓN DEBUGGING: Mostrar tarjetas oportunidades manualmente desde consola
          */
         window.mostrarOportunidadesTest = function() {
             console.log('🟢 [mostrarOportunidadesTest] Mostrando tarjetas manualmente...');
@@ -2320,7 +3291,6 @@
             document.getElementById('statOpportunitiesAssigned').textContent = '3,000';
             document.getElementById('statOpportunitiesReserved').textContent = '1,153';
             
-            console.log('✅ [mostrarOportunidadesTest] Tarjetas mostradas con valores de prueba');
         };
 
         /* ============================================================ */
@@ -2334,8 +3304,9 @@
          */
         async function cargarGraficas(rango) {
             try {
-                console.log('📊 Iniciando carga de gráficas...');
-                console.log('📊 ¿Chart.js cargado?:', typeof Chart !== 'undefined');
+                const rangoSeleccionado = String(rango || rangoActual || '7');
+                rangoActual = rangoSeleccionado;
+                actualizarFiltroTendenciaActivo(rangoSeleccionado);
                 
                 // Esperar a que Chart.js esté disponible
                 let intentos = 0;
@@ -2350,25 +3321,39 @@
                     return;
                 }
 
-                console.log('✅ Chart.js disponible, cargando datos...');
 
-                // Obtener datos de boletos reales
+                // Obtener datos resumidos de boletos desde endpoint ligero
                 let vendidos = 0, disponibles = 0, apartados = 0;
                 try {
-                    const respBoletosPublicos = await fetch(`${URL_API}/api/public/boletos`);
-                    const datosBoletosPublicos = await respBoletosPublicos.json();
-                    if (datosBoletosPublicos.success && datosBoletosPublicos.data) {
+                    const respBoletosStats = await fetch(`${URL_API}/api/public/boletos/stats`, {
+                        cache: 'no-store'
+                    });
+                    const datosBoletosStats = await respBoletosStats.json();
+                    if (datosBoletosStats.success && datosBoletosStats.data) {
                         const config = window.rifaplusConfig || {};
                         const totalBoletosDisponibles = config.rifa?.totalBoletos || 500;
-                        vendidos = (datosBoletosPublicos.data?.sold || []).length;
-                        // ✅ AHORA: Solo contar boletos REALES apartados
-                        // NO incluir oportunidades que están en .data.oportunidades
-                        apartados = (datosBoletosPublicos.data?.reserved || []).length;
+                        vendidos = Number(datosBoletosStats.data?.vendidos || 0);
+                        apartados = Number(datosBoletosStats.data?.apartados || 0);
                         disponibles = Math.max(0, totalBoletosDisponibles - (vendidos + apartados));
                         console.log('Boletos cargados:', { vendidos, disponibles, apartados });
                     }
                 } catch (error) {
                     console.warn('Error cargando boletos:', error);
+                }
+
+                const chartInventoryInsight = document.getElementById('chartInventoryInsight');
+                const distributionMeta = document.getElementById('distributionMeta');
+                const totalInventario = vendidos + disponibles + apartados;
+                const porcentajeComprometido = totalInventario > 0
+                    ? Math.round(((vendidos + apartados) / totalInventario) * 100)
+                    : 0;
+
+                if (chartInventoryInsight) {
+                    chartInventoryInsight.textContent = `${vendidos.toLocaleString()} vendidos, ${apartados.toLocaleString()} apartados y ${disponibles.toLocaleString()} disponibles`;
+                }
+
+                if (distributionMeta) {
+                    distributionMeta.textContent = `${porcentajeComprometido}% del inventario ya está comprometido`;
                 }
 
                 // Generar datos de tendencia (últimos 7 días)
@@ -2379,7 +3364,7 @@
                         console.error('⚠️ [cargarGraficas] No hay token disponible');
                         throw new Error('Token no disponible');
                     }
-                    const respTendencia = await fetch(`${URL_API}/api/admin/sales-stats?range=7`, {
+                    const respTendencia = await fetch(`${URL_API}/api/admin/sales-stats?range=${encodeURIComponent(rangoSeleccionado)}`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                     const datosTendencia = await respTendencia.json();
@@ -2391,6 +3376,11 @@
                         const fechaHoy = hoy.getFullYear() + '-' + 
                                        String(hoy.getMonth() + 1).padStart(2, '0') + '-' + 
                                        String(hoy.getDate()).padStart(2, '0');
+                        
+                        datosGrafica.forEach((item, indice) => {
+                            const esHoy = item.fecha === fechaHoy ? '(HOY)' : '';
+                            console.log(`  [${indice}] ${item.fecha} ${esHoy}: ${item.boletos} boletos`);
+                        });
                         
                         console.log('✅ Datos de tendencia cargados desde backend:');
                         datosGrafica.forEach((item, indice) => {
@@ -2404,9 +3394,10 @@
                     }
                 } catch (error) {
                     console.warn('⚠️ Error obteniendo datos del backend:', error);
-                    // Fallback: generar datos simulados para 7 días
+                    // Fallback: generar datos vacíos respetando el rango activo
                     const hoy = new Date();
-                    for (let i = 6; i >= 0; i--) {
+                    const diasFallback = rangoSeleccionado === '1' ? 1 : (rangoSeleccionado === '30' ? 30 : 7);
+                    for (let i = diasFallback - 1; i >= 0; i--) {
                         const fecha = new Date(hoy);
                         fecha.setDate(fecha.getDate() - i);
                         const boletosSimulados = 0; // Datos vacíos de prueba
@@ -2418,6 +3409,41 @@
                         });
                     }
                     console.log('📊 Usando datos vacíos (sin órdenes confirmadas)');
+                }
+
+                const trendMeta = document.getElementById('trendMeta');
+                const chartTrendInsight = document.getElementById('chartTrendInsight');
+                const trendChartTitle = document.getElementById('trendChartTitle');
+                const totalPeriodo = datosGrafica.reduce((suma, item) => suma + (parseInt(item.boletos) || 0), 0);
+                const mejorDia = datosGrafica.reduce((mejor, item) => {
+                    const valor = parseInt(item.boletos) || 0;
+                    return valor > mejor.boletos ? { fecha: item.fecha, boletos: valor } : mejor;
+                }, { fecha: null, boletos: 0 });
+                const promedioPeriodo = datosGrafica.length > 0 ? Math.round(totalPeriodo / datosGrafica.length) : 0;
+                const copyRango = rangoSeleccionado === '1'
+                    ? { titulo: 'Ventas de Hoy', periodo: 'hoy' }
+                    : (rangoSeleccionado === '30'
+                        ? { titulo: 'Tendencia de Ventas (30 días)', periodo: 'los últimos 30 días' }
+                        : { titulo: 'Tendencia de Ventas (7 días)', periodo: 'los últimos 7 días' });
+
+                if (trendChartTitle) {
+                    trendChartTitle.textContent = copyRango.titulo;
+                }
+
+                if (trendMeta) {
+                    trendMeta.textContent = totalPeriodo > 0
+                        ? `${totalPeriodo.toLocaleString()} boletos vendidos en ${copyRango.periodo}`
+                        : `Sin ventas confirmadas en ${copyRango.periodo}`;
+                }
+
+                if (chartTrendInsight) {
+                    if (totalPeriodo <= 0) {
+                        chartTrendInsight.textContent = `Todavía no hay ventas confirmadas recientes para construir tendencia ${rangoSeleccionado === '1' ? 'hoy' : 'en este rango'}.`;
+                    } else if (rangoSeleccionado === '1') {
+                        chartTrendInsight.textContent = `Hoy llevas ${totalPeriodo.toLocaleString()} boleto(s) confirmados. Este dato ayuda a leer el pulso operativo del día.`;
+                    } else {
+                        chartTrendInsight.textContent = `Promedio de ${promedioPeriodo.toLocaleString()} por día. Mejor día: ${mejorDia.boletos.toLocaleString()} boletos.`;
+                    }
                 }
 
                 // GRÁFICA 1: DISTRIBUCIÓN DE BOLETOS (Doughnut Chart)
@@ -2461,11 +3487,7 @@
                 window.graficoDistribucion = new Chart(ctxDistribucion, {
                     type: 'doughnut',
                     data: {
-                        labels: [
-                            `Vendidos\n${vendidos} (${porcVendidos}%)`,
-                            `Disponibles\n${disponibles} (${porcDisponibles}%)`,
-                            `Apartados\n${apartados} (${porcApartados}%)`
-                        ],
+                        labels: ['Vendidos', 'Disponibles', 'Apartados'],
                         datasets: [{
                             data: [vendidos, disponibles, apartados],
                             backgroundColor: [
@@ -2490,8 +3512,9 @@
                                     color: '#1F2937',
                                     generateLabels: function(grafico) {
                                         const datos = grafico.data;
+                                        const total = (datos.datasets[0].data || []).reduce((sum, value) => sum + (Number(value) || 0), 0);
                                         return datos.labels.map((etiqueta, i) => ({
-                                            text: etiqueta,
+                                            text: `${etiqueta} (${total > 0 ? (((Number(datos.datasets[0].data[i]) || 0) / total) * 100).toFixed(1) : '0.0'}%)`,
                                             fillStyle: datos.datasets[0].backgroundColor[i],
                                             hidden: false,
                                             index: i,
@@ -2508,13 +3531,13 @@
                                 bodyFont: { size: 12, family: 'Inter' },
                                 callbacks: {
                                     title: function(contexto) {
-                                        return contexto[0].label.split('\n')[0];
+                                        return contexto[0].label;
                                     },
                                     label: function(contexto) {
                                         const valor = contexto.parsed;
                                         const total = contexto.dataset.data.reduce((a, b) => a + b, 0);
                                         const porcentaje = ((valor / total) * 100).toFixed(1);
-                                        return `Cantidad: ${valor}\nPorcentaje: ${porcentaje}%`;
+                                        return `Porcentaje: ${porcentaje}%`;
                                     }
                                 }
                             }
@@ -2563,6 +3586,17 @@
                     window.graficoTendencia.destroy();
                 }
                 
+                const maxBoletos = boletos.length ? Math.max(...boletos, 0) : 0;
+                const stepSizeY = maxBoletos <= 25
+                    ? 1
+                    : maxBoletos <= 100
+                        ? 5
+                        : maxBoletos <= 500
+                            ? 25
+                            : maxBoletos <= 2000
+                                ? 100
+                                : Math.max(250, Math.ceil(maxBoletos / 8 / 50) * 50);
+
                 window.graficoTendencia = new Chart(ctxTendencia, {
                     type: 'line',
                     data: {
@@ -2616,7 +3650,8 @@
                             y: {
                                 beginAtZero: true,
                                 ticks: {
-                                    stepSize: 1,
+                                    stepSize: stepSizeY,
+                                    maxTicksLimit: 9,
                                     font: { family: 'Inter' },
                                     color: '#6B7280'
                                 },
@@ -2702,15 +3737,20 @@
                 ordenes.forEach(orden => {
                     const claseEstado = `status-${orden.estado || 'pendiente'}`;
                     const fechaFormato = orden.created_at ? new Date(orden.created_at).toLocaleDateString('es-MX') : '-';
+                    const numeroOrdenSeguro = escapeHtmlAdmin(orden.numero_orden || orden.id || '-');
+                    const clienteSeguro = escapeHtmlAdmin(orden.nombre_cliente || orden.cliente_nombre || '-');
+                    const estadoSeguro = escapeHtmlAdmin(orden.estado || 'Pendiente');
+                    const fechaSegura = escapeHtmlAdmin(fechaFormato);
+                    const numeroOrdenJs = escapeJsSingleQuote(orden.numero_orden || orden.id || '');
                     html += `<tr>`;
-                    html += `<td class="order-id">${orden.numero_orden || orden.id}</td>`;
-                    html += `<td>${orden.nombre_cliente || orden.cliente_nombre || '-'}</td>`;
+                    html += `<td class="order-id">${numeroOrdenSeguro}</td>`;
+                    html += `<td>${clienteSeguro}</td>`;
                     html += `<td>$${parseFloat(orden.total || 0).toLocaleString('es-MX')}</td>`;
-                    html += `<td><span class="order-status ${claseEstado}">${orden.estado || 'Pendiente'}</span></td>`;
-                    html += `<td>${fechaFormato}</td>`;
+                    html += `<td><span class="order-status ${claseEstado}">${estadoSeguro}</span></td>`;
+                    html += `<td>${fechaSegura}</td>`;
                     html += `<td class="order-actions">`;
-                    html += `<button class="btn-action btn-confirm" onclick="confirmarOrden('${orden.numero_orden || orden.id}')"><i class="fas fa-check"></i> Confirmar</button>`;
-                    html += `<button class="btn-action btn-reject" onclick="rechazarOrden('${orden.numero_orden || orden.id}')"><i class="fas fa-times"></i> Rechazar</button>`;
+                    html += `<button class="btn-action btn-confirm" onclick="confirmarOrden('${numeroOrdenJs}')"><i class="fas fa-check"></i> Confirmar</button>`;
+                    html += `<button class="btn-action btn-reject" onclick="rechazarOrden('${numeroOrdenJs}')"><i class="fas fa-times"></i> Rechazar</button>`;
                     html += `</td>`;
                     html += `</tr>`;
                 });
@@ -2785,6 +3825,20 @@
             }
         }
 
+        function inicializarFiltrosGraficaTendencia() {
+            document.querySelectorAll('[data-chart-range]').forEach(boton => {
+                if (boton.dataset.bound === 'true') return;
+
+                boton.addEventListener('click', async () => {
+                    const nuevoRango = boton.dataset.chartRange || '7';
+                    if (nuevoRango === rangoActual) return;
+                    await cargarGraficas(nuevoRango);
+                });
+
+                boton.dataset.bound = 'true';
+            });
+        }
+
         /* ============================================================ */
         /* SECCIÓN 8: INTERACCIÓN DEL MENÚ NAVEGACIÓN                  */
         /* ============================================================ */
@@ -2805,16 +3859,41 @@
         async function inicializarDashboard() {
             try {
                 console.log('Dashboard inicializándose...');
+                
+                // Ocultar opciones del sidebar según el rol del usuario
+                restringirAccesoConfiguracion();
+                inicializarFiltrosGraficaTendencia();
+                
                 iniciarCuentaRegresiva();
+                
+                // ⭐ IMPORTANTE: Hacer requests SECUENCIALMENTE para respetar límite de conexiones de Supabase
+                console.log('Cargando estadísticas...');
                 await cargarEstadisticas();
+                
+                // Esperar antes del siguiente request (evitar saturar conexiones)
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
                 calcularPronosticoVentas(); // 🎯 Calcular pronóstico después de cargar stats
                 console.log('Estadísticas cargadas, ahora cargando gráficas...');
-                await new Promise(resolve => setTimeout(resolve, 500)); // Pequeño delay para Chart.js
+                
+                // Esperar antes de cargar gráficas
+                await new Promise(resolve => setTimeout(resolve, 500));
                 await cargarGraficas(rangoActual);
+                
+                // Esperar antes de cargar órdenes
+                await new Promise(resolve => setTimeout(resolve, 300));
                 await cargarOrdenesPendientes();
+                
                 console.log('Dashboard inicializado completamente');
-                intervaloEstadisticas = setInterval(cargarEstadisticas, 10000);  // Cada 10 segundos en lugar de 30
-                setInterval(cargarOrdenesPendientes, 60000);
+                
+                // Intervalos con espaciado para no saturar
+                intervaloEstadisticas = setInterval(() => {
+                    cargarEstadisticas().catch(e => console.warn('Error en intervalo de stats:', e));
+                }, 15000);  // 15 segundos
+                
+                setInterval(() => {
+                    cargarOrdenesPendientes().catch(e => console.warn('Error en intervalo de órdenes:', e));
+                }, 60000); // 60 segundos
                 
                 // Inicializar toggle de visibilidad de ingresos
                 configurarToggleVisibilidad();
@@ -2869,21 +3948,27 @@
         /**
          * Verificar token guardado y cargar dashboard si existe
          */
-        window.addEventListener('load', () => {
+        window.addEventListener('load', async () => {
             inicializarConfiguracion();
-            const tokenGuardado = localStorage.getItem('rifaplus_token') || 
-                               localStorage.getItem('rifaplus_admin_token') ||
-                               localStorage.getItem('admin_token') ||
-                               localStorage.getItem('token');
-            console.log('🔐 [PageLoad] Token encontrado en localStorage:', !!tokenGuardado);
-            console.log('🔐 [PageLoad] Longitud del token:', tokenGuardado?.length || 0);
-            console.log('🔐 [PageLoad] Primeros 20 caracteres:', tokenGuardado?.substring(0, 20) || 'N/A');
-            
+            if (window.rifaplusConfig && typeof window.rifaplusConfig.escucharEvento === 'function' && !window.__adminDashboardCountdownSyncHook) {
+                window.__adminDashboardCountdownSyncHook = true;
+                window.rifaplusConfig.escucharEvento('configuracionActualizada', () => {
+                    iniciarCuentaRegresiva();
+                });
+            }
+            const tokenGuardado = await ADMIN_LAYOUT.esperarAutenticacion();
+            console.log('🔐 [PageLoad] Token verificado:', !!tokenGuardado);
+
             if (tokenGuardado) {
                 tokenAutenticacion = tokenGuardado;
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('dashboard').classList.add('logged-in');
+                // ⭐ Mostrar usuario en el header cuando hay sesión activa
+                mostrarUsuarioEnHeader();
                 inicializarDashboard();
+            } else {
+                document.getElementById('loginScreen').style.display = 'flex';
+                document.getElementById('dashboard').classList.remove('logged-in');
             }
         });
     </script>

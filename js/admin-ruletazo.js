@@ -9,17 +9,64 @@ class RuletazoMachine {
         this.drawnNumbers = [];
         this.isSpinning = false;
         this.digitCount = 0;
-        this.apiBase = (window.rifaplusConfig?.backend?.apiBase) || 'http://localhost:3000';
+        this.apiBase = (window.rifaplusConfig?.backend?.apiBase)
+            || window.rifaplusConfig?.obtenerApiBase?.()
+            || window.location.origin;
         this.authToken = localStorage.getItem('adminToken');
-        this.participantsMode = 'all'; // 'all' o 'sold'
+        this.participantsMode = 'sold'; // 'all' o 'sold'
     }
 
     /**
      * Formatea número con ceros iniciales según config.js
      */
-    formatNumber(num) {
-        // ✅ Usar función centralizada de config.js
-        return window.rifaplusConfig.formatearNumeroBoleto(num);
+    formatNumber(num, forcedDigitCount = null) {
+        const numeroLimpio = parseInt(String(num).replace(/[^0-9]/g, ''), 10);
+
+        if (!Number.isFinite(numeroLimpio) || numeroLimpio < 0) {
+            const fallbackDigits = Number.isInteger(forcedDigitCount) && forcedDigitCount > 0
+                ? forcedDigitCount
+                : Math.max(1, this.digitCount || 1);
+            return '?'.repeat(fallbackDigits);
+        }
+
+        const currentTotal = Number(this.currentRifa?.totalNumbers);
+        const digitsFromCurrentRifa = Number.isFinite(currentTotal) && currentTotal > 0
+            ? String(Math.max(currentTotal - 1, 0)).length
+            : 0;
+
+        const digits = Number.isInteger(forcedDigitCount) && forcedDigitCount > 0
+            ? forcedDigitCount
+            : Math.max(1, digitsFromCurrentRifa || this.digitCount || 1);
+
+        return String(numeroLimpio).padStart(digits, '0');
+    }
+
+    /**
+     * Obtiene métricas visuales de una columna del slot
+     */
+    getColumnMetrics(column, digitNumbers) {
+        const firstItem = digitNumbers?.querySelector('.digit-item');
+        const itemHeight = firstItem ? firstItem.offsetHeight : 56;
+        const columnHeight = column?.offsetHeight || 140;
+        const centerOffset = Math.max(0, (columnHeight - itemHeight) / 2);
+
+        return { itemHeight, columnHeight, centerOffset };
+    }
+
+    /**
+     * Calcula la traslación exacta para centrar un dígito en la ventana
+     */
+    getCenteredTranslateY(column, digitNumbers, digitIndex) {
+        const { itemHeight, centerOffset } = this.getColumnMetrics(column, digitNumbers);
+        return -((digitIndex * itemHeight) - centerOffset);
+    }
+
+    /**
+     * Aplica transform 3D para mantener el giro más fluido
+     */
+    applyColumnTransform(digitNumbers, translateY) {
+        if (!digitNumbers) return;
+        digitNumbers.style.transform = `translate3d(0, ${translateY}px, 0)`;
     }
 
     /**
@@ -70,18 +117,17 @@ class RuletazoMachine {
                 const data = await response.json();
                 // El endpoint devuelve { sold: [...], reserved: [...] }
                 const boletosData = data.data || {};
-                const soldNumbers = boletosData.sold || [];
-                const reservedNumbers = boletosData.reserved || [];
+                const soldNumbers = Array.isArray(boletosData.sold) ? boletosData.sold : [];
+                const reservedNumbers = Array.isArray(boletosData.reserved) ? boletosData.reserved : [];
                 
-                if (soldNumbers.length > 0 || reservedNumbers.length > 0) {
-                    const config = window.rifaplusConfig || {};
-                    const totalBoletos = config.rifa?.totalBoletos || 500;
+                if (data.success && (Array.isArray(boletosData.sold) || Array.isArray(boletosData.reserved))) {
+                    const totalBoletos = obtenerTotalBoletosRuletazo();
                     this.currentRifa = {
                         id: rifaId,
-                        name: this.getSelectedRifaName(rifaId),
+                        name: window.rifaplusConfig?.rifa?.nombreSorteo || this.getSelectedRifaName(rifaId),
                         totalNumbers: totalBoletos, // Dinámico desde config
-                        soldNumbers: Array.from(soldNumbers).sort((a, b) => a - b), // ⭐ SOLO vendidos
-                        reservedNumbers: Array.from(reservedNumbers).sort((a, b) => a - b) // ⭐ SOLO apartados
+                        soldNumbers: filtrarNumerosValidosRuletazo(soldNumbers, totalBoletos),
+                        reservedNumbers: filtrarNumerosValidosRuletazo(reservedNumbers, totalBoletos)
                     };
                     await this.loadDrawnNumbers(rifaId);
                     return this.currentRifa;
@@ -92,13 +138,12 @@ class RuletazoMachine {
         }
 
         // Datos de demostración
-        const config = window.rifaplusConfig || {};
-        const totalBoletos = config.rifa?.totalBoletos || 500;
+        const totalBoletos = obtenerTotalBoletosRuletazo();
         this.currentRifa = {
             id: rifaId,
-            name: this.getSelectedRifaName(rifaId),
+            name: window.rifaplusConfig?.rifa?.nombreSorteo || this.getSelectedRifaName(rifaId),
             totalNumbers: totalBoletos,
-            soldNumbers: this.generateSoldNumbers(50, totalBoletos)
+            soldNumbers: filtrarNumerosValidosRuletazo(this.generateSoldNumbers(50, totalBoletos), totalBoletos)
         };
         
         this.drawnNumbers = [];
@@ -124,7 +169,7 @@ class RuletazoMachine {
     generateSoldNumbers(count, max) {
         const sold = [];
         while (sold.length < count && sold.length < max) {
-            const num = Math.floor(Math.random() * max) + 1;
+            const num = Math.floor(Math.random() * max);
             if (!sold.includes(num)) {
                 sold.push(num);
             }
@@ -140,7 +185,10 @@ class RuletazoMachine {
             // Intentar cargar del localStorage primero
             const stored = localStorage.getItem(`draws_${rifaId}`);
             if (stored) {
-                this.drawnNumbers = JSON.parse(stored);
+                const parsed = JSON.parse(stored);
+                this.drawnNumbers = filtrarNumerosValidosRuletazo(Array.isArray(parsed)
+                    ? parsed.map(item => (typeof item === 'object' && item !== null ? Number(item.number) : Number(item))).filter(n => !Number.isNaN(n))
+                    : [], this.currentRifa?.totalNumbers || obtenerTotalBoletosRuletazo());
                 return;
             }
         } catch (error) {
@@ -174,14 +222,15 @@ class RuletazoMachine {
                 Math.floor(Math.random() * availableNumbers.length)
             ];
 
+            this.drawnNumbers.push(selectedNumber);
+            
             // Animar máquina
             await this.animateDraw(selectedNumber);
 
-            // Guardar en backend (si está disponible)
+            // Guardar historial local
             await this.saveDraw(selectedNumber);
 
-            this.drawnNumbers.push(selectedNumber);
-            this.showNotification(`¡Número ganador: ${selectedNumber}!`, 'success');
+            this.showNotification(`¡Número ganador: ${this.formatNumber(selectedNumber)}!`, 'success');
 
             return selectedNumber;
         } catch (error) {
@@ -207,7 +256,7 @@ class RuletazoMachine {
         // Modo 'todos': todos los números del rango (1 a totalNumbers)
         if (this.participantsMode === 'all') {
             const allNumbers = [];
-            for (let i = 1; i <= this.currentRifa.totalNumbers; i++) {
+            for (let i = 0; i < this.currentRifa.totalNumbers; i++) {
                 if (!this.drawnNumbers.includes(i)) {
                     allNumbers.push(i);
                 }
@@ -215,13 +264,9 @@ class RuletazoMachine {
             return allNumbers;
         }
         
-        // Modo 'sold': solo números vendidos + apartados (no sorteados)
+        // Modo 'sold': solo números vendidos (no sorteados)
         if (this.participantsMode === 'sold') {
-            const soldAndReserved = [
-                ...(this.currentRifa.soldNumbers || []),
-                ...(this.currentRifa.reservedNumbers || [])
-            ];
-            return soldAndReserved.filter(
+            return (this.currentRifa.soldNumbers || []).filter(
                 num => !this.drawnNumbers.includes(num)
             );
         }
@@ -238,8 +283,7 @@ class RuletazoMachine {
         if (this.participantsMode === 'all') {
             return this.currentRifa.totalNumbers;
         } else if (this.participantsMode === 'sold') {
-            const soldAndReserved = (this.currentRifa.soldNumbers?.length || 0) + (this.currentRifa.reservedNumbers?.length || 0);
-            return soldAndReserved;
+            return this.currentRifa.soldNumbers?.length || 0;
         }
         return 0;
     }
@@ -257,51 +301,102 @@ class RuletazoMachine {
 
             const digitColumns = machineDiv.querySelectorAll('.digit-column');
             const formattedNumber = this.formatNumber(targetNumber, this.digitCount);
+            const animationStart = performance.now();
+            const totalDuration = 3200;
+            const columnConfigs = [];
 
             this.isSpinning = true;
             this.updateStatus('spinning');
-
-            let completed = 0;
 
             digitColumns.forEach((column, index) => {
                 const targetDigit = parseInt(formattedNumber[index]);
                 const digitNumbers = column.querySelector('.digit-numbers');
 
                 if (!digitNumbers) {
-                    completed++;
-                    if (completed === digitColumns.length) {
-                        this.isSpinning = false;
-                        this.updateStatus('ready');
-                        this.displayWinner(targetNumber);
-                        resolve();
-                    }
                     return;
                 }
 
-                // Reset posición
-                digitNumbers.style.transform = 'translateY(0)';
+                digitNumbers.classList.add('spinning');
+                digitNumbers.style.willChange = 'transform';
+                digitNumbers.style.transition = 'none';
 
-                // Trigger animación con delay
-                setTimeout(() => {
-                    digitNumbers.classList.add('spinning');
-                    
-                    // Calcular posición final
-                    const finalPosition = targetDigit * 40;
-                    
-                    setTimeout(() => {
-                        digitNumbers.style.transform = `translateY(-${finalPosition}px)`;
-                        digitNumbers.classList.remove('spinning');
-                        
-                        completed++;
-                        if (completed === digitColumns.length) {
-                            this.isSpinning = false;
-                            this.updateStatus('ready');
-                            this.displayWinner(targetNumber);
-                            resolve();
-                        }
-                    }, 500);
-                }, index * 100);
+                const startIndex = 2 + (index * 3);
+                const extraLoops = 26 + (index * 2);
+                const targetIndex = (extraLoops * 10) + targetDigit;
+                const startTranslate = this.getCenteredTranslateY(column, digitNumbers, startIndex);
+                const endTranslate = this.getCenteredTranslateY(column, digitNumbers, targetIndex);
+                const duration = totalDuration - ((digitColumns.length - index - 1) * 140);
+                const delay = index * 85;
+
+                this.applyColumnTransform(digitNumbers, startTranslate);
+                digitNumbers.dataset.currentTranslate = String(startTranslate);
+
+                columnConfigs.push({
+                    digitNumbers,
+                    startTranslate,
+                    endTranslate,
+                    delay,
+                    duration,
+                    completed: false
+                });
             });
+
+            if (!columnConfigs.length) {
+                this.isSpinning = false;
+                this.updateStatus('ready');
+                this.displayWinner(targetNumber);
+                resolve();
+                return;
+            }
+
+            const easeOutExpo = (value) => {
+                if (value === 1) return 1;
+                return 1 - Math.pow(2, -10 * value);
+            };
+
+            const step = (now) => {
+                let completedColumns = 0;
+
+                columnConfigs.forEach((config) => {
+                    const { digitNumbers, delay, duration, startTranslate, endTranslate } = config;
+                    const elapsed = now - animationStart - delay;
+
+                    if (elapsed <= 0) {
+                        this.applyColumnTransform(digitNumbers, startTranslate);
+                        return;
+                    }
+
+                    const progress = Math.min(elapsed / duration, 1);
+                    const eased = easeOutExpo(progress);
+                    const currentTranslate = startTranslate + ((endTranslate - startTranslate) * eased);
+
+                    this.applyColumnTransform(digitNumbers, currentTranslate);
+                    digitNumbers.dataset.currentTranslate = String(currentTranslate);
+
+                    if (progress >= 1) {
+                        if (!config.completed) {
+                            config.completed = true;
+                            digitNumbers.classList.remove('spinning');
+                            digitNumbers.style.willChange = 'auto';
+                            this.applyColumnTransform(digitNumbers, endTranslate);
+                            digitNumbers.dataset.currentTranslate = String(endTranslate);
+                        }
+                        completedColumns++;
+                    }
+                });
+
+                if (completedColumns === columnConfigs.length) {
+                    this.isSpinning = false;
+                    this.updateStatus('ready');
+                    this.displayWinner(targetNumber);
+                    resolve();
+                    return;
+                }
+
+                requestAnimationFrame(step);
+            };
+
+            requestAnimationFrame(step);
         });
     }
 
@@ -331,8 +426,6 @@ class RuletazoMachine {
         try {
             if (!this.currentRifa) return false;
 
-            // El número ya fue agregado en performRealDraw()
-            // Solo guardamos en localStorage
             try {
                 localStorage.setItem(`draws_${this.currentRifa.id}`, JSON.stringify(this.drawnNumbers));
                 return true;
@@ -408,11 +501,61 @@ class RuletazoMachine {
 
 let machine = null;
 
+function obtenerTotalBoletosRuletazo() {
+    const totalConfig = Number(window.rifaplusConfig?.rifa?.totalBoletos);
+    if (Number.isFinite(totalConfig) && totalConfig > 0 && totalConfig !== 100000 && totalConfig !== 250000) {
+        return totalConfig;
+    }
+
+    const totalRifaActual = Number(machine?.currentRifa?.totalNumbers);
+    if (Number.isFinite(totalRifaActual) && totalRifaActual > 0) {
+        return totalRifaActual;
+    }
+
+    return 500;
+}
+
+function obtenerDigitosRuletazo(totalBoletos) {
+    const totalNormalizado = Number(totalBoletos);
+    if (!Number.isFinite(totalNormalizado) || totalNormalizado <= 0) {
+        return 1;
+    }
+    return Math.max(1, String(Math.max(totalNormalizado - 1, 0)).length);
+}
+
+function filtrarNumerosValidosRuletazo(numeros, totalBoletos) {
+    const maxNumero = Number(totalBoletos) - 1;
+    if (!Array.isArray(numeros) || !Number.isFinite(maxNumero) || maxNumero < 0) {
+        return [];
+    }
+
+    return Array.from(new Set(
+        numeros
+            .map((numero) => parseInt(String(numero).replace(/[^0-9]/g, ''), 10))
+            .filter((numero) => Number.isFinite(numero) && numero >= 0 && numero <= maxNumero)
+    )).sort((a, b) => a - b);
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     machine = new RuletazoMachine();
 
-    // Auto-cargar rifa actual en lugar de usar selector
-    await loadCurrentRifa();
+    if (window.GanadoresManager?.refrescarDesdeServidor) {
+        try {
+            await window.GanadoresManager.refrescarDesdeServidor();
+        } catch (error) {
+            console.warn('[admin-ruletazo] No se pudieron refrescar ganadores desde servidor:', error);
+        }
+    }
+
+    // Esperar a que config-sync termine si aún no ha poblado totalBoletos real
+    const totalInicial = Number(window.rifaplusConfig?.rifa?.totalBoletos);
+    if (Number.isFinite(totalInicial) && totalInicial > 0 && totalInicial !== 100000 && totalInicial !== 250000) {
+        await loadCurrentRifa();
+    } else {
+        window.addEventListener('configSyncCompleto', async () => {
+            await loadCurrentRifa();
+        }, { once: true });
+    }
 
     // Event Listeners
     document.getElementById('testSpinBtn').addEventListener('click', testSpin);
@@ -472,6 +615,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     }
+
+    window.addEventListener('configSyncCompleto', () => {
+        if (typeof loadCurrentRifa === 'function') {
+            loadCurrentRifa();
+        }
+    });
 });
 
 /**
@@ -482,49 +631,35 @@ async function loadCurrentRifa() {
     try {
         // Obtener datos de la config
         const config = window.rifaplusConfig || {};
-        const rifaTitle = config.rifa?.titulo || 'Sorteo en Vivo';
-        let totalNumbers = config.rifa?.totalBoletos || 500;  // Config es fuente de verdad
+        const rifaTitle = config.rifa?.nombreSorteo || 'Sorteo en Vivo';
+        let totalNumbers = obtenerTotalBoletosRuletazo();
         
         // Intentar obtener boletos reales del backend para contar los VENDIDOS y APARTADOS
         let soldNumbers = [];
         let reservedNumbers = [];
+        let datosBackendCargados = false;
         
         try {
-            const token = localStorage.getItem('rifaplus_admin_token') || 
-                         localStorage.getItem('admin_token') || 
-                         localStorage.getItem('token') || '';
-            
-            const response = await fetch(`${machine.apiBase}/api/admin/boletos?limit=0`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            const response = await fetch(`${machine.apiBase}/api/public/boletos`);
             
             if (response.ok) {
                 const data = await response.json();
-                if (data.success && data.data && Array.isArray(data.data)) {
-                    // Obtener boletos vendidos y apartados por separado
-                    const allBoletos = data.data;
-                    
-                    // Separar vendidos de apartados
-                    soldNumbers = allBoletos
-                        .filter(b => b.estado && b.estado.toLowerCase().includes('vend'))
-                        .map(b => b.numero)
-                        .sort((a, b) => a - b);
-                    
-                    reservedNumbers = allBoletos
-                        .filter(b => b.estado && b.estado.toLowerCase().includes('apart'))
-                        .map(b => b.numero)
-                        .sort((a, b) => a - b);
+                if (data.success && data.data) {
+                    soldNumbers = filtrarNumerosValidosRuletazo(Array.isArray(data.data.sold) ? data.data.sold : [], totalNumbers);
+                    reservedNumbers = filtrarNumerosValidosRuletazo(Array.isArray(data.data.reserved) ? data.data.reserved : [], totalNumbers);
+                    datosBackendCargados = true;
                 }
             }
         } catch (error) {
             // No se pudo cargar boletos del backend
         }
         
-        // Si no hay datos del backend, usar demostración
-        if (soldNumbers.length === 0) {
-            soldNumbers = machine.generateSoldNumbers(Math.floor(totalNumbers * 0.3), totalNumbers);
+        // Si de verdad no se pudieron cargar datos del backend, usar demostración
+        if (!datosBackendCargados) {
+            soldNumbers = filtrarNumerosValidosRuletazo(
+                machine.generateSoldNumbers(Math.floor(totalNumbers * 0.3), totalNumbers),
+                totalNumbers
+            );
             reservedNumbers = [];
         }
         
@@ -533,8 +668,8 @@ async function loadCurrentRifa() {
             id: '1',
             name: rifaTitle,
             totalNumbers: totalNumbers,  // Siempre desde config
-            soldNumbers: soldNumbers,      // ⭐ SOLO vendidos del backend
-            reservedNumbers: reservedNumbers // ⭐ SOLO apartados del backend
+            soldNumbers: filtrarNumerosValidosRuletazo(soldNumbers, totalNumbers),
+            reservedNumbers: filtrarNumerosValidosRuletazo(reservedNumbers, totalNumbers)
         };
         
         await selectRifa('1');
@@ -543,9 +678,12 @@ async function loadCurrentRifa() {
         const config = window.rifaplusConfig || {};
         machine.currentRifa = {
             id: '1',
-            name: config.rifa?.titulo || 'Sorteo Demo',
-            totalNumbers: config.rifa?.totalBoletos || 500,
-            soldNumbers: machine.generateSoldNumbers(150, config.rifa?.totalBoletos || 500)
+            name: config.rifa?.nombreSorteo || 'Sorteo Demo',
+            totalNumbers: obtenerTotalBoletosRuletazo(),
+            soldNumbers: filtrarNumerosValidosRuletazo(
+                machine.generateSoldNumbers(150, obtenerTotalBoletosRuletazo()),
+                obtenerTotalBoletosRuletazo()
+            )
         };
         await selectRifa('1');
     }
@@ -555,23 +693,29 @@ async function loadCurrentRifa() {
  * Selecciona una rifa
  */
 async function selectRifa(rifaId) {
-    const rifa = await machine.loadRifa(rifaId);
+    let rifa = null;
+
+    if (machine.currentRifa && String(machine.currentRifa.id) === String(rifaId)) {
+        rifa = machine.currentRifa;
+        await machine.loadDrawnNumbers(rifaId);
+    } else {
+        rifa = await machine.loadRifa(rifaId);
+    }
     
     if (!rifa) return;
 
     // Mostrar información
     // ⚠️ IMPORTANTE: totalBoletos SIEMPRE viene de config, NUNCA del backend
     const config = window.rifaplusConfig || {};
-    const totalBoletos = config.rifa?.totalBoletos || 100000;  // Config es fuente de verdad
+    const totalBoletos = obtenerTotalBoletosRuletazo();
     const vendidos = rifa.soldNumbers?.length || 0;
-    const sorteados = machine.drawnNumbers.length;
     const disponibles = totalBoletos - vendidos; // Disponibles = total - vendidos
     
     // Actualizar info panel
     // ⚠️ IMPORTANTE: El nombre SIEMPRE viene de config.js, no del servidor
     // Prueba múltiples fuentes para obtener el nombre:
-    const rifaNombre = config.rifa?.titulo || 
-                       window.rifaplusConfig?.rifa?.titulo || 
+    const rifaNombre = config.rifa?.nombreSorteo || 
+                       window.rifaplusConfig?.rifa?.nombreSorteo || 
                        rifa?.name || 
                        'Sorteo Actual';
     
@@ -581,11 +725,11 @@ async function selectRifa(rifaId) {
     document.getElementById('rifaNombre').textContent = rifaNombre;
     document.getElementById('rifaTotal').textContent = totalBoletos;
     document.getElementById('rifaVendidos').textContent = vendidos;
-    document.getElementById('rifaSorteados').textContent = sorteados;
     document.getElementById('rifaDisponibles').textContent = disponibles;
 
     // Calcular dígitos basado en totalBoletos (que viene de config, no del backend)
-    machine.digitCount = machine.calculateDigits(totalBoletos);
+    // Dígitos = cantidad de dígitos de (totalBoletos - 1)
+    machine.digitCount = obtenerDigitosRuletazo(totalBoletos);
     document.getElementById('rifaDigitos').textContent = machine.digitCount;
 
     // Mostrar paneles
@@ -593,9 +737,9 @@ async function selectRifa(rifaId) {
     document.getElementById('machineSection').style.display = 'block';
     document.getElementById('historySection').style.display = 'block';
 
-    // Inicializar modo de participantes (por defecto 'all')
-    machine.participantsMode = 'all';
-    document.querySelector('input[name="participants"][value="all"]').checked = true;
+    // Inicializar modo de participantes (por defecto 'sold')
+    machine.participantsMode = 'sold';
+    document.querySelector('input[name="participants"][value="sold"]').checked = true;
     updateParticipantsCounts();
 
     // Generar máquina
@@ -615,6 +759,7 @@ async function selectRifa(rifaId) {
 function generateMachine() {
     const machineDiv = document.getElementById('digitMachine');
     machineDiv.innerHTML = '';
+    const repetitions = Math.max(34, 30 + (machine.digitCount * 2));
 
     for (let i = 0; i < machine.digitCount; i++) {
         const column = document.createElement('div');
@@ -623,17 +768,29 @@ function generateMachine() {
         const numberContainer = document.createElement('div');
         numberContainer.className = 'digit-numbers';
 
-        // Crear números 0-9 para que el usuario pueda ver el "giro"
-        for (let j = 0; j < 10; j++) {
-            const digit = document.createElement('div');
-            digit.className = 'digit-item';
-            digit.textContent = j;
-            numberContainer.appendChild(digit);
+        for (let loop = 0; loop < repetitions; loop++) {
+            for (let j = 0; j < 10; j++) {
+                const digit = document.createElement('div');
+                digit.className = 'digit-item';
+                digit.textContent = j;
+                numberContainer.appendChild(digit);
+            }
         }
 
         column.appendChild(numberContainer);
         machineDiv.appendChild(column);
     }
+
+    requestAnimationFrame(() => {
+        machineDiv.querySelectorAll('.digit-column').forEach((column) => {
+            const digits = column.querySelector('.digit-numbers');
+            if (!digits) return;
+
+            const startTranslate = machine.getCenteredTranslateY(column, digits, 0);
+            machine.applyColumnTransform(digits, startTranslate);
+            digits.dataset.currentTranslate = String(startTranslate);
+        });
+    });
 
     // Resetear display ganador
     document.getElementById('winningDisplay').style.display = 'none';
@@ -673,16 +830,12 @@ function updateParticipantsCounts() {
 
     const totalCount = machine.currentRifa.totalNumbers || 0;
     const soldCount = machine.currentRifa.soldNumbers?.length || 0;
-    const reservedCount = machine.currentRifa.reservedNumbers?.length || 0;
     
     // Actualizar "Todos"
     document.getElementById('allCount').textContent = totalCount;
 
-    // Actualizar "Vendidos" - SOLO VENDIDOS (sin apartados)
-    // Los apartados se incluyen en la ruleta, pero el conteo mostrado es solo de vendidos
+    // Actualizar "Vendidos" - SOLO VENDIDOS
     document.getElementById('soldCount').textContent = soldCount;
-    
-    // Actualizar conteos
 }
 
 /**
@@ -692,10 +845,8 @@ function updateMachineAvailability() {
     if (!machine.currentRifa) return;
 
     // ⚠️ IMPORTANTE: totalBoletos SIEMPRE viene de config, NUNCA del backend
-    const config = window.rifaplusConfig || {};
-    const totalBoletos = config.rifa?.totalBoletos || 100000;  // Config es fuente de verdad
+    const totalBoletos = obtenerTotalBoletosRuletazo();
     const vendidos = machine.currentRifa.soldNumbers?.length || 0;
-    const sorteados = machine.drawnNumbers.length;
     const disponibles = totalBoletos - vendidos; // Los disponibles son total - vendidos
     
     // Actualizar info panel con datos reales
@@ -722,7 +873,6 @@ async function performDraw() {
     
     if (number !== null) {
         // Actualizar información
-        document.getElementById('rifaSorteados').textContent = machine.drawnNumbers.length;
         document.getElementById('rifaDisponibles').textContent = machine.getAvailableNumbers().length;
         document.getElementById('drawCounter').textContent = `Sorteo #${machine.drawnNumbers.length + 1}`;
 
@@ -857,6 +1007,210 @@ function clearHistory() {
     machine.showNotification('Historial limpiado. Los números están disponibles nuevamente', 'success');
 }
 
+function formatDateTimeExact(value) {
+    if (!value) return '-----';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-----';
+    return date.toLocaleString('es-MX', {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function formatDateShort(value) {
+    if (!value) return '-----';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-----';
+    return date.toLocaleDateString('es-MX');
+}
+
+function formatTimeShort(value) {
+    if (!value) return '-----';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-----';
+    return date.toLocaleTimeString('es-MX', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function getFechaSorteoRuletazo() {
+    if (window.rifaplusConfig?.obtenerFechaSorteoFormato) {
+        return window.rifaplusConfig.obtenerFechaSorteoFormato() || 'Por definir';
+    }
+    return 'Por definir';
+}
+
+function getEstadoOrdenMeta(orden) {
+    const estado = String(orden?.estado || '').toLowerCase();
+    if (estado === 'confirmado' || estado === 'confirmada') {
+        return { texto: 'Confirmada', clase: 'confirmada' };
+    }
+    if (estado === 'apartado' || estado === 'pendiente') {
+        return { texto: 'Apartada', clase: 'apartada' };
+    }
+    if (estado === 'cancelado' || estado === 'cancelada') {
+        return { texto: 'Cancelada', clase: 'cancelada' };
+    }
+    return { texto: estado ? estado.charAt(0).toUpperCase() + estado.slice(1) : 'Disponible', clase: 'disponible' };
+}
+
+function buildRuletazoTicketCard({
+    ticketNumber,
+    numeroFormato,
+    orden,
+    logoOrganizador,
+    nombreSorteo,
+    imagenPrincipal
+}) {
+    const ganadorActual = window.GanadoresManager?.verificarGanador(String(ticketNumber));
+    const fechaSorteo = getFechaSorteoRuletazo();
+    const estadoMeta = getEstadoOrdenMeta(orden);
+    const nombreCompleto = orden
+        ? [orden.nombre_cliente, orden.apellido_cliente].filter(Boolean).join(' ').trim() || orden.nombre_cliente || 'N/A'
+        : 'N/A';
+    const estadoCliente = orden?.estado_cliente || 'N/A';
+    const ciudadCliente = orden?.ciudad_cliente || 'N/A';
+    const whatsapp = orden?.whatsapp || orden?.telefono_cliente || 'N/A';
+    const cantidad = orden?.cantidad_boletos || '1';
+    const total = orden?.total
+        ? `$${Number(orden.total).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        : 'N/A';
+    const fechaCreacionCompleta = orden?.created_at
+        ? `${formatDateShort(orden.created_at)} ${formatTimeShort(orden.created_at)}`
+        : '-----';
+    const fechaComprobanteExacta = formatDateTimeExact(
+        orden?.comprobante_fecha || orden?.comprobante_pagado_at
+    );
+    const ordenId = orden?.numero_orden || orden?.id || 'N/A';
+    const disponible = !orden;
+
+    return `
+        <div class="ticket-card ticket-card-orden">
+            <div class="orden-header-top">
+                <div class="orden-header-top-left">
+                    <img src="${logoOrganizador}" alt="Logo" onerror="this.src='images/placeholder-logo.svg'">
+                    <span class="orden-estado-badge ${disponible ? 'disponible' : estadoMeta.clase}">
+                        ${disponible ? 'DISPONIBLE' : estadoMeta.texto.toUpperCase()}
+                    </span>
+                </div>
+                <div class="orden-header-top-right">
+                    <div class="orden-id-numero">#${numeroFormato}</div>
+                    <div class="orden-fecha-hora">${fechaCreacionCompleta}</div>
+                </div>
+            </div>
+
+            <div class="orden-nombre-sorteo">${nombreSorteo}</div>
+
+            <div class="orden-imagen-principal">
+                <img src="${encodeURI(imagenPrincipal)}" alt="${nombreSorteo}" onerror="this.src='images/placeholder-cover.svg'">
+            </div>
+            <div class="orden-imagen-fecha-sorteo">
+                <span class="orden-imagen-fecha-sorteo-label">Fecha del sorteo</span>
+                <span class="orden-imagen-fecha-sorteo-valor">${fechaSorteo}</span>
+            </div>
+
+            ${disponible ? `
+                <div class="orden-body">
+                    <div class="orden-disponible-message">
+                        <p>✓ Este boleto está DISPONIBLE</p>
+                    </div>
+                    <div class="ticket-actions">
+                        ${ganadorActual
+                            ? `<button class="btn-action btn-ganador" onclick="markAsWinner(${ticketNumber})">
+                                <i class="fas fa-check"></i> Desmarcar ganador
+                            </button>`
+                            : `<button class="btn-action btn-ganador" onclick="markAsWinner(${ticketNumber})">
+                                <i class="fas fa-crown"></i> Marcar ganador
+                            </button>`
+                        }
+                    </div>
+                </div>
+            ` : `
+                ${construirPerforacionRuletazo('DATOS DEL PARTICIPANTE')}
+                <div class="orden-body">
+                    <div class="orden-seccion">
+                        <div class="orden-seccion-titulo">👤 Cliente</div>
+                        <div class="orden-datos-grid">
+                            <div class="orden-dato">
+                                <span class="orden-dato-label">Nombre completo</span>
+                                <span class="orden-dato-valor">${nombreCompleto}</span>
+                            </div>
+                            <div class="orden-dato">
+                                <span class="orden-dato-label">Estado</span>
+                                <span class="orden-dato-valor">${estadoCliente}</span>
+                            </div>
+                            <div class="orden-dato">
+                                <span class="orden-dato-label">Ciudad</span>
+                                <span class="orden-dato-valor">${ciudadCliente}</span>
+                            </div>
+                            <div class="orden-dato orden-dato-full">
+                                <span class="orden-dato-label">WhatsApp</span>
+                                <span class="orden-dato-valor">${whatsapp}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                ${construirPerforacionRuletazo('TALÓN DE CONTROL')}
+                <div class="orden-body">
+                    <div class="orden-seccion">
+                        <div class="orden-seccion-titulo">📋 Orden</div>
+                        <div class="orden-datos-grid">
+                            <div class="orden-dato">
+                                <span class="orden-dato-label">Número de orden</span>
+                                <span class="orden-dato-valor">${ordenId}</span>
+                            </div>
+                            <div class="orden-dato">
+                                <span class="orden-dato-label">Estado de la orden</span>
+                                <span class="orden-dato-valor"><span class="orden-estado-inline ${estadoMeta.clase}">${estadoMeta.texto}</span></span>
+                            </div>
+                            <div class="orden-dato">
+                                <span class="orden-dato-label">Boletos en la orden</span>
+                                <span class="orden-dato-valor">${cantidad}</span>
+                            </div>
+                            <div class="orden-dato">
+                                <span class="orden-dato-label">Total de la orden</span>
+                                <span class="orden-dato-valor">${total}</span>
+                            </div>
+                            <div class="orden-dato">
+                                <span class="orden-dato-label">Creada</span>
+                                <span class="orden-dato-valor orden-dato-valor-muted">${fechaCreacionCompleta}</span>
+                            </div>
+                            <div class="orden-dato orden-dato-full">
+                                <span class="orden-dato-label">Comprobante subido</span>
+                                <span class="orden-dato-valor orden-dato-valor-muted">${fechaComprobanteExacta}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ticket-actions">
+                        ${ganadorActual
+                            ? `<button class="btn-action btn-ganador" onclick="markAsWinner(${ticketNumber})">
+                                <i class="fas fa-check"></i> Desmarcar ganador
+                            </button>`
+                            : `<button class="btn-action btn-ganador" onclick="markAsWinner(${ticketNumber})">
+                                <i class="fas fa-crown"></i> Marcar ganador
+                            </button>`
+                        }
+                    </div>
+                </div>
+            `}
+        </div>
+    `;
+}
+
+function construirPerforacionRuletazo(texto) {
+    return `
+        <div class="ticket-perforacion">
+            <span class="ticket-perforacion-label">${texto}</span>
+        </div>
+    `;
+}
+
 /**
  * Ve los detalles de un boleto específico
  */
@@ -868,8 +1222,14 @@ async function viewTicketDetails(ticketNumber) {
     modalBody.innerHTML = '<div class="spinner"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>';
     
     try {
+        if (window.GanadoresManager?.obtenerGanadorActual) {
+            await window.GanadoresManager.obtenerGanadorActual(String(ticketNumber), { preferServer: true, syncLocal: true });
+        }
+
         // Cargar TODAS las órdenes
-        const apiBase = (window.rifaplusConfig?.backend?.apiBase) || 'http://127.0.0.1:5001';
+        const apiBase = (window.rifaplusConfig?.backend?.apiBase)
+            || window.rifaplusConfig?.obtenerApiBase?.()
+            || window.location.origin;
         const token = localStorage.getItem('rifaplus_admin_token') || localStorage.getItem('admin_token') || '';
         const resOrdenes = await fetch(`${apiBase}/api/ordenes?limit=1000`, {
             method: 'GET',
@@ -911,138 +1271,23 @@ async function viewTicketDetails(ticketNumber) {
         }
         
         const config = window.rifaplusConfig || {};
-        const logoOrganizador = config.cliente?.logo || 'images/logo.png';
-        const nombreSorteo = config.rifa?.titulo || 'Sorteo';
-        const imagenPrincipal = config.rifa?.imagen || 'images/ImagenPrincipal.jpg';
+        const logoOrganizador = config.cliente?.logo || 'images/placeholder-logo.svg';
+        const nombreSorteo = config.rifa?.nombreSorteo || 'Sorteo';
+        const imagenPrincipal =
+            config.cliente?.imagenPrincipal ||
+            config.rifa?.galeria?.imagenes?.[0]?.url ||
+            config.rifa?.imagen ||
+            'images/placeholder-cover.svg';
         
         const numeroFormato = machine.formatNumber(ticketNumber, machine.digitCount);
-        
-        // Si hay orden, extraer datos; si no, datos vacíos (boleto disponible)
-        let estadoOrden = 'disponible';
-        let nombreCliente = 'N/A';
-        let estadoRepublica = 'N/A';
-        let ciudad = 'N/A';
-        let cantidad = '1';
-        let total = 'N/A';
-        let fechaPago = '-----';
-        let horaPago = '-----';
-        let fechaComprobante = '-----';
-        let horaComprobante = '-----';
-        
-        if (orden) {
-            estadoOrden = 'vendido';
-            nombreCliente = orden.nombre_cliente || 'N/A';
-            estadoRepublica = orden.estado_cliente || 'N/A';
-            ciudad = orden.ciudad_cliente || 'N/A';
-            cantidad = orden.cantidad_boletos || '1';
-            total = orden.total ? parseFloat(orden.total).toLocaleString('es-MX', {minimumFractionDigits: 2}) : 'N/A';
-            fechaPago = orden.fecha_pago 
-                ? new Date(orden.fecha_pago).toLocaleDateString('es-MX')
-                : '-----';
-            horaPago = orden.fecha_pago
-                ? new Date(orden.fecha_pago).toLocaleTimeString('es-MX', {hour: '2-digit', minute: '2-digit'})
-                : '-----';
-            fechaComprobante = orden.comprobante_pagado_at
-                ? new Date(orden.comprobante_pagado_at).toLocaleDateString('es-MX')
-                : '-----';
-            horaComprobante = orden.comprobante_pagado_at
-                ? new Date(orden.comprobante_pagado_at).toLocaleTimeString('es-MX', {hour: '2-digit', minute: '2-digit'})
-                : '-----';
-        }
-        
-        const fechaCreacion = orden?.created_at
-            ? new Date(orden.created_at).toLocaleDateString('es-MX')
-            : '-----';
-        const horaCreacion = orden?.created_at
-            ? new Date(orden.created_at).toLocaleTimeString('es-MX', {hour: '2-digit', minute: '2-digit'})
-            : '-----';
-        
-        const html = `
-            <div class="ticket-card" style="max-width: 100%; margin: 0; border: 2px solid var(--primary); border-radius: 0.75rem; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                <!-- HEADER SUPERIOR -->
-                <div style="background: linear-gradient(135deg, var(--primary-light) 0%, #f0f2f5 100%); border-bottom: 2px solid var(--primary); display: flex; justify-content: space-between; align-items: center; padding: 1.5rem;">
-                    <!-- Izquierda: Logo + Estado -->
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <img src="${logoOrganizador}" alt="Logo" style="height: 60px; width: 60px; object-fit: contain; border-radius: 0.5rem; flex-shrink: 0; background: white; padding: 0.5rem;" onerror="this.src='images/logo.png'">
-                        <div style="background: var(--primary); color: white; padding: 0.6rem 1rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.05em; white-space: nowrap; text-transform: uppercase;">
-                            ${estadoOrden === 'vendido' ? 'VENDIDO' : 'DISPONIBLE'}
-                        </div>
-                    </div>
-                    <!-- Derecha: Número y Fecha/Hora -->
-                    <div style="text-align: right;">
-                        <div style="font-size: 1.75rem; font-weight: 900; color: var(--primary); font-family: 'Courier New', monospace; line-height: 1.2;">#${numeroFormato}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-light); margin-top: 0.5rem; font-weight: 500;">${fechaCreacion} ${horaCreacion}</div>
-                    </div>
-                </div>
-
-                <!-- NOMBRE SORTEO -->
-                <div style="background: linear-gradient(135deg, var(--primary-light) 0%, white 100%); padding: 1rem; border-bottom: 1px solid var(--divider); text-align: center;">
-                    <div style="font-size: 0.95rem; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em;">${nombreSorteo}</div>
-                </div>
-
-                <!-- IMAGEN PRINCIPAL -->
-                <div style="background: linear-gradient(135deg, #f8fafc 0%, #f0f2f5 100%); padding: 1.5rem; text-align: center; border-bottom: 1px solid var(--divider);">
-                    <img src="${imagenPrincipal}" alt="${nombreSorteo}" style="max-width: 100%; max-height: 150px; object-fit: contain; border-radius: 0.5rem;" onerror="this.src='images/logo.png'">
-                </div>
-
-                <!-- BODY PRINCIPAL -->
-                <div style="padding: 1.5rem; background: white;">
-                    <!-- SECCIÓN: CLIENTE -->
-                    <div style="margin-bottom: 1.5rem;">
-                        <div style="font-size: 0.8rem; font-weight: 700; color: var(--primary); margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="fas fa-user-circle"></i> Cliente
-                        </div>
-                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
-                            <div style="padding: 0.75rem; background: #f9fafb; border-radius: 0.5rem; border-left: 3px solid var(--primary);">
-                                <div style="font-size: 0.7rem; font-weight: 600; color: var(--text-light); text-transform: uppercase; margin-bottom: 0.25rem;">Nombre</div>
-                                <div style="font-size: 0.9rem; font-weight: 600; color: var(--text-dark);">${nombreCliente}</div>
-                            </div>
-                            <div style="padding: 0.75rem; background: #f9fafb; border-radius: 0.5rem; border-left: 3px solid var(--primary);">
-                                <div style="font-size: 0.7rem; font-weight: 600; color: var(--text-light); text-transform: uppercase; margin-bottom: 0.25rem;">Estado</div>
-                                <div style="font-size: 0.9rem; font-weight: 600; color: var(--text-dark);">${estadoRepublica}</div>
-                            </div>
-                            <div style="padding: 0.75rem; background: #f9fafb; border-radius: 0.5rem; border-left: 3px solid var(--primary); grid-column: 1 / -1;">
-                                <div style="font-size: 0.7rem; font-weight: 600; color: var(--text-light); text-transform: uppercase; margin-bottom: 0.25rem;">Ciudad</div>
-                                <div style="font-size: 0.9rem; font-weight: 600; color: var(--text-dark);">${ciudad}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- SECCIÓN: ORDEN -->
-                    <div style="margin-bottom: 1.5rem;">
-                        <div style="font-size: 0.8rem; font-weight: 700; color: var(--primary); margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="fas fa-file-invoice"></i> Orden
-                        </div>
-                        <div style="padding: 0.75rem; background: #f9fafb; border-radius: 0.5rem; border-left: 3px solid var(--primary);">
-                            <div style="font-size: 0.7rem; font-weight: 600; color: var(--text-light); text-transform: uppercase; margin-bottom: 0.25rem;">ID Orden</div>
-                            <div style="font-size: 0.95rem; font-weight: 700; color: var(--primary);">${orden?.numero_orden || 'N/A'}</div>
-                        </div>
-                    </div>
-
-                    <!-- SECCIÓN: COMPROBANTE -->
-                    <div style="margin-bottom: 1.5rem; padding: 1rem; background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0.02) 100%); border-radius: 0.5rem; border-left: 3px solid #10b981;">
-                        <div style="font-size: 0.8rem; font-weight: 700; color: #059669; margin-bottom: 0.5rem; text-transform: uppercase; display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="fas fa-receipt"></i> Comprobante de Pago
-                        </div>
-                        <div style="font-size: 0.9rem; color: var(--text-dark); font-weight: 500;">${fechaComprobante} ${horaComprobante}</div>
-                    </div>
-
-                    <!-- ACCIONES -->
-                    <div style="display: flex; gap: 0.75rem; justify-content: center; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--divider);">
-                        ${window.GanadoresManager?.verificarGanador(ticketNumber) 
-                            ? `<button class="btn-action btn-ganador" onclick="markAsWinner(${ticketNumber})" style="flex: 1; padding: 0.75rem 1rem; background: #10b981; color: white; border: none; border-radius: 0.375rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.85rem;">
-                                <i class="fas fa-check"></i> ✅ Desmarcar Ganador
-                            </button>`
-                            : `<button class="btn-action btn-ganador" onclick="markAsWinner(${ticketNumber})" style="flex: 1; padding: 0.75rem 1rem; background: var(--success); color: white; border: none; border-radius: 0.375rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.85rem;">
-                                <i class="fas fa-crown"></i> Marcar Ganador
-                            </button>`
-                        }
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        modalBody.innerHTML = html;
+        modalBody.innerHTML = buildRuletazoTicketCard({
+            ticketNumber,
+            numeroFormato,
+            orden,
+            logoOrganizador,
+            nombreSorteo,
+            imagenPrincipal
+        });
     } catch (error) {
         // Error cargando detalles del boleto
         modalBody.innerHTML = `
@@ -1070,7 +1315,9 @@ async function markAsWinner(ticketNumber) {
     }
     
     try {
-        const apiBase = (window.rifaplusConfig?.backend?.apiBase) || 'http://127.0.0.1:5001';
+        const apiBase = (window.rifaplusConfig?.backend?.apiBase)
+            || window.rifaplusConfig?.obtenerApiBase?.()
+            || window.location.origin;
         const token = localStorage.getItem('rifaplus_admin_token') || localStorage.getItem('admin_token') || '';
         const response = await fetch(`${apiBase}/api/admin/boleto/${ticketNumber}/ganador`, {
             method: 'PATCH',
@@ -1100,7 +1347,7 @@ async function markAsWinner(ticketNumber) {
  * Marcar número ganador como tal
  * @param {Number} numero - Número del boleto ganador
  */
-window.markAsWinner = function(numero) {
+window.markAsWinner = async function(numero) {
     if (!window.GanadoresManager) {
         if (window.machine) {
             window.machine.showNotification('❌ Sistema de ganadores no disponible', 'error');
@@ -1122,29 +1369,12 @@ window.markAsWinner = function(numero) {
     }
 
     // Verificar si ya es ganador
-    const ganadorExistente = window.GanadoresManager.verificarGanador(numero);
+    const ganadorExistente = await window.GanadoresManager.obtenerGanadorActual(numero, { preferServer: true, syncLocal: true });
     if (ganadorExistente) {
         // Es ganador, mostrar opción para desmarcar
         const confirmar = confirm(`✅ Este boleto ya es ganador de ${ganadorExistente.tipo}.\n\n¿Deseas desmarcarlo como ganador?`);
         if (confirmar) {
-            const resultado = window.GanadoresManager.eliminarGanador(numero, ganadorExistente.tipo);
-            if (resultado) {
-                if (window.machine) {
-                    window.machine.showNotification(`✅ Boleto #${numero} desmarcado como ganador`, 'success');
-                } else {
-                    alert(`✅ Boleto #${numero} desmarcado como ganador`);
-                }
-                // Recargar modal
-                setTimeout(() => {
-                    window.location.reload();
-                }, 500);
-            } else {
-                if (window.machine) {
-                    window.machine.showNotification('❌ Error al desmarcar ganador', 'error');
-                } else {
-                    alert('❌ Error al desmarcar ganador');
-                }
-            }
+            window.eliminarGanadorBackend(numero, ganadorExistente.tipo);
         }
         return;
     }
@@ -1196,4 +1426,72 @@ window.markAsWinner = function(numero) {
             }, 1000);
         }
     });
+};
+
+window.declararGanadorBackend = async function(numero, tipoGanador, lugarGanado) {
+    const apiBase = (window.rifaplusConfig?.backend?.apiBase)
+        || window.rifaplusConfig?.obtenerApiBase?.()
+        || window.location.origin;
+    const token = localStorage.getItem('rifaplus_admin_token') || localStorage.getItem('admin_token') || '';
+
+    const response = await fetch(`${apiBase}/api/admin/declarar-ganador`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            numero: Number(numero),
+            tipo_ganador: tipoGanador,
+            posicion: Number(lugarGanado)
+        })
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(payload.error || payload.message || `Error ${response.status}`);
+    }
+
+    return payload;
+};
+
+window.eliminarGanadorBackend = async function(numero, tipoGanador = null) {
+    try {
+        const apiBase = (window.rifaplusConfig?.backend?.apiBase)
+            || window.rifaplusConfig?.obtenerApiBase?.()
+            || window.location.origin;
+        const token = localStorage.getItem('rifaplus_admin_token') || localStorage.getItem('admin_token') || '';
+
+        const response = await fetch(`${apiBase}/api/admin/ganadores/${encodeURIComponent(numero)}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(payload.message || `Error ${response.status}`);
+        }
+
+        if (window.GanadoresManager && tipoGanador) {
+            window.GanadoresManager.eliminarGanador(String(numero), tipoGanador);
+        }
+
+        if (window.machine) {
+            window.machine.showNotification(`✅ Boleto #${numero} desmarcado como ganador`, 'success');
+        } else {
+            alert(`✅ Boleto #${numero} desmarcado como ganador`);
+        }
+
+        setTimeout(() => {
+            window.location.reload();
+        }, 500);
+    } catch (error) {
+        if (window.machine) {
+            window.machine.showNotification(`❌ ${error.message}`, 'error');
+        } else {
+            alert(`❌ ${error.message}`);
+        }
+    }
 };

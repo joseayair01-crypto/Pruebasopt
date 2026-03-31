@@ -12,16 +12,61 @@ window.ganadesoresManager = window.ganadesoresManager || {};
 const GanadoresManager = {
     // Clave para localStorage
     STORAGE_KEY: 'rifaplus_ganadores',
+    SERVER_CACHE_KEY: 'rifaplus_ganadores_server_cache',
+
+    getApiBase() {
+        return (window.rifaplusConfig?.backend?.apiBase)
+            || window.rifaplusConfig?.obtenerApiBase?.()
+            || window.location.origin;
+    },
+
+    normalizarTipoDesdeServidor(tipoRaw) {
+        const tipo = String(tipoRaw || '').toLowerCase().trim();
+        if (tipo.includes('presorte')) return 'presorteo';
+        if (tipo.includes('rulet')) return 'ruletazos';
+        return 'sorteo';
+    },
+
+    mapearGanadorServidor(row = {}) {
+        return {
+            numero: String(row.numero_boleto ?? row.numero ?? row.numero_orden ?? '').trim(),
+            numero_boleto: row.numero_boleto ?? null,
+            numero_orden: row.numero_orden ?? null,
+            tipo: this.normalizarTipoDesdeServidor(row.tipo_ganador),
+            nombre_cliente: row.nombre_ganador || row.nombre_cliente || '',
+            apellido_cliente: row.apellido_cliente || '',
+            ciudad: row.ciudad || row.ciudad_cliente || '',
+            estado_cliente: row.estado_cliente || '',
+            posicion: row.posicion || null,
+            lugarGanado: row.posicion || null,
+            fechaRegistro: row.fecha_sorteo || row.created_at || new Date().toISOString(),
+            source: 'server'
+        };
+    },
+
+    construirEstructuraVacia() {
+        return { sorteo: [], presorteo: [], ruletazos: [] };
+    },
     
     /**
      * Obtener la configuración de ganadores desde config.js
      * @returns {Object} Configuración de ganadores
      */
     getConfig() {
-        if (!window.rifaplusConfig || !window.rifaplusConfig.rifa || !window.rifaplusConfig.rifa.ganadores) {
+        if (!window.rifaplusConfig || !window.rifaplusConfig.rifa) {
             return { sorteo: 0, presorteo: 0, ruletazos: 0 };
         }
-        return window.rifaplusConfig.rifa.ganadores;
+
+        if (window.rifaplusConfig.rifa.ganadores) {
+            return window.rifaplusConfig.rifa.ganadores;
+        }
+
+        const sistemaPremios = window.rifaplusConfig.rifa.sistemaPremios || {};
+        return {
+            sorteo: Array.isArray(sistemaPremios.sorteo) ? sistemaPremios.sorteo.length : 0,
+            presorteo: Array.isArray(sistemaPremios.presorteo) ? sistemaPremios.presorteo.length : 0,
+            ruletazos: Array.isArray(sistemaPremios.ruletazos) ? sistemaPremios.ruletazos.length : 0
+        };
     },
 
     /**
@@ -74,7 +119,7 @@ const GanadoresManager = {
     cargarGanadores() {
         try {
             const data = localStorage.getItem(this.STORAGE_KEY);
-            if (!data) return { sorteo: [], presorteo: [], ruletazos: [] };
+            if (!data) return this.construirEstructuraVacia();
             
             const ganadores = JSON.parse(data);
             
@@ -85,7 +130,7 @@ const GanadoresManager = {
             
             return ganadores;
         } catch (error) {
-            return { sorteo: [], presorteo: [], ruletazos: [] };
+            return this.construirEstructuraVacia();
         }
     },
 
@@ -103,6 +148,87 @@ const GanadoresManager = {
         } catch (error) {
             return false;
         }
+    },
+
+    eliminarGanadorDeTodosLosTipos(numero, ganadores = null) {
+        const numeroStr = String(numero).trim();
+        const data = ganadores || this.cargarGanadores();
+        ['sorteo', 'presorteo', 'ruletazos'].forEach((tipoExistente) => {
+            data[tipoExistente] = (data[tipoExistente] || []).filter(g => String(g.numero) !== numeroStr);
+        });
+        return data;
+    },
+
+    async obtenerGanadoresServidor(limit = 500) {
+        try {
+            const resp = await fetch(`${this.getApiBase()}/api/ganadores?limit=${limit}`);
+            if (!resp.ok) return [];
+            const payload = await resp.json().catch(() => ({}));
+            const rows = Array.isArray(payload?.data) ? payload.data : [];
+            try {
+                sessionStorage.setItem(this.SERVER_CACHE_KEY, JSON.stringify(rows));
+            } catch (e) {
+                // ignorar cache
+            }
+            return rows;
+        } catch (error) {
+            try {
+                const cached = sessionStorage.getItem(this.SERVER_CACHE_KEY);
+                return cached ? JSON.parse(cached) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+    },
+
+    async refrescarDesdeServidor() {
+        const rows = await this.obtenerGanadoresServidor();
+        if (!Array.isArray(rows) || rows.length === 0) {
+            return this.cargarGanadores();
+        }
+
+        const ganadores = this.construirEstructuraVacia();
+        rows.forEach((row) => {
+            const mapped = this.mapearGanadorServidor(row);
+            if (!mapped.numero) return;
+            const tipo = mapped.tipo || 'sorteo';
+            ganadores[tipo].push(mapped);
+        });
+
+        Object.keys(ganadores).forEach((tipo) => {
+            ganadores[tipo].sort((a, b) => (Number(a.posicion) || 999) - (Number(b.posicion) || 999));
+        });
+
+        this.guardarGanadores(ganadores);
+        return ganadores;
+    },
+
+    async obtenerGanadorPersistido(numero) {
+        const numeroStr = String(numero).trim();
+        const rows = await this.obtenerGanadoresServidor();
+        const row = rows.find((item) => String(item.numero_boleto ?? item.numero ?? item.numero_orden ?? '').trim() === numeroStr);
+        return row ? this.mapearGanadorServidor(row) : null;
+    },
+
+    async obtenerGanadorActual(numero, opciones = {}) {
+        const { preferServer = true, syncLocal = true } = opciones;
+        const numeroStr = String(numero).trim();
+
+        if (preferServer) {
+            const ganadorServidor = await this.obtenerGanadorPersistido(numeroStr);
+            if (ganadorServidor) {
+                if (syncLocal) {
+                    const ganadores = this.eliminarGanadorDeTodosLosTipos(numeroStr, this.cargarGanadores());
+                    const tipo = ganadorServidor.tipo || 'sorteo';
+                    ganadores[tipo].push(ganadorServidor);
+                    ganadores[tipo].sort((a, b) => (Number(a.posicion) || 999) - (Number(b.posicion) || 999));
+                    this.guardarGanadores(ganadores);
+                }
+                return ganadorServidor;
+            }
+        }
+
+        return this.verificarGanador(numeroStr);
     },
 
     /**
@@ -126,7 +252,7 @@ const GanadoresManager = {
             return { exito: false, mensaje: '❌ El número debe ser válido' };
         }
 
-        const ganadores = this.cargarGanadores();
+        const ganadores = this.eliminarGanadorDeTodosLosTipos(numero, this.cargarGanadores());
         
         // Validar que no sea duplicado
         if (ganadores[tipo].some(g => g.numero === numero)) {
@@ -256,7 +382,7 @@ const GanadoresManager = {
      * @returns {Boolean} Éxito de la operación
      */
     limpiarTodos() {
-        return this.guardarGanadores({ sorteo: [], presorteo: [], ruletazos: [] });
+        return this.guardarGanadores(this.construirEstructuraVacia());
     },
 
     /**

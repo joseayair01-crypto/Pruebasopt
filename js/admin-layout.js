@@ -6,9 +6,16 @@
 /*              - Navegación entre páginas                          */
 /* ================================================================ */
 
+document.documentElement.classList.add('admin-auth-checking');
+
 const ADMIN_LAYOUT = {
     tokenKey: 'rifaplus_admin_token',
-    apiUrl: 'http://127.0.0.1:5001',
+    get apiUrl() {
+        return window.rifaplusConfig?.backend?.apiBase
+            || window.rifaplusConfig?.obtenerApiBase?.()
+            || window.location.origin;
+    },
+    authPromise: null,
     
     /**
      * Inicializar el layout del admin
@@ -18,7 +25,7 @@ const ADMIN_LAYOUT = {
         console.log('🔧 [AdminLayout] Inicializando...');
         
         // Verificar token
-        this.verificarAutenticacion();
+        this.authPromise = this.verificarAutenticacion();
         
         // Configurar logo
         this.configurarLogo();
@@ -32,14 +39,37 @@ const ADMIN_LAYOUT = {
         // Establecer página activa en el menú
         this.establecerPaginaActiva();
         
+        // ✅ ESCUCHAR cambios de configuración para actualizar header dinámicamente
+        this.escucharCambiosConfig();
+        
         console.log('✅ [AdminLayout] Inicializado correctamente');
+    },
+    
+    /**
+     * Escuchar cambios de configuración y actualizar header automáticamente
+     * Previene conflictos cuando config se sincroniza múltiples veces
+     */
+    escucharCambiosConfig() {
+        // Escuchar evento de config actualizada
+        window.addEventListener('configuracionActualizada', () => {
+            console.log('🔄 [AdminLayout] configuracionActualizada detectado - re-actualizando header');
+            this.configurarLogo();
+        });
+        
+        // También escuchar a través del sistema de listeners de rifaplusConfig
+        if (window.rifaplusConfig && typeof window.rifaplusConfig.escucharEvento === 'function') {
+            window.rifaplusConfig.escucharEvento('configuracionActualizada', () => {
+                console.log('🔄 [AdminLayout] configuracionActualizada (interno) detectado - re-actualizando');
+                this.configurarLogo();
+            });
+        }
     },
     
     /**
      * Verificar que el usuario esté autenticado
      * Si no, redirigir al dashboard solo si estamos en una página que NO es admin-dashboard.html
      */
-    verificarAutenticacion() {
+    async verificarAutenticacion() {
         // Buscar token de múltiples fuentes para garantizar consistencia
         const token = localStorage.getItem('rifaplus_token') || 
                      localStorage.getItem('rifaplus_admin_token') ||
@@ -57,11 +87,58 @@ const ADMIN_LAYOUT = {
         // Si no hay token y NO estamos en admin-dashboard, redirigir
         if (!token && paginaActual !== 'admin-dashboard.html') {
             console.warn('⚠️  [AdminLayout] Sin token, redirigiendo al login...');
+            localStorage.setItem('redirectAfterLogin', paginaActual);
+            this.finalizarChequeoVisual();
             window.location.href = 'admin-dashboard.html';
             return false;
         }
-        
-        return token;
+
+        if (!token) {
+            this.finalizarChequeoVisual();
+            return false;
+        }
+
+        try {
+            const response = await fetch(`${this.apiUrl}/api/admin/verify-token`, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` },
+                cache: 'no-store'
+            });
+
+            if (!response.ok) {
+                throw new Error(`Token inválido (${response.status})`);
+            }
+
+            return token;
+        } catch (error) {
+            console.warn('⚠️  [AdminLayout] Token no válido o no verificable:', error.message);
+            localStorage.removeItem(this.tokenKey);
+            localStorage.removeItem('rifaplus_token');
+            localStorage.removeItem('admin_token');
+            localStorage.removeItem('token');
+
+            if (paginaActual !== 'admin-dashboard.html') {
+                localStorage.setItem('redirectAfterLogin', paginaActual);
+                this.finalizarChequeoVisual();
+                window.location.href = 'admin-dashboard.html';
+                return false;
+            }
+
+            return false;
+        } finally {
+            this.finalizarChequeoVisual();
+        }
+    },
+
+    async esperarAutenticacion() {
+        if (!this.authPromise) {
+            this.authPromise = this.verificarAutenticacion();
+        }
+        return this.authPromise;
+    },
+
+    finalizarChequeoVisual() {
+        document.documentElement.classList.remove('admin-auth-checking');
     },
     
     /**
@@ -69,15 +146,40 @@ const ADMIN_LAYOUT = {
      */
     configurarLogo() {
         const config = window.rifaplusConfig || {};
-        const nombreCliente = config.cliente?.nombre || 'SORTEOS YEPE';
-        const logoCliente = config.cliente?.logo || 'images/logo.png';
+        const nombreCliente = config.cliente?.nombre || 'SORTEO';
+        const logoCliente = config.cliente?.logo || config.cliente?.logotipo || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='34' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ESaDev%3C/text%3E%3C/svg%3E";
+        
+        // 🔍 LOGGING DETALLADO para debugging
+        const nombreSorteo = config.rifa?.nombreSorteo || '(vacío)';
+        const clienteCompleto = JSON.stringify({
+            nombre: config.cliente?.nombre,
+            eslogan: config.cliente?.eslogan,
+            id: config.cliente?.id
+        });
+        
+        console.log('🎨 [AdminLayout.configurarLogo] Actualizando header', {
+            nombreClienteAUsar: nombreCliente,
+            nombreSorteoEnConfig: nombreSorteo,
+            clienteCompleto: clienteCompleto,
+            timestamp: new Date().toISOString()
+        });
         
         // Buscar elementos del header
         const logoImg = document.querySelector('.admin-logo-container img');
         const titleSub = document.querySelector('.admin-header-title-sub');
         
-        if (logoImg) logoImg.src = logoCliente;
-        if (titleSub) titleSub.textContent = nombreCliente;
+        if (logoImg) {
+            logoImg.src = logoCliente;
+            console.log('✅ Logo actualizado:', logoCliente);
+        }
+        
+        if (titleSub) {
+            const anterior = titleSub.textContent;
+            titleSub.textContent = nombreCliente;
+            if (anterior !== nombreCliente) {
+                console.log(`✅ Header title actualizado: "${anterior}" → "${nombreCliente}"`);
+            }
+        }
     },
     
     /**
@@ -98,6 +200,12 @@ const ADMIN_LAYOUT = {
      */
     logout() {
         if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
+            // Limpiar nombre antes de borrar el token
+            const nombreDisplay = document.getElementById('userDisplayName');
+            const rolDisplay = document.getElementById('userDisplayRole');
+            if (nombreDisplay) nombreDisplay.textContent = '-';
+            if (rolDisplay) rolDisplay.textContent = '-';
+            
             localStorage.removeItem(this.tokenKey);
             localStorage.removeItem('rifaplus_token');
             localStorage.removeItem('admin_token');
@@ -114,24 +222,108 @@ const ADMIN_LAYOUT = {
         const sidebar = document.querySelector('.admin-sidebar');
         const mainContent = document.querySelector('.admin-main');
         const navBtns = document.querySelectorAll('.admin-nav-btn');
+        let overlayMenu = document.getElementById('overlayMenu');
+        let overlayClose = document.getElementById('overlayClose');
+
+        if (toggleBtn) {
+            const headerContent = document.querySelector('.admin-header-content');
+            if (headerContent && toggleBtn.parentElement !== headerContent) {
+                headerContent.prepend(toggleBtn);
+            }
+
+            toggleBtn.classList.add('hamburger');
+            toggleBtn.setAttribute('aria-label', 'Abrir menú');
+            toggleBtn.setAttribute('aria-expanded', 'false');
+
+            if (!toggleBtn.querySelector('.hamburger-box')) {
+                toggleBtn.innerHTML = `
+                    <span class="hamburger-box">
+                        <span class="hamburger-inner"></span>
+                    </span>
+                `;
+            }
+        }
+
+        if (!overlayMenu) {
+            const linksHtml = Array.from(navBtns).map((btn) => {
+                const href = btn.getAttribute('href') || '#';
+                const label = btn.querySelector('span')?.textContent?.trim() || btn.textContent.trim() || 'Sección';
+                return `<a href="${href}" class="overlay-link">${label}</a>`;
+            }).join('');
+
+            document.body.insertAdjacentHTML('beforeend', `
+                <div class="overlay-menu admin-overlay-menu" id="overlayMenu" inert>
+                    <div class="overlay-inner">
+                        <button class="overlay-close" id="overlayClose" aria-label="Cerrar menú">×</button>
+                        ${linksHtml}
+                    </div>
+                </div>
+            `);
+
+            overlayMenu = document.getElementById('overlayMenu');
+            overlayClose = document.getElementById('overlayClose');
+        }
+
+        const toggleInner = toggleBtn?.querySelector('.hamburger-inner');
+
+        const abrirOverlay = () => {
+            overlayMenu?.classList.add('show');
+            overlayMenu?.removeAttribute('inert');
+            toggleBtn?.classList.add('is-active');
+            toggleBtn?.setAttribute('aria-expanded', 'true');
+            document.body.classList.add('admin-sidebar-open');
+
+            if (toggleInner) {
+                toggleInner.style.transform = 'rotate(45deg)';
+                toggleInner.style.backgroundColor = 'var(--primary-light)';
+            }
+        };
+
+        const cerrarOverlay = () => {
+            overlayMenu?.classList.remove('show');
+            overlayMenu?.setAttribute('inert', '');
+            toggleBtn?.classList.remove('is-active');
+            toggleBtn?.setAttribute('aria-expanded', 'false');
+            document.body.classList.remove('admin-sidebar-open');
+
+            if (toggleInner) {
+                toggleInner.style.transform = 'rotate(0)';
+                toggleInner.style.backgroundColor = 'white';
+            }
+        };
         
         // Toggle button (móvil)
-        if (toggleBtn && sidebar) {
-            toggleBtn.addEventListener('click', () => {
-                sidebar.classList.toggle('mobile-open');
+        if (toggleBtn && overlayMenu) {
+            toggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const estaAbierto = overlayMenu.classList.contains('show');
+                if (estaAbierto) {
+                    cerrarOverlay();
+                } else {
+                    abrirOverlay();
+                }
             });
             
-            // Cerrar sidebar al hacer clic en un enlace
-            navBtns.forEach(btn => {
+            const enlacesOverlay = overlayMenu.querySelectorAll('.overlay-link');
+            enlacesOverlay.forEach(btn => {
                 btn.addEventListener('click', () => {
-                    sidebar.classList.remove('mobile-open');
+                    cerrarOverlay();
                 });
             });
-            
-            // Cerrar sidebar al hacer clic fuera
-            document.addEventListener('click', (e) => {
-                if (!sidebar.contains(e.target) && !toggleBtn.contains(e.target)) {
-                    sidebar.classList.remove('mobile-open');
+
+            if (overlayClose) {
+                overlayClose.addEventListener('click', cerrarOverlay);
+            }
+
+            overlayMenu.addEventListener('click', (e) => {
+                if (e.target === overlayMenu) {
+                    cerrarOverlay();
+                }
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && overlayMenu.classList.contains('show')) {
+                    cerrarOverlay();
                 }
             });
         }

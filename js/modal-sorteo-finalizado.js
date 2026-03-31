@@ -10,6 +10,7 @@ class ModalSorteoFinalizado {
     constructor() {
         this.modalCreado = false;
         this.verificacionActiva = false;
+        this.navegacionBloqueada = false;
         this.logEnabled = true;
         
         // Log de inicialización
@@ -59,7 +60,7 @@ class ModalSorteoFinalizado {
                 return;
             }
 
-            const estado = sorteoActivo.estado;
+            const estado = sorteoActivo.estado || config?.rifa?.estado || 'activo';
             const ahora = Date.now();
             const fechaCierre = new Date(sorteoActivo.fechaCierre).getTime();
             const tiempoRestante = fechaCierre - ahora;
@@ -78,6 +79,9 @@ class ModalSorteoFinalizado {
                 
                 // Cambiar estado automáticamente
                 config.sorteoActivo.estado = 'finalizado';
+                if (config.rifa) {
+                    config.rifa.estado = 'finalizado';
+                }
                 config.permitirCompras = false;
                 
                 this.log('✅ Estado actualizado a FINALIZADO', 'actualizacion');
@@ -139,14 +143,11 @@ class ModalSorteoFinalizado {
             // Obtener ganadores inmediatamente (consulta al servidor y fallback local)
             const ganadoresReales = await this.obtenerGanadoresReales();
 
-            // Validar que hay ganadores definidos por el administrador
             const tieneGanadores = ganadoresReales && Object.keys(ganadoresReales).some(tipo =>
                 ganadoresReales[tipo] && ganadoresReales[tipo].length > 0
             );
-
             if (!tieneGanadores) {
-                this.log('Sin ganadores configurados en servidor - No se mostrará el modal', 'warning');
-                return; // No mostrar modal si no hay ganadores persistidos por admin
+                this.log('No hay ganadores persistidos todavía; se mostrará modal de cierre con estado pendiente', 'warning');
             }
 
             // Crear overlay fullscreen
@@ -158,12 +159,14 @@ class ModalSorteoFinalizado {
             // Agregar al DOM
             document.body.appendChild(overlay);
             document.body.style.overflow = 'hidden';
+            this.activarModoRestringido();
 
             // Agregar estilos CSS
             this.inyectarCSS();
 
             // Configurar event listeners
             this.configurarEventListeners();
+            this.bloquearNavegacion();
 
             // Animación de entrada
             setTimeout(() => {
@@ -235,6 +238,35 @@ class ModalSorteoFinalizado {
             };
         })();
 
+        const hayGanadores = ['sorteo', 'presorteo', 'ruletazos'].some((tipo) =>
+            Array.isArray(ganadoresAUsar[tipo]) && ganadoresAUsar[tipo].length > 0
+        );
+        const sistemaPremios = config?.rifa?.sistemaPremios || {};
+        const tiposEsperados = [
+            { key: 'sorteo', cantidad: Array.isArray(sistemaPremios.sorteo) ? sistemaPremios.sorteo.length : 0 },
+            { key: 'presorteo', cantidad: Array.isArray(sistemaPremios.presorteo) ? sistemaPremios.presorteo.length : 0 },
+            { key: 'ruletazos', cantidad: Array.isArray(sistemaPremios.ruletazos) ? sistemaPremios.ruletazos.length : 0 }
+        ].filter((tipo) => tipo.cantidad > 0);
+        const faltanGanadoresPorPublicar = tiposEsperados.length > 0 && tiposEsperados.some((tipo) => {
+            const actuales = Array.isArray(ganadoresAUsar[tipo.key]) ? ganadoresAUsar[tipo.key].length : 0;
+            return actuales < tipo.cantidad;
+        });
+        const nombreSorteo = (
+            (typeof config?.obtenerNombreSorteo === 'function' ? config.obtenerNombreSorteo() : '') ||
+            config?.rifa?.nombreSorteo ||
+            sorteo?.nombre ||
+            'Sorteo finalizado'
+        );
+        const nombreOrganizador = (
+            (typeof config?.cliente?.nombre === 'string' && config.cliente.nombre.trim()) ||
+            'SORTEO'
+        );
+        const seccionesGanadores = [
+            this.generarSeccionGanadores('principal', ganadoresAUsar),
+            this.generarSeccionGanadores('presorte', ganadoresAUsar),
+            this.generarSeccionGanadores('ruletazo', ganadoresAUsar)
+        ].filter(Boolean).join('');
+
         return `
             <div class="modal-sorteo-finalizado">
                 <!-- CONFETI DE FONDO -->
@@ -253,8 +285,8 @@ class ModalSorteoFinalizado {
 
                     <!-- INFORMACIÓN DEL SORTEO -->
                     <div class="sorteo-info-principal">
-                        <h2 class="sorteo-nombre">${sorteo.nombre}</h2>
-                        <p class="sorteo-organizador">Por: ${config.cliente.nombre}</p>
+                        <h2 class="sorteo-nombre">${nombreSorteo}</h2>
+                        <p class="sorteo-organizador">Organizado por <strong>${nombreOrganizador}</strong></p>
                         <p class="sorteo-fecha-cierre">Finalizado: ${sorteo.fechaCierreFormato || new Date(sorteo.fechaCierre).toLocaleString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                     </div>
 
@@ -263,22 +295,22 @@ class ModalSorteoFinalizado {
                         <p>${sorteo.mensajeAgradecimiento}</p>
                     </div>
 
-                    <!-- GANADORES PRINCIPALES (SIEMPRE SE MUESTRA) -->
-                    ${this.generarSeccionGanadores('principal', ganadoresAUsar)}
+                    ${faltanGanadoresPorPublicar ? `
+                        <div class="sorteo-estado-pendiente">
+                            <p>El sorteo ya finalizó. Aún estamos completando la publicación oficial de todos los ganadores configurados.</p>
+                        </div>
+                    ` : ''}
 
-                    <!-- GANADORES PRE-SORTEO (SIEMPRE SE MUESTRA) -->
-                    ${this.generarSeccionGanadores('presorte', ganadoresAUsar)}
-
-                    <!-- GANADORES RULETAZO (SIEMPRE SE MUESTRA) -->
-                    ${this.generarSeccionGanadores('ruletazo', ganadoresAUsar)}
+                    ${seccionesGanadores}
 
                     <!-- REDES SOCIALES -->
                     ${this.generarSeccionRedes(config)}
 
                     <!-- BOTONES DE ACCIÓN -->
                             <div class="sorteo-acciones">
-                                <button id="btnVerMisBoletos" class="btn btn-verificar" style="background: linear-gradient(135deg, ${config.tema && config.tema.colores && config.tema.colores.secondary ? config.tema.colores.secondary : '#e8553b'} 0%, ${config.tema && config.tema.colores && config.tema.colores.secondaryDark ? config.tema.colores.secondaryDark : '#D64520'} 100%);">
-                                    VERIFICAR MIS BOLETOS
+                                <button id="btnVerMisBoletos" class="btn btn-verificar">
+                                    <span>VERIFICAR MIS BOLETOS</span>
+                                    <span class="btn-verificar-arrow" aria-hidden="true">→</span>
                                 </button>
                         ${sorteo.documentos.actaURL ? `
                             <a href="${sorteo.documentos.actaURL}" download class="btn btn-descargar">
@@ -295,31 +327,25 @@ class ModalSorteoFinalizado {
      * Genera la sección de ganadores - IDÉNTICO AL INDEX.HTML
      */
     generarSeccionGanadores(tipo, ganadores) {
-        const config = window.rifaplusConfig;
-        const colores = config?.tema?.colores || {};
-        const colorPrimary = colores.primary || '#0F3A7D';
-        const colorPrimaryDark = colores.primaryDark || '#082860';
-
-        // Paleta de colores por tipo
         const colorPaleta = {
             'principal': {
-                color: colorPrimary,
-                headerColor1: colorPrimary,
-                headerColor2: colorPrimaryDark,
+                color: 'var(--modal-primary)',
+                headerColor1: 'var(--modal-primary)',
+                headerColor2: 'var(--modal-primary-dark)',
                 titulo: 'GANADORES DEL SORTEO',
                 icono: ''
             },
             'presorte': {
-                color: colorPrimary,
-                headerColor1: colorPrimary,
-                headerColor2: colorPrimaryDark,
+                color: 'var(--modal-primary)',
+                headerColor1: 'var(--modal-primary)',
+                headerColor2: 'var(--modal-primary-dark)',
                 titulo: 'GANADORES DEL PRESORTEO',
                 icono: ''
             },
             'ruletazo': {
-                color: colorPrimary,
-                headerColor1: colorPrimary,
-                headerColor2: colorPrimaryDark,
+                color: 'var(--modal-primary)',
+                headerColor1: 'var(--modal-primary)',
+                headerColor2: 'var(--modal-primary-dark)',
                 titulo: 'GANADORES DE RULETAZOS',
                 icono: ''
             }
@@ -334,45 +360,49 @@ class ModalSorteoFinalizado {
         const listaGanadores = ganadores[tiposMap[tipo]] || [];
         
         if (!listaGanadores || listaGanadores.length === 0) {
-            return `
-                <div class="sorteo-seccion">
-                    <h3 class="sorteo-seccion-titulo">${colorPaleta[tipo].titulo}</h3>
-                    <p style="text-align:center; opacity:0.6; font-size:0.85rem; margin:0;">Sin ganadores configurados aún</p>
-                </div>
-            `;
+            return '';
         }
 
         const paleta = colorPaleta[tipo] || colorPaleta.principal;
         
         // Ordenar por lugarGanado
         let ganadoresOrdenados = [...listaGanadores].sort((a, b) => {
-            const lugarA = Number(a.lugarGanado) || 999;
-            const lugarB = Number(b.lugarGanado) || 999;
+            const lugarA = Number(a.lugarGanado || a.posicion) || 999;
+            const lugarB = Number(b.lugarGanado || b.posicion) || 999;
             return lugarA - lugarB;
         });
 
         let html = `
             <div class="sorteo-seccion">
-                <div style="background: linear-gradient(135deg, ${paleta.headerColor1} 0%, ${paleta.headerColor2} 100%); padding: 8px 12px; border-radius: 8px 8px 0 0; color: white; margin-bottom: 8px;">
-                    <h3 style="margin: 0; font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+                <div class="sorteo-seccion-header" style="--ganadores-header-start: ${paleta.headerColor1}; --ganadores-header-end: ${paleta.headerColor2};">
+                    <h3 class="sorteo-seccion-heading">
                         <span>${paleta.titulo}</span>
-                        <span style="background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">${ganadoresOrdenados.length}</span>
+                        <span class="sorteo-seccion-badge">${ganadoresOrdenados.length}</span>
                     </h3>
                 </div>
-                <div class="sorteo-ganadores-lista grid-compact">
+                <div class="sorteo-ganadores-lista sorteo-ganadores-lista--${Math.min(ganadoresOrdenados.length, 3)}">
         `;
 
         ganadoresOrdenados.forEach((ganador, idx) => {
-            const nombreCompleto = [ganador.nombre_cliente, ganador.apellido_cliente].filter(Boolean).join(' ') || ganador.nombre || '-';
-            const ciudad = ganador.ciudad || '-';
-            const estado = ganador.estado_cliente || '-';
-            const numeroOrden = ganador.numero || 'N/A';
+            const nombreCompleto = [
+                ganador.nombre_ganador,
+                ganador.nombre_cliente,
+                ganador.apellido_cliente
+            ].filter(Boolean).join(' ').trim() || ganador.nombre || 'Ganador confirmado';
+
+            const estado = (ganador.estado_cliente || '').trim();
+            const metaPartes = [estado].filter(Boolean);
+            const numeroGanador = ganador.numero_boleto || ganador.numero || ganador.numero_orden || '';
+            const numeroFormateado = numeroGanador !== ''
+                ? this.formatearNumero(numeroGanador)
+                : 'N/A';
 
             // Formatear fecha
-            let fechaFormato = '-';
-            if (ganador.fechaRegistro) {
+            let fechaFormato = '';
+            const fechaFuente = ganador.fechaRegistro || ganador.fecha_sorteo || ganador.created_at;
+            if (fechaFuente) {
                 try {
-                    const fecha = new Date(ganador.fechaRegistro);
+                    const fecha = new Date(fechaFuente);
                     if (!isNaN(fecha.getTime())) {
                         fechaFormato = fecha.toLocaleDateString('es-ES', { 
                             year: 'numeric', 
@@ -392,18 +422,18 @@ class ModalSorteoFinalizado {
             html += `
                 <div class="tarjeta-ganador">
                     <div class="tarjeta-header">
-                        <div class="tarjeta-numero"><span class="numero-caja">${numeroOrden}</span></div>
+                        <div class="tarjeta-numero"><span class="numero-caja">${numeroFormateado}</span></div>
                         <div class="tarjeta-lugar">${lugarTexto}</div>
                     </div>
                     <div class="tarjeta-body">
                         <div class="tarjeta-nombre">${nombreCompleto}</div>
-                        <div class="tarjeta-meta">
-                            <span>${ciudad}</span>
-                            <span>·</span>
-                            <span>${estado}</span>
-                        </div>
+                        ${metaPartes.length > 0 ? `
+                            <div class="tarjeta-meta">
+                                ${metaPartes.map((parte) => `<span>${parte}</span>`).join('<span>·</span>')}
+                            </div>
+                        ` : ''}
                     </div>
-                    <div class="tarjeta-fecha">${fechaFormato}</div>
+                    ${fechaFormato ? `<div class="tarjeta-fecha">${fechaFormato}</div>` : ''}
                 </div>
             `;
         });
@@ -490,7 +520,10 @@ class ModalSorteoFinalizado {
             
             // Primero intentar fuente de verdad: servidor
             try {
-                const resp = await fetch('http://localhost:5001/api/ganadores?limit=500');
+                const apiBase = window.rifaplusConfig?.backend?.apiBase
+                    || window.rifaplusConfig?.obtenerApiBase?.()
+                    || window.location.origin;
+                const resp = await fetch(`${apiBase}/api/ganadores?limit=500`);
                 if (resp.ok) {
                     const payload = await resp.json();
                     const rows = payload && payload.data ? payload.data : [];
@@ -503,14 +536,27 @@ class ModalSorteoFinalizado {
                             let key = 'sorteo';
                             if (tipoRaw.includes('presorte')) key = 'presorteo';
                             else if (tipoRaw.includes('rulet')) key = 'ruletazos';
-                            const numero = r.numero_boleto || r.numero_orden || '';
                             mapped[key].push({
-                                numero: String(numero),
-                                numeroFormateado: String(numero),
+                                numero: String(r.numero_boleto || r.numero_orden || ''),
+                                numero_boleto: r.numero_boleto,
+                                numero_orden: r.numero_orden,
                                 posicion: r.posicion || (idx + 1),
-                                nombre_cliente: r.nombre_ganador || r.nombre_cliente || ''
+                                nombre_ganador: r.nombre_ganador || '',
+                                nombre_cliente: r.nombre_cliente || '',
+                                apellido_cliente: r.apellido_cliente || '',
+                                ciudad: r.ciudad || '',
+                                ciudad_cliente: r.ciudad_cliente || '',
+                                estado_cliente: r.estado_cliente || '',
+                                fecha_sorteo: r.fecha_sorteo || '',
+                                created_at: r.created_at || ''
                             });
                         });
+                        Object.keys(mapped).forEach((key) => {
+                            mapped[key].sort((a, b) => (Number(a.posicion) || 999) - (Number(b.posicion) || 999));
+                        });
+
+                        // Si el servidor respondió, esta es la única fuente de verdad.
+                        // No caer después en residuos locales.
                         return mapped;
                     }
                 }
@@ -554,35 +600,55 @@ class ModalSorteoFinalizado {
      * Genera redes sociales
      */
     generarSeccionRedes(config) {
-        const redes = config.cliente.redesSociales;
+        const redes = config?.cliente?.redesSociales || {};
+        const redesDisponibles = [
+            redes.facebook ? {
+                href: redes.facebook,
+                clase: 'facebook',
+                titulo: 'Facebook',
+                icono: 'fab fa-facebook-f',
+                texto: 'Facebook'
+            } : null,
+            redes.instagram ? {
+                href: redes.instagram,
+                clase: 'instagram',
+                titulo: 'Instagram',
+                icono: 'fab fa-instagram',
+                texto: 'Instagram'
+            } : null,
+            redes.tiktok ? {
+                href: redes.tiktok,
+                clase: 'tiktok',
+                titulo: 'TikTok',
+                icono: 'fab fa-tiktok',
+                texto: 'TikTok'
+            } : null,
+            redes.canalWhatsapp ? {
+                href: redes.canalWhatsapp,
+                clase: 'whatsapp',
+                titulo: 'Canal de WhatsApp',
+                icono: 'fab fa-whatsapp',
+                texto: 'Canal WhatsApp'
+            } : null
+        ].filter(Boolean);
+
+        if (redesDisponibles.length === 0) {
+            return '';
+        }
+
         let html = `
             <div class="sorteo-seccion">
                 <p class="sorteo-redes-mensaje">Felicidades a todos los ganadores. Síguenos en nuestras redes sociales para ver la transmisión en vivo del sorteo y mantenerte al tanto de futuros sorteos. Gracias por la confianza.</p>
                 <div class="sorteo-redes">
         `;
 
-        if (redes.whatsapp) {
+        redesDisponibles.forEach((red) => {
             html += `
-                <a href="https://wa.me/${redes.whatsapp.replace(/[^0-9]/g, '')}" 
-                   target="_blank" class="red-btn whatsapp" title="WhatsApp">
-                    <i class="fab fa-whatsapp"></i> WhatsApp
+                <a href="${red.href}" target="_blank" rel="noopener noreferrer" class="red-btn ${red.clase}" title="${red.titulo}">
+                    <i class="${red.icono}"></i> ${red.texto}
                 </a>
             `;
-        }
-        if (redes.facebook) {
-            html += `
-                <a href="${redes.facebook}" target="_blank" class="red-btn facebook" title="Facebook">
-                    <i class="fab fa-facebook-f"></i> Facebook
-                </a>
-            `;
-        }
-        if (redes.instagram) {
-            html += `
-                <a href="${redes.instagram}" target="_blank" class="red-btn instagram" title="Instagram">
-                    <i class="fab fa-instagram"></i> Instagram
-                </a>
-            `;
-        }
+        });
 
         html += `</div></div>`;
         return html;
@@ -617,6 +683,7 @@ class ModalSorteoFinalizado {
                         if (ov && ov.parentNode) {
                             ov.parentNode.removeChild(ov);
                         }
+                        this.desactivarModoRestringido();
                         document.body.style.overflow = '';
 
                         this.log('Redirigiendo a mis-boletos-restringido.html (supresión activa)', 'navegacion');
@@ -684,7 +751,11 @@ class ModalSorteoFinalizado {
      */
     bloquearNavegacion() {
         try {
+            if (this.navegacionBloqueada) return;
+
             document.addEventListener('click', (e) => {
+                if (!this.modalCreado) return;
+
                 const target = e.target.closest('a');
                 if (!target) return;
 
@@ -716,9 +787,53 @@ class ModalSorteoFinalizado {
                         setTimeout(() => alerta.remove(), 4000);
                     }
                 }
-            });
+            }, true);
+
+            this.navegacionBloqueada = true;
         } catch (error) {
             this.log(`Error en bloquearNavegacion: ${error.message}`, 'error');
+        }
+    }
+
+    activarModoRestringido() {
+        try {
+            document.body.classList.add('sorteo-finalizado-activo');
+
+            document.querySelectorAll('.nav-link, .overlay-link').forEach((link) => {
+                const href = (link.getAttribute('href') || '').toLowerCase();
+                const permiteMisBoletos = href.includes('mis-boletos');
+
+                if (!permiteMisBoletos) {
+                    link.classList.add('link-restringido');
+                    link.setAttribute('aria-disabled', 'true');
+                    link.setAttribute('tabindex', '-1');
+                    link.dataset.restrictedByFinalized = 'true';
+                }
+            });
+
+            const carritoNav = document.getElementById('carritoNav');
+            if (carritoNav) {
+                carritoNav.classList.add('carrito-restringido');
+                carritoNav.setAttribute('aria-disabled', 'true');
+                carritoNav.dataset.restrictedByFinalized = 'true';
+            }
+        } catch (error) {
+            this.log(`Error en activarModoRestringido: ${error.message}`, 'error');
+        }
+    }
+
+    desactivarModoRestringido() {
+        try {
+            document.body.classList.remove('sorteo-finalizado-activo');
+
+            document.querySelectorAll('[data-restricted-by-finalized="true"]').forEach((element) => {
+                element.classList.remove('link-restringido', 'carrito-restringido');
+                element.removeAttribute('aria-disabled');
+                element.removeAttribute('tabindex');
+                delete element.dataset.restrictedByFinalized;
+            });
+        } catch (error) {
+            this.log(`Error en desactivarModoRestringido: ${error.message}`, 'error');
         }
     }
 
@@ -773,17 +888,29 @@ class ModalSorteoFinalizado {
             /* ===== MODAL SORTEO FINALIZADO ===== */
             
             .modal-sorteo-overlay {
+                --modal-primary: var(--primary, #0F3A7D);
+                --modal-primary-dark: var(--primary-dark, #082860);
+                --modal-secondary: var(--secondary, #e8553b);
+                --modal-secondary-dark: var(--secondary-dark, #D64520);
+                --modal-surface: var(--surface, #f7f9fc);
+                --modal-surface-accent: var(--surface-accent, #eef3f9);
+                --modal-text: var(--text-dark, #1F2937);
+                --modal-text-muted: var(--text-muted, #6B7280);
                 position: fixed;
                 top: 0;
                 left: 0;
                 right: 0;
                 bottom: 0;
-                background: linear-gradient(135deg, #0F3A7D 0%, #082860 100%);
+                background:
+                    radial-gradient(circle at top, rgba(255, 255, 255, 0.2), transparent 38%),
+                    linear-gradient(135deg, color-mix(in srgb, var(--modal-primary) 32%, transparent) 0%, color-mix(in srgb, var(--modal-primary-dark) 42%, transparent) 100%);
+                backdrop-filter: blur(6px);
                 z-index: 9999;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 overflow: hidden;
+                padding: 24px 16px;
                 opacity: 0;
                 transition: opacity 0.3s ease;
             }
@@ -802,11 +929,12 @@ class ModalSorteoFinalizado {
             .modal-sorteo-finalizado {
                 position: relative;
                 width: 95%;
-                max-width: 700px;
+                max-width: 860px;
                 max-height: 90vh;
                 background: white;
-                border-radius: 20px;
-                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                border-radius: 28px;
+                box-shadow: 0 28px 80px rgba(0, 0, 0, 0.32);
+                border: 1px solid rgba(255, 255, 255, 0.26);
                 display: flex;
                 flex-direction: column;
                 animation: slideUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -831,69 +959,104 @@ class ModalSorteoFinalizado {
                 overflow-y: auto;
                 overflow-x: hidden;
                 scroll-behavior: smooth;
+                background: linear-gradient(180deg, #ffffff 0%, var(--modal-surface) 100%);
+                scrollbar-width: thin;
+                scrollbar-color: color-mix(in srgb, var(--modal-primary) 45%, white) transparent;
             }
 
             .sorteo-header {
                 text-align: center;
-                padding: 20px 15px;
-                background: linear-gradient(135deg, #0F3A7D 0%, #1B5FB8 100%);
+                padding: 28px 24px 20px;
+                background:
+                    radial-gradient(circle at top, rgba(255, 255, 255, 0.12), transparent 38%),
+                    linear-gradient(135deg, var(--modal-primary) 0%, var(--modal-primary-dark) 100%);
                 color: white;
-                border-radius: 20px 20px 0 0;
+                border-radius: 28px 28px 0 0;
                 flex-shrink: 0;
+                position: relative;
             }
 
             .sorteo-logo-container {
-                margin-bottom: 8px;
+                margin-bottom: 12px;
             }
 
             .sorteo-logo {
-                max-width: 80px;
+                max-width: 92px;
                 height: auto;
+                filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.22));
             }
 
             .sorteo-titulo {
-                font-size: 1.8rem;
-                font-weight: 700;
+                font-size: 2rem;
+                font-weight: 800;
+                letter-spacing: 0.04em;
                 margin: 0;
                 text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
             }
 
             .sorteo-info-principal {
                 text-align: center;
-                padding: 12px 15px;
-                background: linear-gradient(135deg, #f8f9fa 0%, #f0f0f0 100%);
-                border-bottom: 2px solid #e5e7eb;
+                padding: 20px 24px 18px;
+                background: linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
+                border-bottom: 1px solid #e5e7eb;
                 flex-shrink: 0;
             }
 
             .sorteo-nombre {
-                font-size: 1.1rem;
-                margin: 0 0 5px 0;
-                color: #1F2937;
+                font-size: 1.4rem;
+                margin: 0 0 8px 0;
+                color: var(--modal-text);
+                font-weight: 800;
             }
 
             .sorteo-organizador {
-                color: #6B7280;
-                margin: 2px 0;
-                font-size: 0.85rem;
+                color: var(--modal-text-muted);
+                margin: 4px 0;
+                font-size: 0.98rem;
+                letter-spacing: 0.01em;
+                line-height: 1.45;
+            }
+
+            .sorteo-organizador strong {
+                color: var(--modal-primary);
+                font-weight: 800;
             }
 
             .sorteo-fecha-cierre {
-                color: #e8553b;
-                font-weight: 600;
-                margin: 2px 0 0 0;
-                font-size: 0.85rem;
+                color: var(--modal-secondary);
+                font-weight: 700;
+                margin: 4px 0 0 0;
+                font-size: 0.95rem;
             }
 
             .sorteo-agradecimiento {
-                padding: 12px 15px;
-                background: #fff3cd;
+                margin: 18px 24px 4px;
+                padding: 14px 16px;
+                background: linear-gradient(135deg, #fff7db 0%, #fff1c2 100%);
+                border: 1px solid #f4d46b;
                 border-left: 4px solid #FCD34D;
+                border-radius: 16px;
                 text-align: center;
                 color: #856404;
-                font-size: 0.85rem;
-                line-height: 1.4;
+                font-size: 0.94rem;
+                line-height: 1.6;
                 flex-shrink: 0;
+            }
+
+            .sorteo-estado-pendiente {
+                margin: 10px 24px 0;
+                padding: 14px 16px;
+                border-radius: 16px;
+                background: linear-gradient(180deg, color-mix(in srgb, var(--modal-primary) 10%, white) 0%, #f8fbff 100%);
+                border: 1px solid color-mix(in srgb, var(--modal-primary) 22%, white);
+                color: color-mix(in srgb, var(--modal-primary-dark) 70%, #1f2937);
+                text-align: center;
+                font-size: 0.92rem;
+                line-height: 1.55;
+            }
+
+            .sorteo-estado-pendiente p {
+                margin: 0;
             }
 
             .sorteo-scroll-container {
@@ -909,27 +1072,77 @@ class ModalSorteoFinalizado {
             }
 
             .sorteo-scroll-container::-webkit-scrollbar-thumb {
-                background: #0F3A7D;
+                background: var(--modal-primary);
                 border-radius: 4px;
             }
 
             .sorteo-seccion {
-                margin: 12px 0;
-                padding: 0 15px;
+                margin: 18px 0;
+                padding: 0 24px;
+            }
+
+            .sorteo-seccion-header {
+                background: linear-gradient(135deg, var(--ganadores-header-start, var(--modal-primary)) 0%, var(--ganadores-header-end, var(--modal-primary-dark)) 100%);
+                padding: 10px 14px;
+                border-radius: 14px;
+                color: #ffffff;
+                margin-bottom: 10px;
+                box-shadow: 0 12px 24px rgba(var(--primary-rgb, 15, 58, 125), 0.16);
+            }
+
+            .sorteo-seccion-heading {
+                margin: 0;
+                font-size: 0.98rem;
+                font-weight: 700;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+            }
+
+            .sorteo-seccion-badge {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 32px;
+                padding: 4px 10px;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.18);
+                color: #ffffff;
+                font-size: 0.78rem;
+                font-weight: 800;
+                line-height: 1;
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
             }
 
             .sorteo-seccion-titulo {
-                font-size: 1rem;
-                color: #0F3A7D;
-                margin: 0 0 8px 0;
-                padding-bottom: 5px;
+                font-size: 1.02rem;
+                color: var(--modal-primary);
+                margin: 0 0 10px 0;
+                padding-bottom: 8px;
                 border-bottom: 2px solid #e5e7eb;
+                font-weight: 800;
+                letter-spacing: 0.01em;
             }
 
             .sorteo-ganadores-lista {
                 display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-                gap: 8px;
+                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+                gap: 12px;
+            }
+
+            .sorteo-ganadores-lista--1 {
+                grid-template-columns: minmax(280px, 420px);
+                justify-content: center;
+            }
+
+            .sorteo-ganadores-lista--2 {
+                grid-template-columns: repeat(2, minmax(240px, 320px));
+                justify-content: center;
+            }
+
+            .sorteo-ganadores-lista--3 {
+                grid-template-columns: repeat(3, minmax(200px, 1fr));
             }
 
             .sorteo-ganador-card {
@@ -961,23 +1174,24 @@ class ModalSorteoFinalizado {
 
             /* Tarjeta compacta nueva */
             .tarjeta-ganador {
-                background: white;
-                border: 1px solid #e5e7eb;
-                border-radius: 8px;
-                padding: 8px;
+                background: linear-gradient(180deg, #ffffff 0%, color-mix(in srgb, var(--modal-primary) 4%, white) 100%);
+                border: 1px solid #dbe3ef;
+                border-radius: 18px;
+                padding: 14px;
                 display: flex;
                 flex-direction: column;
-                gap: 6px;
-                min-height: 90px;
+                gap: 10px;
+                min-height: 132px;
                 box-sizing: border-box;
+                box-shadow: 0 12px 26px rgba(15, 23, 42, 0.07);
             }
 
             .tarjeta-header { display:flex; justify-content:space-between; align-items:center; }
-            .tarjeta-numero { font-weight:700; color: var(--ganador-color, #0F3A7D); font-size:0.95rem; }
-            .tarjeta-lugar { font-size:0.8rem; color:#6B7280; }
-            .tarjeta-nombre { font-weight:600; font-size:0.9rem; color:#1F2937; }
-            .tarjeta-meta { color:#6B7280; font-size:0.8rem; display:flex; gap:6px; }
-            .tarjeta-fecha { color:#9CA3AF; font-size:0.75rem; text-align:right; }
+            .tarjeta-numero { font-weight:700; color: var(--ganador-color, var(--modal-primary)); font-size:0.98rem; }
+            .tarjeta-lugar { font-size:0.82rem; color:var(--modal-text-muted); font-weight:600; }
+            .tarjeta-nombre { font-weight:800; font-size:0.98rem; color:var(--modal-text); line-height:1.38; }
+            .tarjeta-meta { color:var(--modal-text-muted); font-size:0.82rem; display:flex; gap:6px; flex-wrap:wrap; line-height:1.45; }
+            .tarjeta-fecha { color:#9CA3AF; font-size:0.78rem; text-align:right; margin-top:auto; }
 
             .ganador-divider {
                 height: 2px;
@@ -999,7 +1213,7 @@ class ModalSorteoFinalizado {
             }
 
             .ganador-numero strong {
-                color: #0F3A7D;
+                color: var(--modal-primary);
                 font-weight: 700;
             }
 
@@ -1013,7 +1227,7 @@ class ModalSorteoFinalizado {
             .ganador-nombre {
                 font-size: 0.9rem;
                 font-weight: 600;
-                color: #0F3A7D;
+                color: var(--modal-primary);
             }
 
             .ganador-ubicacion {
@@ -1089,32 +1303,32 @@ class ModalSorteoFinalizado {
 
             .sorteo-redes-mensaje {
                 text-align: center;
-                color: #374151;
-                font-size: 0.95rem;
-                margin: 6px 15px 2px 15px;
-                line-height: 1.3;
+                color: var(--modal-text);
+                font-size: 0.96rem;
+                margin: 6px 24px 4px;
+                line-height: 1.55;
                 font-weight: 700;
             }
 
             .sorteo-redes {
                 display: flex;
-                gap: 6px;
+                gap: 10px;
                 justify-content: center;
                 flex-wrap: wrap;
-                padding: 0 15px;
-                margin: 8px 0;
+                padding: 0 24px;
+                margin: 10px 0 0;
             }
 
             .red-btn {
                 display: inline-flex;
                 align-items: center;
-                gap: 5px;
-                padding: 6px 12px;
-                border-radius: 6px;
-                font-size: 0.8rem;
+                gap: 6px;
+                padding: 9px 14px;
+                border-radius: 999px;
+                font-size: 0.84rem;
                 font-weight: 600;
                 text-decoration: none;
-                transition: transform 0.2s, box-shadow 0.2s;
+                transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
                 color: white;
             }
 
@@ -1126,43 +1340,52 @@ class ModalSorteoFinalizado {
             .red-btn.whatsapp { background: #25D366; }
             .red-btn.facebook { background: #1877F2; }
             .red-btn.instagram { background: linear-gradient(45deg, #feda75 0%, #fa7e1e 20%, #d62976 40%, #962fbf 60%, #4f5bd5 80%); }
+            .red-btn.tiktok { background: linear-gradient(135deg, #111111 0%, #2f2f2f 100%); }
 
             /* Número en recuadro dentro de la tarjeta de ganador */
             .numero-caja {
                 display: inline-block;
-                background: var(--ganador-color, #0F3A7D);
+                background: var(--ganador-color, var(--modal-primary));
                 color: #ffffff;
-                padding: 6px 10px;
-                border-radius: 8px;
+                padding: 7px 11px;
+                border-radius: 10px;
                 font-weight: 700;
                 font-size: 0.95rem;
                 line-height: 1;
+                box-shadow: 0 10px 16px color-mix(in srgb, var(--modal-primary) 22%, transparent);
             }
 
             .sorteo-acciones {
-                padding: 12px 15px;
-                background: #f8f9fa;
-                border-top: 2px solid #e5e7eb;
+                padding: 18px 24px 22px;
+                background: linear-gradient(180deg, #f8fafc 0%, var(--modal-surface-accent) 100%);
+                border-top: 1px solid #dde5f0;
                 display: flex;
-                gap: 8px;
+                gap: 12px;
                 flex-wrap: wrap;
                 justify-content: center;
-                border-radius: 0 0 20px 20px;
+                border-radius: 0 0 28px 28px;
                 flex-shrink: 0;
             }
 
             .btn-verificar {
-                background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+                background: linear-gradient(135deg, var(--modal-secondary) 0%, var(--modal-secondary-dark) 100%);
                 color: white;
-                padding: 10px 16px;
+                padding: 13px 18px;
                 border: none;
-                border-radius: 6px;
-                font-weight: 600;
-                font-size: 0.85rem;
+                border-radius: 14px;
+                font-weight: 700;
+                font-size: 0.9rem;
+                letter-spacing: 0.02em;
                 cursor: pointer;
                 transition: transform 0.2s, box-shadow 0.2s;
                 flex: 1;
-                min-width: 150px;
+                min-width: 220px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                position: relative;
+                overflow: hidden;
             }
 
             .btn-verificar:hover {
@@ -1170,21 +1393,39 @@ class ModalSorteoFinalizado {
                 box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);
             }
 
+            .btn-verificar-arrow {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.02rem;
+                line-height: 1;
+                animation: btnVerificarArrowPulse 1.3s ease-in-out infinite;
+            }
+
+            @keyframes btnVerificarArrowPulse {
+                0%, 100% {
+                    transform: translateX(0);
+                }
+                50% {
+                    transform: translateX(4px);
+                }
+            }
+
             .btn-descargar {
                 background: white;
-                color: #0F3A7D;
-                border: 2px solid #0F3A7D;
-                padding: 8px 14px;
-                border-radius: 6px;
+                color: var(--modal-primary);
+                border: 1px solid #c8d3e2;
+                padding: 12px 16px;
+                border-radius: 14px;
                 font-weight: 600;
-                font-size: 0.85rem;
+                font-size: 0.88rem;
                 text-decoration: none;
                 cursor: pointer;
                 transition: all 0.2s;
             }
 
             .btn-descargar:hover {
-                background: #0F3A7D;
+                background: var(--modal-primary);
                 color: white;
             }
 
@@ -1207,11 +1448,13 @@ class ModalSorteoFinalizado {
                 left: 50%;
                 transform: translate(-50%, -50%);
                 background: white;
-                padding: 30px;
-                border-radius: 12px;
-                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+                padding: 24px;
+                border-radius: 18px;
+                box-shadow: 0 20px 48px rgba(0, 0, 0, 0.24);
+                border: 1px solid #e5e7eb;
                 z-index: 10000;
                 animation: fadeInScale 0.3s ease;
+                width: min(92vw, 420px);
             }
 
             @keyframes fadeInScale {
@@ -1232,21 +1475,218 @@ class ModalSorteoFinalizado {
             .alerta-contenido p {
                 color: #1F2937;
                 margin: 0 0 15px 0;
-                font-size: 1rem;
+                font-size: 0.98rem;
+                line-height: 1.55;
             }
 
             .alerta-contenido .btn-small {
                 margin-top: 0;
             }
 
+            body.sorteo-finalizado-activo .nav-link.link-restringido,
+            body.sorteo-finalizado-activo .overlay-link.link-restringido {
+                opacity: 0.42;
+                filter: grayscale(0.35);
+                pointer-events: none;
+            }
+
+            body.sorteo-finalizado-activo #carritoNav.carrito-restringido {
+                opacity: 0.38;
+                filter: grayscale(0.45);
+                pointer-events: none;
+            }
+
             @media (max-width: 768px) {
-                .sorteo-titulo { font-size: 1.8rem; }
-                .sorteo-nombre { font-size: 1.2rem; }
+                .modal-sorteo-overlay {
+                    align-items: flex-end;
+                    padding: 12px;
+                }
+                .modal-sorteo-finalizado {
+                    width: 100%;
+                    max-height: calc(100dvh - 24px);
+                    border-radius: 24px;
+                }
+                .sorteo-finalizado-content {
+                    overscroll-behavior: contain;
+                }
+                .sorteo-header {
+                    padding: 22px 18px 16px;
+                    border-radius: 24px 24px 0 0;
+                }
+                .sorteo-logo {
+                    max-width: 78px;
+                }
+                .sorteo-titulo { font-size: 1.55rem; line-height: 1.05; }
+                .sorteo-info-principal {
+                    padding: 16px 18px 14px;
+                }
+                .sorteo-nombre { font-size: 1.12rem; line-height: 1.25; }
+                .sorteo-organizador,
+                .sorteo-fecha-cierre {
+                    font-size: 0.9rem;
+                }
+                .sorteo-agradecimiento,
+                .sorteo-estado-pendiente {
+                    margin-left: 18px;
+                    margin-right: 18px;
+                    padding: 12px 14px;
+                    border-radius: 14px;
+                    font-size: 0.88rem;
+                }
+                .sorteo-seccion,
+                .sorteo-acciones {
+                    padding-left: 18px;
+                    padding-right: 18px;
+                }
+                .sorteo-seccion {
+                    margin: 16px 0;
+                }
+                .sorteo-seccion-titulo {
+                    font-size: 0.96rem;
+                    margin-bottom: 8px;
+                    padding-bottom: 6px;
+                }
+                .sorteo-seccion-header {
+                    padding: 9px 12px;
+                    border-radius: 12px;
+                    margin-bottom: 8px;
+                }
+                .sorteo-seccion-heading {
+                    font-size: 0.9rem;
+                    gap: 10px;
+                }
+                .sorteo-seccion-badge {
+                    min-width: 28px;
+                    padding: 4px 8px;
+                    font-size: 0.74rem;
+                }
                 .sorteo-stats-grid { grid-template-columns: 1fr; }
-                .sorteo-acciones { flex-direction: column; }
-                .btn-verificar { min-width: auto; }
-                .sorteo-redes { gap: 8px; }
-                .red-btn { flex: 1; min-width: 100px; justify-content: center; }
+                .sorteo-ganadores-lista {
+                    grid-template-columns: 1fr;
+                    gap: 10px;
+                }
+                .sorteo-ganadores-lista--1,
+                .sorteo-ganadores-lista--2,
+                .sorteo-ganadores-lista--3 {
+                    grid-template-columns: 1fr;
+                    justify-content: stretch;
+                }
+                .tarjeta-ganador {
+                    min-height: 0;
+                    padding: 12px;
+                    border-radius: 16px;
+                    gap: 8px;
+                }
+                .tarjeta-numero {
+                    font-size: 0.93rem;
+                }
+                .tarjeta-lugar,
+                .tarjeta-meta,
+                .tarjeta-fecha {
+                    font-size: 0.78rem;
+                }
+                .tarjeta-nombre {
+                    font-size: 0.92rem;
+                }
+                .sorteo-redes-mensaje,
+                .sorteo-redes { padding-left: 18px; padding-right: 18px; }
+                .sorteo-redes-mensaje {
+                    font-size: 0.9rem;
+                    margin-top: 4px;
+                }
+                .sorteo-redes {
+                    gap: 8px;
+                }
+                .red-btn {
+                    flex: 1 1 calc(50% - 8px);
+                    min-width: 135px;
+                    justify-content: center;
+                    padding: 10px 12px;
+                    font-size: 0.82rem;
+                }
+                .sorteo-acciones {
+                    flex-direction: column;
+                    gap: 10px;
+                    padding-top: 16px;
+                    padding-bottom: 18px;
+                }
+                .btn-verificar,
+                .btn-descargar {
+                    width: 100%;
+                    min-width: 0;
+                    justify-content: center;
+                    text-align: center;
+                }
+            }
+
+            @media (max-width: 420px) {
+                .modal-sorteo-overlay {
+                    padding: 8px;
+                }
+                .modal-sorteo-finalizado {
+                    max-height: calc(100dvh - 16px);
+                    border-radius: 20px;
+                }
+                .sorteo-header {
+                    padding: 18px 14px 14px;
+                    border-radius: 20px 20px 0 0;
+                }
+                .sorteo-logo {
+                    max-width: 68px;
+                }
+                .sorteo-titulo {
+                    font-size: 1.34rem;
+                }
+                .sorteo-info-principal {
+                    padding: 14px 14px 12px;
+                }
+                .sorteo-nombre {
+                    font-size: 1.02rem;
+                }
+                .sorteo-organizador,
+                .sorteo-fecha-cierre,
+                .sorteo-agradecimiento,
+                .sorteo-estado-pendiente,
+                .sorteo-redes-mensaje {
+                    font-size: 0.84rem;
+                }
+                .sorteo-seccion,
+                .sorteo-acciones,
+                .sorteo-redes {
+                    padding-left: 14px;
+                    padding-right: 14px;
+                }
+                .sorteo-agradecimiento,
+                .sorteo-estado-pendiente {
+                    margin-left: 14px;
+                    margin-right: 14px;
+                }
+                .tarjeta-header {
+                    gap: 8px;
+                }
+                .tarjeta-numero {
+                    font-size: 0.9rem;
+                }
+                .tarjeta-lugar {
+                    font-size: 0.74rem;
+                }
+                .tarjeta-nombre {
+                    font-size: 0.88rem;
+                }
+                .tarjeta-meta,
+                .tarjeta-fecha {
+                    font-size: 0.74rem;
+                }
+                .red-btn {
+                    flex-basis: 100%;
+                    min-width: 0;
+                }
+                .btn-verificar,
+                .btn-descargar {
+                    padding: 12px 14px;
+                    border-radius: 12px;
+                    font-size: 0.84rem;
+                }
             }
         `;
 

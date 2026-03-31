@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:* http://localhost:*; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' http://127.0.0.1:* http://localhost:* https:; img-src 'self' data: https:;">
     <title>Ruletazo - Admin Panel</title>
-    <link rel="icon" href="images/logo.png" sizes="32x32">
-    <link rel="preload" as="image" href="images/logo.png" fetchpriority="high">
+    <link rel="icon" href="images/placeholder-logo.svg" sizes="32x32">
+    <link rel="preload" as="image" href="images/placeholder-logo.svg" fetchpriority="high">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/admin-layout.css?v=20251221">
@@ -18,9 +18,11 @@
         })();
     </script>
     <script src="js/config.js?v=20251228.15"></script>
+    <script src="js/config-sync.js"></script>
     <script src="js/theme-dynamic.js"></script>
     <script src="js/ganadores.js?v=20251228.15"></script>
     <script src="js/admin-layout.js?v=20251228.15"></script>
+    <script src="js/admin-header-user.js"></script>
     <style>
         :root {
             --primary: #7C3AED;
@@ -149,7 +151,62 @@
             margin: 0 auto;
             padding: 2rem;
         }
+
+        /* ===== INFORMACIÓN DE USUARIO EN HEADER ===== */
+        /**
+         * Contenedor de info del usuario (avatar + nombre/rol)
+         */
+        .admin-user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 1rem;
+            background: rgba(124, 58, 237, 0.05);
+            border-radius: 0.5rem;
+            border: 1px solid rgba(124, 58, 237, 0.1);
+        }
+
+        /**
+         * Avatar circular con icono
+         */
+        .admin-user-avatar {
+            font-size: 1.5rem;
+            color: var(--primary);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /**
+         * Contenedor de nombre y rol del usuario
+         */
+        .admin-user-details {
+            display: flex;
+            flex-direction: column;
+            min-width: 120px;
+        }
+
+        /**
+         * Nombre del usuario
+         */
+        .admin-user-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-dark);
+        }
+
+        /**
+         * Rol del usuario
+         */
+        .admin-user-role {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            text-transform: capitalize;
+        }
     </style>
+    <link rel="stylesheet" href="css/admin-theme.css?v=20260321.01">
 </head>
 <body>
     <!-- ADMIN HEADER -->
@@ -157,11 +214,11 @@
         <div class="admin-header-content">
             <div class="admin-header-left">
                 <div class="admin-logo-container">
-                    <img src="images/logo.png" alt="SORTEOS YEPE" class="admin-logo-img">
+                    <img src="images/placeholder-logo.svg" alt="SORTEOS YEPE" class="admin-logo-img">
                 </div>
                 <div class="admin-header-title">
                     <div class="admin-header-title-main">Panel Administrativo</div>
-                    <div class="admin-header-title-sub">SORTEOS YEPE</div>
+                    <div class="admin-header-title-sub">SORTEO</div>
                 </div>
             </div>
             <div class="admin-header-right">
@@ -200,7 +257,7 @@
                     <i class="fas fa-cog"></i>
                     <span>Configuración</span>
                 </a>
-                <a href="ayuda.html" class="admin-nav-btn">
+                <a href="admin-ayuda.html" class="admin-nav-btn">
                     <i class="fas fa-question-circle"></i>
                     <span>Ayuda</span>
                 </a>
@@ -229,10 +286,6 @@
                 <div class="stat-card vendidos">
                     <span class="stat-label"><i class="fas fa-check"></i> Vendidos</span>
                     <span class="stat-value" id="rifaVendidos">-</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-label"><i class="fas fa-star"></i> Sorteados</span>
-                    <span class="stat-value" id="rifaSorteados">-</span>
                 </div>
                 <div class="stat-card">
                     <span class="stat-label"><i class="fas fa-cube"></i> Disponibles</span>
@@ -266,14 +319,14 @@
                         <div class="accordion-content" id="accordionContent">
                             <div class="participants-options">
                                 <label class="participant-option">
-                                    <input type="radio" name="participants" value="all" class="participant-radio" checked>
+                                    <input type="radio" name="participants" value="all" class="participant-radio">
                                     <span class="option-label">
                                         <span class="option-title">Todos</span>
                                         <span class="option-desc">Todos los números del rango (<span id="allCount">0</span> números)</span>
                                     </span>
                                 </label>
                                 <label class="participant-option">
-                                    <input type="radio" name="participants" value="sold" class="participant-radio">
+                                    <input type="radio" name="participants" value="sold" class="participant-radio" checked>
                                     <span class="option-label">
                                         <span class="option-title">Vendidos</span>
                                         <span class="option-desc">Solo números vendidos (<span id="soldCount">0</span> números)</span>
@@ -367,7 +420,7 @@
     <div class="modal modal-overlay" id="modalSeleccionarGanador">
         <div class="modal-content modal-ganador">
             <div class="modal-header modal-header-center">
-                <h2>🏆 ¿Qué tipo de ganador es?</h2>
+                <h2>🏆 Selecciona qué tipo de ganador será</h2>
                 <button class="modal-close" id="closeModalGanador" aria-label="Cerrar">×</button>
             </div>
             
@@ -577,7 +630,16 @@
 
             const config = window.GanadoresManager.getConfig();
             const ganadores = window.GanadoresManager.cargarGanadores();
-            const tipos = ['sorteo', 'presorteo', 'ruletazos'];
+            const tipos = window.GanadoresManager.getTiposHabilitados();
+
+            if (!tipos.length) {
+                contenedor.innerHTML = `
+                    <div style="grid-column: 1 / -1; padding: 1rem; border: 1px solid #dbe4f0; border-radius: 12px; background: #f8fbff; color: #475569; text-align: center;">
+                        No hay tipos de ganador habilitados en la configuración del sorteo.
+                    </div>
+                `;
+                return;
+            }
 
             tipos.forEach(tipo => {
                 const cantidad = config[tipo];
@@ -588,8 +650,8 @@
                 card.className = `tipo-ganador-card ${completo ? 'disabled' : ''}`;
                 card.innerHTML = `
                     <span class="tipo-ganador-icono">${window.GanadoresManager.getIconoTipo(tipo)}</span>
-                    <div class="tipo-ganador-nombre">${window.GanadoresManager.getEtiquetaTipo(tipo).split(' ')[1] || 'Ganador'}</div>
-                    <div class="tipo-ganador-contador"><span>${registrados}</span>/${cantidad}</div>
+                    <div class="tipo-ganador-nombre">${window.GanadoresManager.getEtiquetaTipo(tipo)}</div>
+                    <div class="tipo-ganador-contador"><span>${registrados}</span> de ${cantidad} configurados</div>
                 `;
 
                 if (!completo) {
@@ -702,7 +764,7 @@
          * Procesar selección de lugar
          * @param {Number} lugar - Lugar seleccionado
          */
-        function seleccionarLugar(lugar) {
+        async function seleccionarLugar(lugar) {
             console.log('🎯 Seleccionando lugar:', lugar);
 
             if (!window.lugarModalNumero || !window.lugarModalTipo || isNaN(lugar)) {
@@ -710,30 +772,44 @@
                 return;
             }
 
-            // Agregar ganador con lugar
-            const resultado = window.GanadoresManager.agregarGanador(
-                window.lugarModalNumero,
-                window.lugarModalTipo,
-                window.lugarModalDatosCliente,
-                lugar
-            );
+            try {
+                await window.declararGanadorBackend(
+                    window.lugarModalNumero,
+                    window.lugarModalTipo,
+                    lugar
+                );
 
-            if (resultado.exito) {
-                console.log('✅', resultado.mensaje);
-                
-                // Ejecutar callback si existe
+                // Sincronizar localmente para que la UI reaccione al instante en esta sesión
+                ['sorteo', 'presorteo', 'ruletazos'].forEach((tipoExistente) => {
+                    try {
+                        window.GanadoresManager.eliminarGanador(window.lugarModalNumero, tipoExistente);
+                    } catch (e) {
+                        // Ignorar: solo queremos limpiar residuos locales previos
+                    }
+                });
+
+                const resultado = window.GanadoresManager.agregarGanador(
+                    window.lugarModalNumero,
+                    window.lugarModalTipo,
+                    window.lugarModalDatosCliente,
+                    lugar
+                );
+
+                if (!resultado.exito && !resultado.mensaje.includes('ya está registrado')) {
+                    throw new Error(resultado.mensaje || 'No se pudo sincronizar el ganador localmente');
+                }
+
+                console.log('✅ Ganador guardado en backend y sincronizado localmente');
+
                 if (typeof window.lugarModalCallback === 'function') {
                     window.lugarModalCallback(window.lugarModalNumero, window.lugarModalTipo, true);
                 }
 
-                // Mostrar feedback
-                alert(resultado.mensaje);
-
-                // Cerrar modal
+                alert('✅ Ganador registrado correctamente');
                 window.cerrarModalSeleccionarLugar();
-            } else {
-                console.error('❌', resultado.mensaje);
-                alert(resultado.mensaje);
+            } catch (error) {
+                console.error('❌', error);
+                alert(error.message || 'No se pudo registrar el ganador');
             }
         }
 

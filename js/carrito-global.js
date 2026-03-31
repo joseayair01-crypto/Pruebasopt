@@ -7,6 +7,58 @@
  * ============================================================
  */
 
+/**
+ * 🛡️ FUNCIÓN DEFENSIVA: Leer desde storage de forma segura
+ * Intenta usar window.safeTryGetItem si está disponible
+ * Si no, usa localStorage directo como fallback
+ */
+function getItemSafeCarrito(key) {
+    try {
+        if (typeof window.safeTryGetItem === 'function') {
+            return window.safeTryGetItem(key);
+        } else {
+            // Fallback: localStorage directo
+            return localStorage.getItem(key);
+        }
+    } catch (error) {
+        console.warn(`⚠️  [CARRITO] Error leyendo '${key}':`, error.message);
+        // Última opción: ver si está en memoria
+        if (window.StorageMemoryFallback && window.StorageMemoryFallback[key]) {
+            return window.StorageMemoryFallback[key];
+        }
+        return null;
+    }
+}
+
+/**
+ * 🛡️ FUNCIÓN DEFENSIVA: Guardar en storage de forma segura
+ * Intenta usar window.safeTrySetItem si está disponible
+ * Si no, usa localStorage directo como fallback
+ * NUNCA falla - siempre tiene un plan B
+ */
+function setItemSafeCarrito(key, value) {
+    try {
+        if (typeof window.safeTrySetItem === 'function') {
+            return window.safeTrySetItem(key, value);
+        } else {
+            // Fallback: localStorage directo
+            localStorage.setItem(key, value);
+            return true;
+        }
+    } catch (error) {
+        console.warn(`⚠️  [CARRITO] Error guardando '${key}':`, error.message);
+        // Última opción: intentar en memoria
+        if (!window.StorageMemoryFallback) window.StorageMemoryFallback = {};
+        window.StorageMemoryFallback[key] = value;
+        return false;
+    }
+}
+
+/**
+ * 🧹 Limpiar caché de oportunidades por boleto
+ * Se llama cuando se vacía el carrito
+ */
+
 /* ============================================================ */
 /* SECCIÓN 1: INICIALIZACIÓN DEL CARRITO                       */
 // Todas las funciones de cálculo de precios están delegadas
@@ -20,6 +72,41 @@ const DEBOUNCE_DELAY = 50; // ms
 // ⚡ CACHÉ del estado renderizado (evita re-renderizar si no cambió)
 let cachedBoletosHash = null;
 let isCarritoModalOpen = false;
+
+/**
+ * 🎯 FUNCIÓN GLOBAL: Asegurar OportunidadesManager está cargado
+ * Definida a nivel global para ser accesible desde cualquier función
+ */
+function asegurarOportunidadesManagerCargado() {
+    // Si ya está cargado, no hacer nada
+    if (window.oportunidadesManager) {
+        console.debug('[CARRITO] 🟢 OportunidadesManager ya está cargado');
+        return true;
+    }
+    
+    // Verificar si oportunidades están habilitadas en config
+    const oportunidadesEnabled = window.rifaplusConfig?.rifa?.oportunidades?.enabled;
+    if (!oportunidadesEnabled) {
+        console.debug('[CARRITO] ℹ️  Oportunidades deshabilitadas, no hay necesidad de cargar manager');
+        return true; // No necesario, pero no es error
+    }
+    
+    // Verificar que la clase OportunidadesManager esté disponible
+    if (typeof OportunidadesManager === 'undefined') {
+        console.warn('[CARRITO] ⚠️  OportunidadesManager no está disponible (archivo no cargado)');
+        return false;
+    }
+    
+    // Crear instancia bajo demanda
+    try {
+        window.oportunidadesManager = new OportunidadesManager();
+        console.log('[CARRITO] ✅ OportunidadesManager inicializado bajo demanda');
+        return true;
+    } catch (error) {
+        console.error('[CARRITO] ❌ Error inicializando OportunidadesManager:', error);
+        return false;
+    }
+}
 
 function debounceActualizarVista() {
     clearTimeout(debounceTimer);
@@ -78,7 +165,7 @@ function inicializarCarritoGlobal() {
     if (window.actualizarContadorCarritoGlobal) window.actualizarContadorCarritoGlobal();
     
     // 🔥 VERIFICAR SI HAY ORDEN ENVIADA Y LIMPIAR CARRITO
-    if (localStorage.getItem('rifaplusOrdenEnviada') === 'true') {
+    if (getItemSafeCarrito('rifaplusOrdenEnviada') === 'true') {
         localStorage.removeItem('rifaplusSelectedNumbers');
         localStorage.removeItem('rifaplusOrdenEnviada');
         if (typeof selectedNumbersGlobal !== 'undefined' && selectedNumbersGlobal.clear) {
@@ -100,7 +187,7 @@ function inicializarCarritoGlobal() {
         
         // ⚡ Sincronizar carrito SOLO si la modal no está activa
         if (typeof selectedNumbersGlobal !== 'undefined') {
-            const stored = localStorage.getItem('rifaplusSelectedNumbers');
+            const stored = getItemSafeCarrito('rifaplusSelectedNumbers');
             const storedArray = stored ? JSON.parse(stored).map(n => parseInt(n, 10)) : [];
             // Si hay diferencias, sincronizar (evitar loop innecesario)
             if (storedArray.length !== selectedNumbersGlobal.size) {
@@ -112,6 +199,10 @@ function inicializarCarritoGlobal() {
         
         carritoModal.classList.add('active');
         isCarritoModalOpen = true;
+        
+        // 🎯 FIX SENIOR: Asegurar que OportunidadesManager esté cargado ANTES de renderizar
+        // Esto permite que oportunidades carguen desde CUALQUIER página, no solo compra.html
+        asegurarOportunidadesManagerCargado();
         
         // ⚡ RENDERIZAR SOLO SI CAMBIÓ (check hash rápido)
         const boletosActuales = obtenerBoletosSelecionados();
@@ -190,13 +281,56 @@ function cerrarCarritoGlobal() {
     }
 }
 
+function obtenerPrecioDinamicoCarrito() {
+    if (typeof obtenerPrecioDinamico === 'function') {
+        return obtenerPrecioDinamico();
+    }
+
+    if (typeof obtenerPrecioBoleto === 'function') {
+        return obtenerPrecioBoleto();
+    }
+
+    const cfg = window.rifaplusConfig || {};
+    const ahora = new Date();
+    const precioBase = Number(cfg?.rifa?.precioBoleto);
+
+    const promo = cfg?.rifa?.promocionPorTiempo;
+    if (promo && promo.enabled && promo.precioProvisional) {
+        const inicio = new Date(promo.fechaInicio);
+        const fin = new Date(promo.fechaFin);
+        const precioPromo = Number(promo.precioProvisional);
+
+        if (
+            ahora >= inicio &&
+            ahora <= fin &&
+            !Number.isNaN(precioPromo) &&
+            Number.isFinite(precioPromo) &&
+            precioPromo > 0
+        ) {
+            return precioPromo;
+        }
+    }
+
+    return (!Number.isNaN(precioBase) && Number.isFinite(precioBase) && precioBase > 0)
+        ? precioBase
+        : 15;
+}
+
 function actualizarVistaCarritoGlobal() {
     const selectedNumbers = obtenerBoletosSelecionados();
     const carritoItems = document.getElementById('carritoItems');
     const carritoVacio = document.getElementById('carritoVacio');
     
+    // 🎯 CRÍTICO: Asegurar que OportunidadesManager esté listo ANTES de renderizar
+    // Esto previene que oportunidades = null cuando el usuario abre el carrito desde otra página
+    asegurarOportunidadesManagerCargado();
+    
     // Agregar clase condicional si oportunidades está habilitado
     const oportunidadesHabilitadas = window.rifaplusConfig?.rifa?.oportunidades?.enabled || false;
+    console.log(`[CARRITO] Oportunidades habilitadas: ${oportunidadesHabilitadas}`, { 
+        config: window.rifaplusConfig?.rifa?.oportunidades 
+    });
+    
     if (carritoItems) {
         if (oportunidadesHabilitadas) {
             carritoItems.classList.add('oportunidades-enabled');
@@ -260,7 +394,7 @@ function actualizarVistaCarritoGlobal() {
 
     // Crear lista de boletos ordenados
     const numerosOrdenados = [...selectedNumbers].sort((a, b) => a - b);
-    const precioUnitario = obtenerPrecioDinamico();
+    const precioUnitario = obtenerPrecioDinamicoCarrito();
     
     // ✅ NOTA: Ya no necesitamos calcular digitos - formatearNumeroBoleto() lo hace
     
@@ -277,16 +411,53 @@ function actualizarVistaCarritoGlobal() {
         const numeroFormato = window.rifaplusConfig.formatearNumeroBoleto(numero);
         
         // Item boleto
-        htmlParts.push(`<div class="carrito-item" data-numero="${numero}" data-index="${i}"><div class="carrito-item-numero"><div>Boleto:&nbsp;&nbsp;&nbsp;<span class="boleto-numero"><i class="fas fa-ticket-alt"></i> ${numeroFormato}</span></div><span class="carrito-item-numero-precio">$${precioUnitario.toFixed(2)}</span></div><button class="carrito-item-trash-btn" data-numero="${numero}" aria-label="Eliminar boleto ${numero}" title="Eliminar boleto ${numero}"><i class="fas fa-trash carrito-item-trash" aria-hidden="true"></i></button></div>`);
+        htmlParts.push(`<div class="carrito-item" data-numero="${numero}" data-index="${i}"><div class="carrito-item-numero"><div class="carrito-item-ticket-label"><span class="carrito-item-ticket-text">Boleto</span><span class="boleto-numero"><i class="fas fa-ticket-alt"></i> ${numeroFormato}</span></div></div><button class="carrito-item-trash-btn" data-numero="${numero}" aria-label="Eliminar boleto ${numero}" title="Eliminar boleto ${numero}"><i class="fas fa-trash carrito-item-trash" aria-hidden="true"></i></button></div>`);
         
-        // Placeholder para oportunidades (SOLO si está habilitado)
+        // Placeholder para oportunidades
         if (oportunidadesHabilitadas) {
-            htmlParts.push(`<div class="carrito-item carrito-item-oportunidades-container" data-numero="${numero}" data-oportunidades="pending" style="opacity: 0.5;"><div class="carrito-item-numero" style="flex:1"><span class="carrito-item-oportunidades-text" style="display:flex;align-items:center;gap:0.5rem"><i class="fas fa-spinner carrito-item-oportunidades-check" style="animation: spin 1s linear infinite;"></i><strong>Oportunidades:</strong> cargando...</span></div></div>`);
+            htmlParts.push(`<div class="carrito-item carrito-item-oportunidades-container" data-numero="${numero}" data-oportunidades="pending"><div class="carrito-item-numero carrito-item-numero--full"><span class="carrito-item-oportunidades-text"><i class="fas fa-spinner carrito-item-oportunidades-check carrito-item-oportunidades-check--loading"></i><strong>Oportunidades:</strong> <span class="carrito-item-oportunidades-status">cargando...</span></span></div></div>`);
         }
     }
     
     carritoItems.innerHTML = htmlParts.join('');
     agregarEventListenersCarrito();
+    
+    // ✅ USAR EL NUEVO OPORTUNIDADES MANAGER (PROFESSIONAL)
+    if (oportunidadesHabilitadas && window.oportunidadesManager) {
+        console.log('[CARRITO] 🚀 Iniciando carga de oportunidades con OportunidadesManager...');
+        
+        // Listener para actualizar UI cuando complete
+        window.oportunidadesManager.on('onComplete', () => {
+            console.log('[CARRITO] ✅ Oportunidades completas, actualizando UI...');
+            
+            // ⚡ Defensivo: si la función existe, llamarla
+            if (typeof actualizarOportunidadesEnCarrito === 'function') {
+                actualizarOportunidadesEnCarrito(numerosOrdenados);
+            } else if (typeof window.actualizarOportunidadesEnCarrito === 'function') {
+                window.actualizarOportunidadesEnCarrito(numerosOrdenados);
+            } else {
+                console.warn('[CARRITO] ⚠️ Función actualizarOportunidadesEnCarrito no disponible');
+            }
+            
+            // ✅ SINCRONIZAR TAMBIÉN LA ESTRUCTURA GLOBAL para orden-formal.js
+            if (typeof window.sincronizarOportunidadesAlCarrito === 'function') {
+                setTimeout(() => {
+                    window.sincronizarOportunidadesAlCarrito();
+                    console.log('[CARRITO] ✅ Sincronizadas oportunidades globales para uso en otros módulos');
+                }, 100);
+            }
+        });
+        
+        // Listener para errores
+        window.oportunidadesManager.on('onError', (error) => {
+            console.warn('[CARRITO] ⚠️ Error cargando oportunidades (carrito continúa funcionando):', error);
+        });
+        
+        // Iniciar carga
+        window.oportunidadesManager.cargar(numerosOrdenados).catch(e => {
+            console.error('[CARRITO] Error crítico:', e);
+        });
+    }
     
     // Actualizar resumen (instantáneo)
     const calcTotal = calcularDescuentoGlobal(selectedNumbers.length, precioUnitario);
@@ -294,11 +465,18 @@ function actualizarVistaCarritoGlobal() {
     const subtotalEl = document.getElementById('carritoResumenSubtotal');
     if (subtotalEl) subtotalEl.textContent = `$${calcTotal.subtotal.toFixed(2)}`;
     if (carritoResumenDescuento) carritoResumenDescuento.textContent = `$${calcTotal.descuentoMonto.toFixed(2)}`;
+    
+    // Mostrar/ocultar badge PROMO si hay descuento
+    const promoLabel = document.getElementById('descuentoPromoLabel');
+    if (promoLabel) {
+        promoLabel.style.display = calcTotal.descuentoMonto > 0 ? 'inline-block' : 'none';
+    }
+    
     if (carritoResumenTotal) carritoResumenTotal.textContent = `$${calcTotal.totalFinal.toFixed(2)}`;
 
     // Guardar totales
     try {
-        safeTrySetItem('rifaplus_total', JSON.stringify({
+        setItemSafeCarrito('rifaplus_total', JSON.stringify({
             subtotal: calcTotal.subtotal,
             descuento: calcTotal.descuentoMonto,
             totalFinal: calcTotal.totalFinal,
@@ -308,9 +486,6 @@ function actualizarVistaCarritoGlobal() {
     } catch (e) {
         // Storage lleno o deshabilitado - silent fail
     }
-    
-    // ⚡ CALCULAR TODAS LAS OPORTUNIDADES EN BACKGROUND (sin bloquear carrito)
-    calcularYLlenarOportunidades(numerosOrdenados);
     
     cachedBoletosHash = null;
 }
@@ -357,20 +532,31 @@ function obtenerBoletosSelecionados() {
     // Si estamos en compra.html, usar el Set global
     if (typeof selectedNumbersGlobal !== 'undefined') {
         // Sincronizar con localStorage (nunca sabemos cuándo puede cambiar en otra tab)
-        const stored = localStorage.getItem('rifaplusSelectedNumbers');
+        const stored = getItemSafeCarrito('rifaplusSelectedNumbers');
         const storedArray = stored ? JSON.parse(stored) : [];
         
         // Si hay diferencia, usar el Set global (es la fuente primaria)
         // pero actualizar localStorage por si acaso
         const currentSet = new Set(Array.from(selectedNumbersGlobal));
-        safeTrySetItem('rifaplusSelectedNumbers', JSON.stringify(Array.from(currentSet)));
+        
+        // 🛡️ Guard defensivo: safeTrySetItem puede no estar disponible
+        try {
+            if (typeof window.safeTrySetItem === 'function') {
+                window.safeTrySetItem('rifaplusSelectedNumbers', JSON.stringify(Array.from(currentSet)));
+            } else {
+                // Fallback: intentar localStorage directo
+                localStorage.setItem('rifaplusSelectedNumbers', JSON.stringify(Array.from(currentSet)));
+            }
+        } catch (e) {
+            console.warn('⚠️  Error guardando números en storage:', e.message);
+        }
         
         // ⭐ IMPORTANTE: Retornar siempre números (no strings)
         return Array.from(currentSet).map(n => parseInt(n, 10));
     }
     
     // En otras páginas, obtener del localStorage
-    const stored = localStorage.getItem('rifaplusSelectedNumbers');
+    const stored = getItemSafeCarrito('rifaplusSelectedNumbers');
     const result = stored ? JSON.parse(stored) : [];
     
     // ⭐ IMPORTANTE: Convertir a números para garantizar tipo consistente
@@ -388,12 +574,15 @@ function createCarritoFooter() {
         const footerHtml = `
             <div class="modal-carrito-footer" id="carritoFooter">
                 <div class="carrito-resumen" id="carritoResumen">
-                    <div class="carrito-resumen-row" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="carrito-resumen-header">
+                        <span class="carrito-resumen-title">Resumen de tu compra</span>
+                    </div>
+                    <div class="carrito-resumen-row">
                         <div class="carrito-resumen-item">
                             <span>Cantidad de boletos:</span>
                             <strong id="carritoResumenCantidad">0</strong>
                         </div>
-                        <button class="btn btn-danger btn-sm" id="btnLimpiarCarrito" title="Eliminar todos los boletos" style="padding: 0.5rem 1rem; margin: 0;">
+                        <button class="btn btn-danger btn-sm" id="btnLimpiarCarrito" title="Eliminar todos los boletos" aria-label="Eliminar todos los boletos del carrito">
                             Limpiar carrito
                         </button>
                     </div>
@@ -403,7 +592,10 @@ function createCarritoFooter() {
                     </div>
                     <div class="carrito-resumen-item">
                         <span>Descuento:</span>
-                        <strong id="carritoResumenDescuento">$0</strong>
+                        <div class="descuento-promo-wrap">
+                            <strong id="carritoResumenDescuento">$0</strong>
+                            <span id="descuentoPromoLabel" class="descuento-promo-label" style="display: none;">PROMO</span>
+                        </div>
                     </div>
                     <div class="carrito-resumen-total">
                         <span>Total:</span>
@@ -412,7 +604,7 @@ function createCarritoFooter() {
                 </div>
                 <div class="carrito-acciones carrito-acciones-bottom">
                     <button class="btn btn-outline" id="btnSeguirComprando">Seguir comprando</button>
-                    <button class="btn btn-primary btn-lg" id="btnProcederCarrito" disabled>Proceder al pago</button>
+                    <button class="btn btn-primary btn-lg" id="btnProcederCarrito" disabled>Proceder al pago <span aria-hidden="true">→</span></button>
                 </div>
             </div>
         `;
@@ -484,7 +676,7 @@ function handleProcederAlPago() {
         cerrarCarritoGlobal();
     } else {
         // Si estamos en otra página, marcar para iniciar flujo al llegar a compra.html
-        safeTrySetItem('rifaplusIniciarFlujoPago', 'true');
+        setItemSafeCarrito('rifaplusIniciarFlujoPago', 'true');
         window.location.href = 'compra.html';
     }
 }
@@ -547,7 +739,36 @@ function removerBoletoSeleccionado(numero) {
     // 5. Invalidar caché
     invalidarCacheCarrito();
     
-    // 6. ⭐ USAR DEBOUNCE AGRESIVO PARA ACTUALIZACIONES (mismo que en agregar)
+    // 6. 🧹 LIMPIAR OPORTUNIDADES DEL BOLETO (mantener sincronizado)
+    if (window.rifaplusOportunidadesCarrito && typeof window.rifaplusOportunidadesCarrito === 'object') {
+        delete window.rifaplusOportunidadesCarrito[String(numero)];
+        console.log(`[CARRITO] 🧹 Limpiadas oportunidades del boleto #${numero}`);
+    }
+    
+    // 7. ⭐ RECALCULAR OPORTUNIDADES EN ORDEN (si existe)
+    // Si hay una orden en proceso, actualizar sus oportunidades
+    try {
+        const ordenActualStr = localStorage.getItem('rifaplus_orden_actual');
+        if (ordenActualStr) {
+            const ordenTemp = JSON.parse(ordenActualStr);
+            if (Array.isArray(ordenTemp.boletos)) {
+                // Verificar que el boleto removido estaba en la orden
+                const boletoEstabaEnOrden = ordenTemp.boletos.some(b => Number(b) === numero);
+                if (boletoEstabaEnOrden) {
+                    // Recalcular oportunidades: solo incluir las del boleto removido
+                    if (Array.isArray(ordenTemp.boletosOcultos)) {
+                        // Las oportunidades ya van a ser recalculadas en orden-formal.js
+                        // Aquí solo marcamos que necesita recálculo
+                        console.log(`[CARRITO] 📌 Marcado: Orden necesita recálculo de oportunidades (boleto #${numero} removido)`);
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('[CARRITO] ⚠️ Error actualizando orden:', e.message);
+    }
+    
+    // 8. ⭐ USAR DEBOUNCE AGRESIVO PARA ACTUALIZACIONES (mismo que en agregar)
     // Agrupa múltiples remociones rápidas en una actualización
     actualizarCarritoConDebounceAgresivo();
     
@@ -578,7 +799,7 @@ function agregarBoletoSelecionado(numero) {
         }
         
         numbers.push(numero);
-        safeTrySetItem('rifaplusSelectedNumbers', JSON.stringify(numbers));
+        setItemSafeCarrito('rifaplusSelectedNumbers', JSON.stringify(numbers));
     }
     
     // Actualizar todas las vistas
@@ -623,7 +844,7 @@ function agregarMuchosBoletosAlCarrito(numeros) {
             }
         });
         
-        safeTrySetItem('rifaplusSelectedNumbers', JSON.stringify(Array.from(setNumbers)));
+        setItemSafeCarrito('rifaplusSelectedNumbers', JSON.stringify(Array.from(setNumbers)));
     }
     
     if (agregados === 0) return false;
@@ -677,7 +898,7 @@ function sincronizarCarritoAlLocalStorage() {
         if (typeof selectedNumbersGlobal !== 'undefined') {
             try {
                 const numbers = Array.from(selectedNumbersGlobal);
-                safeTrySetItem('rifaplusSelectedNumbers', JSON.stringify(numbers));
+                setItemSafeCarrito('rifaplusSelectedNumbers', JSON.stringify(numbers));
                 console.debug(`⚡ Sincronizado ${numbers.length} números a localStorage`);
             } catch (e) {
                 console.warn('Error sincronizando a localStorage:', e.message);
@@ -769,203 +990,23 @@ function actualizarCarritoConDebounceAgresivo() {
 window.actualizarCarritoConDebounceAgresivo = actualizarCarritoConDebounceAgresivo;
 window.actualizarContadorCarritoGlobal = actualizarContadorCarritoGlobal;
 window.actualizarVistaCarritoGlobal = actualizarVistaCarritoGlobal;
+
 window.obtenerBoletosSelecionados = obtenerBoletosSelecionados;
 window.agregarBoletoSelecionado = agregarBoletoSelecionado;
 window.removerBoletoSeleccionado = removerBoletoSeleccionado;
+window.actualizarVistaCarritoGlobal = actualizarVistaCarritoGlobal;
+window.actualizarContadorCarritoGlobal = actualizarContadorCarritoGlobal;
+window.actualizarCarritoConDebounceAgresivo = actualizarCarritoConDebounceAgresivo;
+
+console.log('✅ carrito-global.js completamente cargado - Funciones exportadas globalmente');
 
 /**
- * ⚡ NUEVA ESTRATEGIA: Calcular Y llenar oportunidades en el DOM
- * 1. Renderizar TODOS los items SIN oportunidades (instantáneo)
- * 2. Calcular oportunidades para TODOS en background
- * 3. Llenar el DOM con las oportunidades cuando estén listas
+ * ⚙️ FUNCIONES REMOVIDAS (Sistema antiguo de asignación dinámica)
  * 
- * GARANTIZA: Todas las oportunidades se calculan confiablemente
+ * Las siguientes funciones fueron removidas porque con el nuevo sistema pre-asignado,
+ * las oportunidades vienen de la BD via FK CASCADE y no necesitan cálculo en cliente:
+ * 
+ * ❌ REMOVIDA: calcularYLlenarOportunidades() - Calculaba oportunidades dinámicamente
+ * ❌ REMOVIDA: mostrarOportunidadesDelCache() - Mostraba cache local de oportunidades
+ * ❌ REMOVIDA: guardarOportunidadesBoleto() - No necesario con DB pre-assigned
  */
-function calcularYLlenarOportunidades(numerosOrdenados, retryCount = 0) {
-    const oportunidadesConfig = window.rifaplusConfig?.rifa?.oportunidades;
-    
-    // Si no está habilitado, no hacer nada
-    if (!oportunidadesConfig || !oportunidadesConfig.enabled) {
-        return;
-    }
-
-    // ⚡ Usar datos en memoria (actualizados cada 5 segundos desde compra.js)
-    setTimeout(() => {
-        try {
-            // 🔒 CRÍTICO: Esperar a que se carguen los datos de oportunidades desde el BACKEND (datos frescos)
-            // This is MORE important than the cache version - we need REAL backend data
-            if (!window.rifaplusOportunidadesDisponiblesReal || window.rifaplusOportunidadesDisponiblesReal.length === 0) {
-                // 🛡️ LÍMITE DE REINTENTOS: máximo 10 intentos esperando por datos frescos del backend
-                const MAX_RETRIES = 10;
-                if (retryCount < MAX_RETRIES) {
-                    const delayMs = 400 * Math.pow(1.3, retryCount); // 400ms, 520ms, 676ms, etc.
-                    console.warn(`⏳ [CARRITO] Esperando oportunidades FRESCAS del backend (intento ${retryCount + 1}/${MAX_RETRIES})...`);
-                    setTimeout(() => calcularYLlenarOportunidades(numerosOrdenados, retryCount + 1), delayMs);
-                    return;
-                } else {
-                    console.warn(`❌ [CARRITO] Oportunidades del backend no disponibles después de ${MAX_RETRIES} intentos. Usando cache local como fallback...`);
-                    // Fallback a datos cacheados si REALMENTE no hay datos frescos
-                    window.rifaplusOportunidadesDisponiblesReal = window.rifaplusOportunidadesDisponibles || [];
-                }
-            }
-
-            // ⚠️ NUEVA VALIDACIÓN: Esperar a que los datos de boletos sean FRESCOS
-            // Si el Web Worker sigue procesando, esperar
-            if (window.rifaplusBoletosLoading || !window.rifaplusBoletosDatosActualizados) {
-                const MAX_SYNC_RETRIES = 8;
-                if (retryCount < MAX_SYNC_RETRIES) {
-                    // Los datos de boletos aún se están cargando/actualizando
-                    const reason = window.rifaplusBoletosLoading ? 'cargando boletos' : 'Web Worker procesando';
-                    console.warn(`⏳ [CARRITO] Esperando datos frescos de boletos (${reason})... retry ${retryCount + 1}/${MAX_SYNC_RETRIES}`);
-                    const delayMs = 300 * Math.pow(1.2, retryCount); // 300ms, 360ms, 432ms, etc.
-                    setTimeout(() => calcularYLlenarOportunidades(numerosOrdenados, retryCount + 1), delayMs);
-                    return;
-                } else {
-                    console.warn(`⚠️  [CARRITO] Timeout esperando datos frescos, procediendo con datos disponibles`);
-                }
-            }
-
-            console.log(`✅ [CARRITO] Datos FRESCOS confirmados (backend + boletos) - procediendo a generar oportunidades`);
-            
-            // 🎯 USAR DATOS FRESCOS DEL BACKEND, NO DEL CACHE LOCAL
-            const numerosDisponibles = window.rifaplusOportunidadesDisponiblesReal || [];
-            
-            if (numerosDisponibles.length === 0) {
-                console.warn('⚠️  [CARRITO] No hay oportunidades disponibles en memoria');
-                return;
-            }
-
-            // VALIDACIÓN: Verificar que la lista tenga números en el rango correcto
-            const rifaConfig = window.rifaplusConfig?.rifa;
-            const rangoOculto = rifaConfig?.oportunidades?.rango_oculto || { inicio: 250000, fin: 999999 };
-            const fueraRango = numerosDisponibles.filter(n => n < rangoOculto.inicio || n > rangoOculto.fin);
-            
-            // ✅ FILTRAR números fuera de rango
-            let numerosValidos = numerosDisponibles;
-            if (fueraRango.length > 0) {
-                console.error(`❌ [CARRITO] ${fueraRango.length} números FUERA del rango en la lista local!`);
-                console.error(`   Primeros fuera de rango: ${fueraRango.slice(0, 5).join(', ')}`);
-                numerosValidos = numerosDisponibles.filter(n => n >= rangoOculto.inicio && n <= rangoOculto.fin);
-                console.warn(`   Filtrando: Usando ${numerosValidos.length} números dentro del rango`);
-            }
-            
-            // Loguear muestra de la lista
-            console.log(`📦 [CARRITO] Lista local tiene ${numerosValidos.length} números válidos`);
-            console.log(`   Primeros 10: ${numerosValidos.slice(0, 10).join(', ')}`);
-            console.log(`   Últimos 10: ${numerosValidos.slice(-10).join(', ')}`);
-            
-            // Calcular min/max sin spread operator (evita stack overflow con arrays grandes)
-            let min = numerosValidos[0];
-            let max = numerosValidos[0];
-            for (let n of numerosValidos) {
-                if (n < min) min = n;
-                if (n > max) max = n;
-            }
-            console.log(`   Rango: ${min} - ${max}`);
-
-            // Obtener configuración
-            const configRifa = window.rifaplusConfig?.rifa;
-            let oportunidadesPorBoleto = configRifa?.oportunidades?.oportunidades_por_boleto || 3;
-            
-            console.log(`📦 [CARRITO] Generando oportunidades de ${numerosValidos.length} disponibles (${oportunidadesPorBoleto} por boleto)`);
-            
-            // ✅ CRÍTICO: REMOVER números que YA ESTÁN VENDIDOS O APARTADOS
-            // Esto previene que se seleccionen números que luego el backend debe reemplazar
-            const sold = (window.rifaplusSoldNumbers && Array.isArray(window.rifaplusSoldNumbers)) ? window.rifaplusSoldNumbers : [];
-            const reserved = (window.rifaplusReservedNumbers && Array.isArray(window.rifaplusReservedNumbers)) ? window.rifaplusReservedNumbers : [];
-            const soldSet = new Set(sold.map(n => Number(n)));
-            const reservedSet = new Set(reserved.map(n => Number(n)));
-            
-            // Filtrar números vendidos o apartados
-            const numerosPuramenteDisponibles = numerosValidos.filter(n => !soldSet.has(n) && !reservedSet.has(n));
-            
-            if (numerosPuramenteDisponibles.length < numerosValidos.length) {
-                const removidos = numerosValidos.length - numerosPuramenteDisponibles.length;
-                console.warn(`⚠️  [CARRITO] Removidos ${removidos} números (${sold.length} vendidos + ${reserved.length} apartados) de ${numerosValidos.length}`);
-                console.log(`   Disponibles verdaderos: ${numerosPuramenteDisponibles.length}`);
-            }
-            
-            // VALIDACIÓN: Crear un Set para búsqueda rápida
-            const disponiblesSet = new Set(numerosPuramenteDisponibles);
-            
-            // ✅ CORRECCIÓN: UN SOLO POOL DE NÚMEROS (evita duplicados)
-            // No hacer una copia POR BOLETO, sino UNA SOLA LISTA que se va consumiendo
-            const disponiblesPoolGlobal = [...numerosPuramenteDisponibles]; // ÚNICO pool compartido
-            
-            const oportunidadesFiltradasPorBoleto = {};
-            let totalEnviados = 0;
-            
-            for (const boletVisible of numerosOrdenados) {
-                const oportunidadesParaBoleto = [];
-                
-                // Generar oportunidades_por_boleto números del ÚNICO pool global
-                for (let i = 0; i < oportunidadesPorBoleto && disponiblesPoolGlobal.length > 0; i++) {
-                    const randomIndex = Math.floor(Math.random() * disponiblesPoolGlobal.length);
-                    const numero = disponiblesPoolGlobal.splice(randomIndex, 1)[0]; // REMUEVE del pool
-                    
-                    oportunidadesParaBoleto.push(numero);
-                    totalEnviados++;
-                }
-                
-                if (oportunidadesParaBoleto.length > 0) {
-                    oportunidadesFiltradasPorBoleto[boletVisible] = oportunidadesParaBoleto;
-                    console.log(`   📌 Boleto ${boletVisible}: ${oportunidadesParaBoleto.length} oportunidades [${oportunidadesParaBoleto.join(', ')}]`);
-                } else {
-                    console.warn(`   ⚠️  Boleto ${boletVisible}: No hay suficientes números disponibles`);
-                }
-            }
-            
-            console.log(`✅ [CARRITO] Total generadas: ${totalEnviados}`);
-            console.log(`   Pool global restante: ${disponiblesPoolGlobal.length} números (estos NO se asignaron)`);
-            
-            // ✅ NOTA: Ya no necesitamos calcular digitos - formatearNumeroBoleto() lo hace
-            
-            // ⚡ Llenar el DOM con las oportunidades generadas de disponibles
-            for (const numero in oportunidadesFiltradasPorBoleto) {
-                const containerEl = document.querySelector(`.carrito-item-oportunidades-container[data-numero="${numero}"]`);
-                if (containerEl) {
-                    const oportunidades = oportunidadesFiltradasPorBoleto[numero] || [];
-                    
-                    if (oportunidades && oportunidades.length > 0) {
-                        // Mostrar oportunidades garantizadas disponibles
-                        containerEl.style.opacity = '1';
-                        containerEl.removeAttribute('data-oportunidades');
-                        const oportunidadesHTML = oportunidades.map(opu => {
-                            // ✅ Usar función centralizada de config.js
-                            const opuFormato = window.rifaplusConfig.formatearNumeroBoleto(opu);
-                            return `<span class="boleto-numero-oportunidad">✔️ ${opuFormato}</span>`;
-                        }).join('');
-                        containerEl.innerHTML = `<div class="carrito-item-numero" style="flex:1;"><strong style="display:block;margin-bottom:0.1rem;font-size:0.8rem;margin-left:0;">Oportunidades:</strong><div class="oportunidades-list">${oportunidadesHTML}</div></div>`;
-                    }
-                }
-            }
-            
-            // ✅ GUARDAR EN LOCALSTORAGE para que flujo-compra.js las recupere
-            const boletosOcultosArray = Object.values(oportunidadesFiltradasPorBoleto).flat();
-            const datosAGuardar = {
-                boletosOcultos: boletosOcultosArray,
-                oportunidadesPorBoleto: oportunidadesFiltradasPorBoleto,
-                cantidad: boletosOcultosArray.length,
-                generadoEn: new Date().toISOString(),
-                boletosSeleccionados: numerosOrdenados,
-                version: 3,
-                generador: 'carrito-global-v3' // MARCADOR de generador oficial
-            };
-            try {
-                safeTrySetItem('rifaplus_oportunidades', JSON.stringify(datosAGuardar));
-                console.log(`✅ [CARRITO] Oportunidades guardadas en localStorage:`, {
-                    total: boletosOcultosArray.length,
-                    boletos: numerosOrdenados.length,
-                    porBoleto: oportunidadesPorBoleto
-                });
-            } catch (e) {
-                console.error('❌ [CARRITO] Error guardando en localStorage:', e);
-            }
-            
-            console.log(`✅ [CARRITO] ${numerosOrdenados.length} boletos con oportunidades generadas de disponibles (sin duplicados)`);
-        } catch (e) {
-            console.error('❌ [CARRITO] Error al generar oportunidades:', e);
-        }
-    }, 0);
-}
-

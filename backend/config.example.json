@@ -1,0 +1,167 @@
+{
+  "cliente": {
+    "id": "TuNegocio",
+    "nombre": "Nombre del Negocio",
+    "prefijoOrden": "XX",
+    "eslogan": "Tu eslogan aquí",
+    "email": "tu-email@example.com",
+    "telefono": "+5249999999999",
+    "imagenPrincipal": "https://tu-dominio.com/imagen-principal.png",
+    "redesSociales": {
+      "whatsapp": "+5249999999999",
+      "facebook": "https://facebook.com/tu-pagina",
+      "facebookUsuario": "Tu Usuario",
+      "instagram": "https://instagram.com/tu-usuario",
+      "instagramUsuario": "@tu-usuario",
+      "tiktok": "https://tiktok.com/@tu-usuario",
+      "canalWhatsapp": "https://chat.whatsapp.com/tu-grupo",
+      "canalWhatsappNombre": "Nombre del Grupo"
+    },
+    "mensajesWhatsapp": {
+      "confirmacion": "Mensaje de confirmación",
+      "rechazo": "Mensaje de rechazo",
+      "recordatorio": "Mensaje de recordatorio",
+      "ganador": "Mensaje para ganador"
+    },
+    "logo": "https://tu-dominio.com/logo.png",
+    "logotipo": "https://tu-dominio.com/logotipo.png"
+  },
+  "rifa": {
+    "edicionNombre": "Nombre de la Edición",
+    "nombreSorteo": "Nombre del Sorteo",
+    "descripcion": "Descripción del sorteo",
+    "totalBoletos": 1000,
+    "precioBoleto": 1,
+    "tiempoApartadoHoras": 2,
+    "intervaloLimpiezaMinutos": 10,
+    "rangos": [
+      {
+        "inicio": 0,
+        "fin": 999,
+        "nombre": "Rango 1"
+      }
+    ],
+    "oportunidades": {
+      "enabled": false,
+      "multiplicador": 3
+    },
+    "descuentos": {
+      "enabled": false,
+      "reglas": []
+    },
+    "promocionesOportunidades": {
+      "enabled": true,
+      "ejemplos": []
+    },
+    "promocionPorTiempo": {
+      "enabled": false,
+      "precioProvisional": null,
+      "fechaInicio": null,
+      "fechaFin": null
+    },
+    "descuentoPorcentaje": {
+      "enabled": false,
+      "porcentaje": 100,
+      "fechaInicio": "2026-03-29T14:35",
+      "fechaFin": "2026-03-31T22:00"
+    },
+    "bonos": {
+      "enabled": true,
+      "items": [
+        {
+          "emoji": "🎁",
+          "titulo": "Bono 1",
+          "descripcion": "Descripción del bono",
+          "accion": "ninguna"
+        }
+      ]
+    },
+    "sistemaPremios": {
+      "enabled": true,
+      "mensaje": "Múltiples oportunidades de ganar premios extraordinarios",
+      "sorteo": [
+        {
+          "posicion": 1,
+          "nombre": "Primer Lugar",
+          "premio": "Tu premio aquí",
+          "descripcion": "Descripción del premio",
+          "icono": "🥇"
+        }
+      ],
+      "presorteo": [],
+      "ruletazos": []
+    },
+    "fechaSorteo": "2026-03-31T23:45:00",
+    "fechaSorteoFormato": "31 de Marzo del 2026",
+    "horaSorteo": "23:45",
+    "zonaHoraria": "Hora Centro México",
+    "modalidadSorteo": "Transmisión en Vivo",
+    "fechaPresorteo": null,
+    "fechaPresorteoFormato": "",
+    "horaPresorteo": "",
+    "galeria": {
+      "enabled": true,
+      "imagenes": []
+    },
+    "informacionSorteo": [
+      {
+        "titulo": "Título de Información",
+        "descripcion": "Descripción de información importante"
+      }
+    ],
+    "informacionSorteoIntro": "Introducción al sorteo",
+    "estado": "activo",
+    "publicacion": {
+      "bonos": true,
+      "promociones": true,
+      "testimonios": false,
+      "ruletazo": true,
+      "presorteo": true,
+      "progressStats": true
+    },
+    "maquinaSuerte": {
+      "limiteBoletos": 10
+    },
+    "ayuda": {
+      "preguntasFrecuentes": [
+        {
+          "pregunta": "¿Cómo participo?",
+          "respuesta": "Pasos para participar..."
+        }
+      ]
+    },
+    "bonosCompra": {
+      "enabled": true,
+      "items": [
+        {
+          "emoji": "🎁",
+          "titulo": "Bono de Compra",
+          "descripcion": "Descripción del bono"
+        }
+      ]
+    }
+  },
+  "tecnica": {
+    "bankAccounts": [
+      {
+        "id": 1,
+        "nombreBanco": "BANCO",
+        "accountNumber": "XXXX XXXX XXXX 1234",
+        "beneficiary": "Nombre del Beneficiario",
+        "accountType": "Tarjeta",
+        "paymentType": "transferencia",
+        "numero_referencia": "",
+        "phone": ""
+      }
+    ],
+    "mercadopago": {
+      "enabled": false,
+      "access_token": "YOUR_MERCADOPAGO_TOKEN"
+    },
+    "paypal": {
+      "enabled": false,
+      "client_id": "YOUR_PAYPAL_CLIENT_ID",
+      "secret": "YOUR_PAYPAL_SECRET"
+    }
+  }
+}

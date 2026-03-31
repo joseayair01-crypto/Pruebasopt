@@ -11,6 +11,7 @@ backend/db/*.db
 backend/.env
 backend/.env.local
 backend/.env.*.local
+backend/config.json
 
 # Backend Logs
 backend/*.log

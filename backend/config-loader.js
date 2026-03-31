@@ -66,32 +66,60 @@ function cargarConfigJavaScript() {
 
 /**
  * Obtiene la configuración de expiración de órdenes y PRECIO
- * Prioridad: .env > config.js > defaults
+ * Prioridad: .env > config.json (saved) > config.js (defaults) > fallbacks
+ * 
+ * ✅ CRÍTICO: Primero intenta leer desde config.json donde se guardan los cambios del admin
  */
 function obtenerConfigExpiracion() {
-    const config = cargarConfigJavaScript();
+    let configGuardado = {};
+    
+    // 🔥 PASO 1: Intentar leer desde config.json (donde se guardan cambios del admin)
+    try {
+        const configJsonPath = path.join(__dirname, 'config.json');
+        if (fs.existsSync(configJsonPath)) {
+            const configData = fs.readFileSync(configJsonPath, 'utf8');
+            const parsed = JSON.parse(configData);
+            if (parsed?.rifa) {
+                configGuardado = parsed.rifa;
+                console.log('✅ [Config-Loader] Configuración cargada desde config.json (SAVED)');
+            }
+        }
+    } catch (err) {
+        console.warn('⚠️  No se pudo leer config.json:', err.message);
+    }
+    
+    // 🔥 PASO 2: Fallback a config.js para valores faltantes
+    const configDefault = cargarConfigJavaScript();
     
     return {
         tiempoApartadoHoras: parseFloat(process.env.ORDEN_APARTADO_HORAS) 
-            || config.tiempoApartadoHoras 
-            || 4,  // ✅ Cambio: defecto 4 horas (no 12)
+            || configGuardado.tiempoApartadoHoras
+            || configDefault.tiempoApartadoHoras 
+            || 4,
         
         intervaloLimpiezaMinutos: parseInt(process.env.ORDEN_LIMPIEZA_MINUTOS) 
-            || config.intervaloLimpiezaMinutos 
+            || configGuardado.intervaloLimpiezaMinutos
+            || configDefault.intervaloLimpiezaMinutos 
             || 5,
         
-        advertenciaExpirationHoras: config.advertenciaExpirationHoras || 1,
+        advertenciaExpirationHoras: configGuardado.advertenciaExpirationHoras 
+            || configDefault.advertenciaExpirationHoras 
+            || 1,
         
-        maxBoletosApartadosSinPago: config.maxBoletosApartadosSinPago || null,
+        maxBoletosApartadosSinPago: configGuardado.maxBoletosApartadosSinPago 
+            || configDefault.maxBoletosApartadosSinPago 
+            || null,
         
-        // NUEVA: Precio del boleto dinámico desde config.js
+        // ✅ CRÍTICO: Precio primero desde config.json (saved), después config.js
         precioBoleto: parseInt(process.env.PRECIO_BOLETO) 
-            || config.precioBoleto 
+            || configGuardado.precioBoleto
+            || configDefault.precioBoleto 
             || 15,
         
-        // NUEVA: Total de boletos desde config.js
+        // ✅ CRÍTICO: Total boletos primero desde config.json (saved), después config.js
         totalBoletos: parseInt(process.env.TOTAL_BOLETOS)
-            || config.totalBoletos
+            || configGuardado.totalBoletos
+            || configDefault.totalBoletos
             || 1000000
     };
 }

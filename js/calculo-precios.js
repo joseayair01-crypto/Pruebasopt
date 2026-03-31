@@ -8,19 +8,59 @@
 
 /**
  * Obtiene el precio unitario del boleto desde config
- * @returns {number} Precio unitario del boleto
+ * ✅ ACTUALIZADO: Verifica promoción por tiempo + descuento por porcentaje
+ * @returns {number} Precio unitario del boleto (con descuentos aplicados si aplica)
  */
 function obtenerPrecioBoleto() {
-    // Prioridad 1: desde window.rifaplusConfig (cargado por config.js)
-    if (window.rifaplusConfig?.rifa?.precioBoleto) {
-        const price = Number(window.rifaplusConfig.rifa.precioBoleto);
-        if (!Number.isNaN(price) && isFinite(price) && price > 0) {
-            return price;
+    const ahora = new Date();
+    const precioNormal = window.rifaplusConfig?.rifa?.precioBoleto || 20;
+    let precioFinal = precioNormal;
+    let mejorDescuento = 0;
+    let tipoDescuento = null;
+    
+    // Verificar descuento por porcentaje
+    const descPorcentaje = window.rifaplusConfig?.rifa?.descuentoPorcentaje;
+    if (descPorcentaje && descPorcentaje.enabled && descPorcentaje.porcentaje) {
+        const inicio = new Date(descPorcentaje.fechaInicio);
+        const fin = new Date(descPorcentaje.fechaFin);
+        
+        if (ahora >= inicio && ahora <= fin) {
+            const porcentaje = Number(descPorcentaje.porcentaje);
+            if (!Number.isNaN(porcentaje) && isFinite(porcentaje) && porcentaje > 0) {
+                const descuento = (precioNormal * porcentaje) / 100;
+                if (descuento > mejorDescuento) {
+                    mejorDescuento = descuento;
+                    precioFinal = precioNormal - descuento;
+                    tipoDescuento = 'Descuento %';
+                }
+            }
         }
     }
     
-    // Fallback: valor por defecto
-    return 15;
+    // Verificar si hay promoción por tiempo activa
+    const promo = window.rifaplusConfig?.rifa?.promocionPorTiempo;
+    if (promo && promo.enabled && promo.precioProvisional) {
+        const inicio = new Date(promo.fechaInicio);
+        const fin = new Date(promo.fechaFin);
+        
+        if (ahora >= inicio && ahora <= fin) {
+            const precioProvisional = Number(promo.precioProvisional);
+            if (!Number.isNaN(precioProvisional) && isFinite(precioProvisional) && precioProvisional > 0) {
+                const descuento = precioNormal - precioProvisional;
+                if (descuento > mejorDescuento) {
+                    mejorDescuento = descuento;
+                    precioFinal = precioProvisional;
+                    tipoDescuento = 'Promo Tiempo';
+                }
+            }
+        }
+    }
+    
+    if (mejorDescuento > 0) {
+        console.log(`💰 [${tipoDescuento}] Descuento: $${mejorDescuento.toFixed(2)} → Precio: $${precioFinal.toFixed(2)}`);
+    }
+    
+    return precioFinal;
 }
 
 /**
@@ -33,16 +73,11 @@ function obtenerPrecioBoleto() {
  * }
  */
 function calcularTotalConPromociones(cantidad, precioBoleto = null) {
-    // Usar precio dinámico si no se proporciona
-    if (!precioBoleto) {
-        precioBoleto = obtenerPrecioBoleto();
-    }
-
-    // Validar cantidad
+    // Validar cantidad primero
     if (!Number.isInteger(cantidad) || cantidad < 0) {
         return {
             cantidadBoletos: 0,
-            precioUnitario: precioBoleto,
+            precioUnitario: 0,
             subtotal: 0,
             descuentoMonto: 0,
             descuentoPorcentaje: 0,
@@ -51,65 +86,95 @@ function calcularTotalConPromociones(cantidad, precioBoleto = null) {
         };
     }
 
-    // Usar la función centralizada de cálculo de descuentos si está disponible
+    // PASO 1: Obtener precio NORMAL (sin promoción)
+    const precioNormal = window.rifaplusConfig?.rifa?.precioBoleto || 20;
+    
+    // PASO 2: Verificar descuentos disponibles (Tiempo + Porcentaje) y usar el mejor
+    const ahora = new Date();
+    let descuentoPorPromocion = 0;
+    let precioUnitarioFinal = precioNormal;
+    let tipoDescuento = null;
+    let mejorDescuento = 0;
+    
+    // Verificar descuento por porcentaje
+    const descPorcentaje = window.rifaplusConfig?.rifa?.descuentoPorcentaje;
+    if (descPorcentaje && descPorcentaje.enabled && descPorcentaje.porcentaje) {
+        const inicio = new Date(descPorcentaje.fechaInicio);
+        const fin = new Date(descPorcentaje.fechaFin);
+        
+        if (ahora >= inicio && ahora <= fin) {
+            const porcentaje = Number(descPorcentaje.porcentaje);
+            if (!Number.isNaN(porcentaje) && isFinite(porcentaje) && porcentaje > 0) {
+                const descuento = (precioNormal * porcentaje) / 100;
+                if (descuento > mejorDescuento) {
+                    mejorDescuento = descuento;
+                    precioUnitarioFinal = precioNormal - descuento;
+                    descuentoPorPromocion = descuento;
+                    tipoDescuento = 'Descuento %';
+                    console.log(`✅ [Descuento %] Descuento: $${descuento.toFixed(2)} por boleto`);
+                }
+            }
+        }
+    }
+    
+    // Verificar si hay promoción por tiempo activa
+    const promo = window.rifaplusConfig?.rifa?.promocionPorTiempo;
+    if (promo && promo.enabled && promo.precioProvisional) {
+        const inicio = new Date(promo.fechaInicio);
+        const fin = new Date(promo.fechaFin);
+        
+        if (ahora >= inicio && ahora <= fin) {
+            const precioProvisional = Number(promo.precioProvisional);
+            if (!Number.isNaN(precioProvisional) && isFinite(precioProvisional) && precioProvisional > 0) {
+                const descuento = precioNormal - precioProvisional;
+                if (descuento > mejorDescuento) {
+                    mejorDescuento = descuento;
+                    precioUnitarioFinal = precioProvisional;
+                    descuentoPorPromocion = descuento;
+                    tipoDescuento = 'Promo Tiempo';
+                    console.log(`✅ [Promoción Tiempo] Descuento: $${descuento.toFixed(2)} por boleto`);
+                }
+            }
+        }
+    }
+    
+    // PASO 3: Calcular subtotal con precio normal (para mostrar descuento)
+    const subtotal = cantidad * precioNormal;
+    
+    // PASO 4: Calcular descuento total por promoción
+    const descuentoTotalPromocion = cantidad * descuentoPorPromocion;
+    
+    // PASO 5: Calcular precio unitario efectivo a usar
+    if (!precioBoleto) {
+        precioBoleto = precioUnitarioFinal;
+    }
+    
+    // PASO 6: Usar función de descuentos por cantidad si existe
+    let descuentoPorCantidad = 0;
+    let totalFinal = subtotal - descuentoTotalPromocion;
+    
     if (window.rifaplusConfig && typeof window.rifaplusConfig.calcularDescuento === 'function') {
-        const resultado = window.rifaplusConfig.calcularDescuento(cantidad, precioBoleto);
-        return {
-            cantidadBoletos: cantidad,
-            precioUnitario: precioBoleto,
-            subtotal: resultado.subtotal,
-            descuentoMonto: resultado.monto,
-            descuentoPorcentaje: resultado.porcentaje,
-            totalFinal: resultado.total,
-            promocionAplicada: resultado.regla || null,
-            descuentoAplicable: resultado.descuentoAplicable
-        };
+        const resultado = window.rifaplusConfig.calcularDescuento(cantidad, precioNormal);
+        descuentoPorCantidad = resultado.monto || 0;
+        // El descuento por cantidad se aplica adicional SOLO si no hay promoción activa
+        if (descuentoPorPromocion === 0) {
+            totalFinal = totalFinal - descuentoPorCantidad;
+        }
     }
 
-    // Fallback si config no está disponible
-    const subtotal = cantidad * precioBoleto;
+    // Descuento total visible al cliente: mostrar SOLO lo que realmente se aplicó
+    const descuentoMonto = descuentoPorPromocion > 0
+        ? descuentoTotalPromocion
+        : descuentoPorCantidad;
+    const descuentoPorcentaje = subtotal > 0 ? (descuentoMonto / subtotal * 100).toFixed(2) : 0;
+
     return {
         cantidadBoletos: cantidad,
         precioUnitario: precioBoleto,
-        subtotal: subtotal,
-        descuentoMonto: 0,
-        descuentoPorcentaje: 0,
-        totalFinal: subtotal,
-        promocionAplicada: null
-    };
-}
-
-/**
- * Función de compatibilidad: alias para calcularTotalConPromociones
- * Mantiene compatibilidad con código existente
- */
-function calcularTotales(cantidad, precioBoleto = null) {
-    return calcularTotalConPromociones(cantidad, precioBoleto);
-}
-
-/**
- * Función de compatibilidad: alias para obtenerPrecioBoleto
- * Mantiene compatibilidad con código existente que usa obtenerPrecioDinamico
- */
-function obtenerPrecioDinamico() {
-    return obtenerPrecioBoleto();
-}
-
-/**
- * Función de compatibilidad: alias que sigue la nomenclatura antigua
- * Reemplaza calcularDescuentoGlobal de carrito-global.js
- */
-function calcularDescuentoGlobal(cantidad, precioBoleto = null) {
-    return calcularTotalConPromociones(cantidad, precioBoleto);
-}
-
-// Exportar para Node.js si es necesario (para testing)
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        obtenerPrecioBoleto,
-        calcularTotalConPromociones,
-        calcularTotales,
-        obtenerPrecioDinamico,
-        calcularDescuentoGlobal
+        subtotal: Number(subtotal.toFixed(2)),
+        descuentoMonto: Number(descuentoMonto.toFixed(2)),
+        descuentoPorcentaje: Number(descuentoPorcentaje),
+        totalFinal: Number(totalFinal.toFixed(2)),
+        promocionAplicada: tipoDescuento
     };
 }

@@ -1,722 +1,411 @@
 /**
  * ============================================================
  * ARCHIVO: js/config.js
- * DESCRIPCIÓN: Configuración global de RifaPlus
- * Gestiona cliente, rifa, backend y estado dinámico
- * ÚLTIMA ACTUALIZACIÓN: 2025
+ * VERSIÓN: 3.1.0 (REFACTORIZADA - Sin Duplicación)
+ * 
+ * ============================================================
+ * ARQUITECTURA DE CONFIGURACIÓN
  * ============================================================
  * 
- * ⚠️  IMPORTANTE PARA CAMBIAR DE SORTEO:
+ * Este archivo es la SEGUNDA LÍNEA DE DEFENSA de configuración.
  * 
- * Para adaptar esta web a otro sorteo, SOLO edita la sección
- * "PERSONALIZACIÓN POR SORTEO" (sección 2: rifa y sorteoActivo)
+ * FUENTE ÚNICA DE VERDAD: /backend/config.json
+ * ├─ Contiene: Todos los datos de cliente, rifa, técnica
+ * ├─ Se sincroniza automáticamente via config-sync.js (~5 seg)
+ * └─ Cambios SIEMPRE deben hacerse en config.json primero
  * 
- * El resto es código de sistema - NO toques nada más.
+ * ESTE ARCHIVO (config.js): Sistema de métodos y lógica
+ * ├─ NO contiene datos duplicados (sin config innecesaria)
+ * ├─ Contiene TODAS las funciones helper y getters dinámicos
+ * ├─ Actúa como fallback y sistema de sincronización local
+ * ├─ Contiene lógica de cálculos (descuentos, oportunidades)
+ * └─ Gestiona localStorage y estado reactivo
+ * 
+ * FLUJO DE SINCRONIZACIÓN:
+ * 1. Página carga: config.js define estructura base (vacía)
+ * 2. backend/config.json se sincroniza (~200ms-5seg)
+ * 3. config-sync.js popula window.rifaplusConfig con datos reales
+ * 4. Todas las funciones aquí usan los datos sincronizados
+ * 5. localStorage guarda SOLO datos de usuario (cliente, técnica)
+ * 
+ * ⚠️  IMPORTANTE:
+ * - NO editar valores de DATOS aquí
+ * - SOLO editar: funciones, getters, métodos, constantes
+ * - Para cambiar datos: edita /backend/config.json
+ * - Las funciones aquí asumen que data existe (fallback a vacío)
+ * 
  * ============================================================
  */
 
-// Crear namespace global de configuración (evitar conflictos)
+let rifaplusLogoInicial = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='34' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ESaDev%3C/text%3E%3C/svg%3E";
+
+try {
+    const logoCacheado = localStorage.getItem('rifaplus_cached_logo') || '';
+    if (logoCacheado && logoCacheado !== 'images/placeholder-logo.svg') {
+        rifaplusLogoInicial = logoCacheado;
+    }
+} catch (error) {
+    // localStorage puede no estar disponible en algunos contextos
+}
+
+// Crear namespace global de configuración
 window.rifaplusConfig = window.rifaplusConfig || {};
 
-// Versión de configuración (incrementar cuando hagas cambios en sección 2)
-window.rifaplusConfig._VERSION = '2.0.0';  // v2.0.0 = Sistema robusto con validación y limpieza automática
+function obtenerMetaDeploy(nombre) {
+    try {
+        const meta = document.querySelector(`meta[name="${nombre}"]`);
+        return meta ? String(meta.content || '').trim() : '';
+    } catch (error) {
+        return '';
+    }
+}
 
-// Mezclar configuración por defecto sin sobrescribir la existente
+function normalizarBaseUrl(url) {
+    return String(url || '').trim().replace(/\/+$/, '');
+}
+
+function resolverApiBaseRifaPlus() {
+    const globalDeploy = window.__RIFAPLUS_DEPLOY__ || {};
+    const metaApiBase = obtenerMetaDeploy('rifaplus-api-base');
+    const explicitApiBase = normalizarBaseUrl(globalDeploy.apiBase || metaApiBase);
+
+    if (explicitApiBase) {
+        return explicitApiBase;
+    }
+
+    const hostname = window.location.hostname;
+    const origin = window.location.origin;
+    const puerto = window.rifaplusConfig?.backend?.puerto || 5001;
+
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return `http://localhost:${puerto}`;
+    }
+
+    return normalizarBaseUrl(origin);
+}
+
+function resolverSocketScriptUrlRifaPlus() {
+    const globalDeploy = window.__RIFAPLUS_DEPLOY__ || {};
+    const metaSocketUrl = obtenerMetaDeploy('rifaplus-socket-url');
+    const explicitSocketUrl = String(globalDeploy.socketScriptUrl || metaSocketUrl || '').trim();
+
+    if (explicitSocketUrl) {
+        return explicitSocketUrl;
+    }
+
+    const apiBase = resolverApiBaseRifaPlus();
+    return `${apiBase}/socket.io/socket.io.js`;
+}
+
+window.rifaplusConfig.obtenerApiBase = resolverApiBaseRifaPlus;
+window.rifaplusConfig.obtenerSocketScriptUrl = resolverSocketScriptUrlRifaPlus;
+
+// Versión de configuración
+window.rifaplusConfig._VERSION = '3.1.0';  // v3.1.0 = Arquitectura limpia sin duplicación
+
+// Valores iniciales mínimos (se sobrescriben con config.json)
 Object.assign(window.rifaplusConfig, {
+    
     /* ============================================================ */
-    /* SECCIÓN 1: CONFIGURACIÓN DEL CLIENTE                         */
+    /* SECCIÓN 1: DATOS DEL CLIENTE                                */
     /* ============================================================ */
-
-    /**
-     * Datos de la organización que ejecuta la rifa
-     * Incluye identidad visual, contacto y redes sociales
-     */
+    /* 📡 TODOS estos datos provienen de /backend/config.json      */
+    /* Se sincronizan automáticamente cada 5 segundos              */
+    /* NO duplicar valores aquí - ver config-sync.js               */
+    
     cliente: {
-        id: "Sorteos_Torres",
-        nombre: "Sorteos Torres",
-        eslogan: "La mejor forma de ganar",
-        logo: "images/logo.png",
-        imagenPrincipal: "images/ImgPrincipal.png",
-        nombreSorteo: "RAM 1200 2025 + $150,000 Pesos",
-        nombreEdicion: "Edicion No. 16",
-        
-        /**
-         * 🎨 SISTEMA DE COLORES COMPLETO
-         * ================================
-         * Edita estos colores para cambiar el tema de la web completamente
-         * Se aplica automáticamente a toda la interfaz
-         * 
-         * PALETAS RECOMENDADAS:
-         * 
-         * 1. AZUL Y TEAL (Original):
-         *    primary: "#0f172a"
-         *    secondary: "#06b6d4"
-         *    accent: "#06b6d4"
-         * 
-         * 2. NEGRO Y ROJO (Actual):
-         *    primary: "#1A1A1A"
-         *    secondary: "#E63946"
-         *    accent: "#FF3D3D"
-         * 
-         * 3. VERDE Y ORO:
-         *    primary: "#1a4d2e"
-         *    secondary: "#d4af37"
-         *    accent: "#f4a261"
-         * 
-         * 4. PÚRPURA Y ROSA:
-         *    primary: "#2d1b4e"
-         *    secondary: "#c4556e"
-         *    accent: "#f26ba6"
-         * 
-         * 5. NARANJA Y AZUL:
-         *    primary: "#1a2a4a"
-         *    secondary: "#ff8c42"
-         *    accent: "#2196f3"
-         */
-        colorPrimario: "#1A1A1A",      // Color principal (botones, headers)
-        colorSecundario: "#E63946",    // Color secundario (botones rojos, acentos)
-        colorAccento: "#FF3D3D",       // Color de acento (highlights, borders)
-        
-        // Colores adicionales (ya no se usan para fondos/texto)
-        colorExito: "#FF3D3D",         // Rojo para éxito
-        colorPeligro: "#FF3D3D",       // Rojo para peligro
-        colorAdvertencia: "#FF6B6B",   // Rojo claro para advertencia
-        colorTexto: "#1F2937",         // Texto oscuro (nunca se usa, pero aquí está)
-        colorTextoSecundario: "#6B7280", // Texto gris (nunca se usa, pero aquí está)
-        colorFondo: "#FFFFFF",         // Fondo blanco (nunca se usa, pero aquí está)
-        colorFondoSecundario: "#F5F5F5", // Fondo gris (nunca se usa, pero aquí está)
-        
-        telefono: "434 106 8932",
-        email: "joseayair16@gmail.com",
-        anioActual: 2026,
+        id: "",      
+        nombre: "",  // Fallback genérico hasta que sincronice desde config.json
+        _prefijoOrdenManual: "",
+        eslogan: "La mejor forma de ganar", // Fallback genérico
+        email: "",   // Se sincroniza desde config.json
+        telefono: "", // Se sincroniza desde config.json
         redesSociales: {
-            facebook: "https://www.facebook.com/profile.php?id=100008315310869&locale=es_LA",
-            facebookUsuario: "Ayair LP",
-            instagram: "https://www.instagram.com/joseayair",
-            instagramUsuario: "@joseayair",
-            whatsapp: "+524591153960",
-            canalWhatsapp: "https://whatsapp.com/channel/0029Va9THY5JrwIwhpTezL0f",
-            canalWhatsappNombre: "Sorteos Yepe"
+            whatsapp: "",
+            facebook: "",
+            facebookUsuario: "",
+            instagram: "",
+            instagramUsuario: "",
+            tiktok: "",
+            canalWhatsapp: "",
+            canalWhatsappNombre: ""
         },
         
+        // ✅ ESTRUCTURA LOCAL (no en config.json):
+        logo: rifaplusLogoInicial,
+        imagenPrincipal: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 675'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%23eaf3fb'/%3E%3Cstop offset='1' stop-color='%23d5e6f5'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1200' height='675' fill='url(%23g)'/%3E%3Ctext x='600' y='330' font-size='46' text-anchor='middle' fill='%231b2a38' font-family='Arial,sans-serif'%3EImagen principal del sorteo%3C/text%3E%3Ctext x='600' y='385' font-size='24' text-anchor='middle' fill='%235e7283' font-family='Arial,sans-serif'%3ECarga una imagen o pega una URL%3C/text%3E%3C/svg%3E",
+        colorPrimario: "#1A1A1A",
+        colorSecundario: "#E63946",
+        colorAccento: "#FF3D3D",
+        colorExito: "#FF3D3D",
+        colorPeligro: "#FF3D3D",
+        colorAdvertencia: "#FF6B6B",
+        colorTexto: "#1F2937",
+        colorTextoSecundario: "#6B7280",
+        colorFondo: "#FFFFFF",
+        colorFondoSecundario: "#F5F5F5",
+        anioActual: 2026,
+        
         /**
-         * Getter dinámico: genera prefijo de orden automáticamente
-         * Toma la primera letra de cada palabra del nombre del cliente
-         * Ej: "SORTEOS EL TREBOL" → "SET"
-         * Ej: "Rifas El Trebol" → "RET"
-         * Se recalcula automáticamente cada vez que se accede
+         * Getter dinámico: usa primero el prefijo configurado explícitamente.
+         * Si no existe, genera uno automático desde cliente.nombre.
          */
         get prefijoOrden() {
+            const prefijoManual = String(this._prefijoOrdenManual || '').trim().toUpperCase();
+            if (prefijoManual) {
+                return prefijoManual;
+            }
+
             const nombre = this.nombre || 'ORDEN';
             const palabras = nombre.split(/\s+/).filter(p => p.trim().length > 0);
             const prefijo = palabras.map(p => p.charAt(0).toUpperCase()).join('');
             return prefijo.length > 0 ? prefijo : 'ORD';
-        }
-    },
-
-    /* ============================================================ */
-    /* SECCIÓN 1.5: CONFIGURACIÓN DE SEO Y METADATOS               */
-    /* ============================================================ */
-
-    /**
-     * ⚠️  IMPORTANTE PARA OPTIMIZAR SEO:
-     * 
-     * Edita esta sección para cambiar:
-     * - Títulos que aparecen en navegador y redes sociales
-     * - Descripciones para Google, Facebook, Twitter
-     * - Imágenes para compartir en redes
-     * - URLs base de la web
-     * 
-     * Los metadatos se inyectan dinámicamente en TODAS las páginas
-     * NO necesitas editar HTML, TODO es configuración aquí
-     */
-    seo: {
-        // URL base de la web (sin "/" al final)
-        urlBase: "https://rifas-web.vercel.app",
-        
-        // Dominio actual para validaciones
-        dominio: "rifas-web.vercel.app",
-        
-        // Título principal - Aparece en pestaña del navegador y en Google
-        titulo: "Sorteos Torres - RAM 1200 2025 + $150,000 | Rifas 100% Transparentes",
-        
-        // Descripción para Google y redes sociales (155-160 caracteres ideal)
-        descripcion: "Participa en el sorteo de RAM 1200 2025 + $150,000. 100% transparente, transmisión en vivo. Compra tus boletos desde $8 MXN.",
-        
-        // Palabras clave (SEO)
-        palabrasLlave: "sorteo, rifa, RAM 1200, transparente, en vivo, ganador, sorteos México",
-        
-        // Imagen principal para compartir en redes
-        imagen: "/images/ImgPrincipal.png",
-        
-        // Open Graph - Para Facebook y WhatsApp
-        openGraph: {
-            titulo: "Sorteos Torres - ¡Gana RAM 1200 2025 + $150,000!",
-            descripcion: "Participa en nuestro sorteo 100% transparente. Transmisión en vivo. Boletos desde $8 MXN con 3 oportunidades extras.",
-            imagen: "/images/ImgPrincipal.png",
-            tipo: "website",
-            locale: "es_MX"
         },
-        
-        // Twitter Card - Para compartir en Twitter/X
-        twitter: {
-            card: "summary_large_image",
-            titulo: "Sorteos Torres - ¡Gana RAM 1200 2025!",
-            descripcion: "Participa en el sorteo más transparente de Mexico. Transmisión en vivo 09 de Febrero.",
-            imagen: "/images/ImgPrincipal.png",
-            creador: "@sorteos_torres"
-        },
-        
-        // Autor y copyright
-        autor: "Sorteos Torres",
-        copyright: "© 2026 Sorteos Torres. Todos los derechos reservados.",
-        
-        // Datos de contacto estructurado (Schema.org)
-        contacto: {
-            tipo: "Organization",
-            nombre: "Sorteos Torres",
-            telefono: "434 106 8932",
-            email: "joseayair16@gmail.com",
-            enlace: "https://rifas-web.vercel.app"
+
+        set prefijoOrden(value) {
+            this._prefijoOrdenManual = String(value || '').trim().toUpperCase();
         }
     },
 
     /* ============================================================ */
-    /* SECCIÓN 1B: PALETA DE COLORES (PROFESIONAL)                 */
+    /* SECCIÓN 2: CONFIGURACIÓN DE LA RIFA                         */
     /* ============================================================ */
-
-    /**
-     * Sistema de colores completamente configurable
-     * Edita esta sección para cambiar el tema completo del sitio
-     * Se aplica automáticamente a todos los elementos
-     */
-    tema: {
-        // Colores principales - PALETA PROFESIONAL MODERNA
-        // Negro elegante + Rojo vivo + Blanco minimalista
-        colores: {
-            // Primario: botones, headers, acentos principales
-            primary: "#1A1A1A",         // Negro elegante - headers, botones
-            primaryDark: "#0D0D0D",     // Negro aún más profundo - sombras
-            primaryLight: "#FF3D3D",    // Rojo vivo - acentos, highlights
-            
-            // Secundario: acentos, highlights
-            secondary: "#E63946",       // Rojo - botones secundarios, acciones
-            secondaryDark: "#D62828",   // Rojo más oscuro (hover)
-            
-            // Estados generales
-            success: "#FF3D3D",         // Rojo vivo
-            successDark: "#D62828",     // Rojo más oscuro
-            danger: "#FF3D3D",          // Rojo vivo
-            dangerDark: "#D62828",      // Rojo más oscuro
-            
-            // Estados de boletos
-            disponible: "#f8fafc",      // Gris ultra claro
-            seleccionado: "#e11223ba",    // Rojo
-            apartado: "#4d060c",        // Rojo
-            vendido: "#1A1A1A",         // Negro
-            
-            // Texto
-            textDark: "#1f2937",        // Gris oscuro - texto principal
-            textLight: "#6b7280",       // Gris medio - texto secundario
-            
-            // Fondos
-            bgLight: "#f8fafc",         // Gris ultra claro - minimalista
-            bgWhite: "#FFFFFF",         // Blanco puro
-            
-            // Bordes
-            borderColor: "#e5e7eb",     // Gris ultra claro
-            grayLight: "#f3f4f6",       // Gris claro
-            grayMedium: "#d1d5db"       // Gris medio
-        }
-    },
-
-    /* ============================================================ */
-    /* SECCIÓN 2: CONFIGURACIÓN DE LA RIFA ACTUAL                   */
-    /* ============================================================ */
-
-    /**
-     * ⚠️  IMPORTANTE - PARA CAMBIAR A OTRO SORTEO:
-     * 
-     * Edita SOLO los valores de esta sección (rifa y sorteoActivo abajo)
-     * NO toques el código de inicialización ni funciones
-     * 
-     * Cada campo que cambies aquí se reflejará automáticamente en toda la web
-     * Fecha → countdown, modal, validaciones
-     * Precio → carrito, órdenes
-     * etc.
-     * 
-     * Cambios frecuentes:
-     * - fechaSorteo (línea ~124)
-     * - fechaSorteoFormato (línea ~125)
-     * - totalBoletos (línea ~128)
-     * - precioBoleto (línea ~129)
-     * - titulo, descripcion, premios
-     * - ganadores (cuántos ganadores habrá)
-     * 
-     * NO cambies:
-     * - Código de inicialización
-     * - Funciones de config.js
-     * - Lógica del backend
-     * 
-     * ============================================================
-     * 
-     * Información del sorteo que se está realizando
-     * Incluye premio, fechas, precios y promociones
-     */
+    /* 📡 TODOS estos datos provienen de /backend/config.json      */
+    
     rifa: {
-        titulo: "RAM 1200 2025 como nueva + 150,000 pesos",
-        descripcion: "Llevatela este 09 de Febrero en base al ganador de la Loteria Nacional, Ademas tenemos presorteo y 20 ruletazos a lo largo del sorteo, participa con solo $8 pesitos y te llevas 3 oportunidades extras de ganar",
-        premios: [
-            {
-                nombre: "RAM 1200 2025",
-                descripcion: "RAM 1200 2025 - Nuevecita con todo y accesorios. Primer lugar.",
-                imagenes: [
-                    "images/ImgPrincipal.png",
-                    "images/frontal.jpg",
-                    "images/lateral.jpg" 
-                ]
-            }
-        ],
-        fechaSorteo: "2026-02-09T20:00:00-06:00",
-        fechaSorteoFormato: "09 de Febrero del 2026",
-        horaSorteo: "8:00 PM",
-        fechaPresorteo: "2026-02-05T20:00:00-06:00",
-        fechaPresorteoFormato: "05 de Febrero del 2026",
-        horaPresorteo: "8:00 PM",
-        zonaHoraria: "Hora Centro México",
-        modalidadSorteo: "Transmisión en Vivo por Facebook",
-        totalBoletos: 250000,
-        precioBoleto: 8,
+        nombreSorteo: "",  // Se sincroniza desde config.json
+        edicionNombre: "",  // Se sincroniza desde config.json
+        descripcion: "",  // Se sincroniza desde config.json
+        totalBoletos: 1000,  // Valor seguro de arranque (se sobrescribe desde config.json)
+        precioBoleto: 100,    // Valor por defecto (se sobrescribe desde config.json)
+        tiempoApartadoHoras: 4,             // Se sincroniza desde config.json
+        intervaloLimpiezaMinutos: 1,        // Se sincroniza desde config.json
         
-        // ===== CONFIGURACIÓN DE OPORTUNIDADES =====
-        // Arquitectura 1M: 250k boletos + 750k oportunidades
-        oportunidadesHabilitadas: true,
-        totalOportunidades: 750000,
-        promediooportunidadesPorOrden: 30,
+        // Fechas del sorteo
+        fechaSorteo: "",  // Se sincroniza desde config.json
+        fechaSorteoFormato: "",  // Se sincroniza desde config.json
+        horaSorteo: "",  // Se sincroniza desde config.json
+        zonaHoraria: "Hora Centro México",  // Se sincroniza desde config.json
+        modalidadSorteo: "",  // Se sincroniza desde config.json
+        fechaPresorteo: "",  // Se sincroniza desde config.json (opcional)
+        fechaPresorteoFormato: "",  // Se sincroniza desde config.json (opcional)
+        horaPresorteo: "",  // Se sincroniza desde config.json (opcional)
         
-        // ===== CONFIGURACIÓN DE EXPIRACIÓN DE ÓRDENES =====
-        // ⚠️  IMPORTANTE: Estos valores se usan en:
-        // - Frontend: para mostrar avisos al cliente
-        // - Backend: para la limpieza automática de órdenes
-        
-        // Tiempo que una orden permanece apartada sin comprobante de pago (en HORAS)
-        // Después de este tiempo, los boletos se liberan automáticamente
-        // ⚠️  CAMBIAR AQUÍ para modificar el tiempo de expiración (4, 12, 24, etc.)
-        tiempoApartadoHoras: 4,  // 4 horas por defecto
-        
-        // Mostrar advertencia al cliente X horas antes de expirar
-        advertenciaExpirationHoras: 1,  // Avisar 1 hora antes de expirar
-        
-        // Intervalo en que el backend verifica órdenes expiradas (en MINUTOS)
-        // Más pequeño = verificación más frecuente pero más carga en BD
-        // Recomendado: 5-10 minutos
-        intervaloLimpiezaMinutos: 1,  // Cada 1 minuto (TEST - verifica frecuentemente)
-        
-        // Máximo de boletos que pueden estar apartados sin pago
-        // (por si necesitas un límite diferente al total)
-        maxBoletosApartadosSinPago: null,  // null = sin límite
-        
-        // Rangos para 250,000 boletos visibles (de un total de 1,000,000)
-        // Total: 1M (250k visible + 750k oportunidades)
-        rangos: [
-            { id: 'A', nombre: '000000-049999', inicioFormato: '000000', finFormato: '049999', inicio: 0, fin: 49999 },
-            { id: 'B', nombre: '050000-099999', inicioFormato: '050000', finFormato: '099999', inicio: 50000, fin: 99999 },
-            { id: 'C', nombre: '100000-149999', inicioFormato: '100000', finFormato: '149999', inicio: 100000, fin: 149999 },
-            { id: 'D', nombre: '150000-199999', inicioFormato: '150000', finFormato: '199999', inicio: 150000, fin: 199999 },
-            { id: 'E', nombre: '200000-249999', inicioFormato: '200000', finFormato: '249999', inicio: 200000, fin: 249999 }
-        ],
-        
-        // ===== CONFIGURACIÓN DE DESCUENTOS (PRECIOS REDUCIDOS POR VOLUMEN) =====
-        // Habilita/deshabilita descuentos automáticos por cantidad de boletos comprados
+        // Colecciones
+        rangos: [],  // Se sincroniza desde config.json
+        galeria: {
+            enabled: true,  // ✅ HABILITADA por defecto (se sobrescribe desde config.json)
+            imagenes: [
+                {url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 675'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%23eaf3fb'/%3E%3Cstop offset='1' stop-color='%23d5e6f5'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1200' height='675' fill='url(%23g)'/%3E%3Ctext x='600' y='330' font-size='46' text-anchor='middle' fill='%231b2a38' font-family='Arial,sans-serif'%3EImagen principal del sorteo%3C/text%3E%3Ctext x='600' y='385' font-size='24' text-anchor='middle' fill='%235e7283' font-family='Arial,sans-serif'%3ECarga una imagen o pega una URL%3C/text%3E%3C/svg%3E", titulo: "Vista Principal", descripcion: "Imagen temporal mientras sincroniza la galeria"},
+                {url: "images/placeholder-cover.svg", titulo: "Vista Frontal", descripcion: "Contenido visual sincronizándose"},
+                {url: "images/placeholder-cover.svg", titulo: "Vista Lateral", descripcion: "Contenido visual sincronizándose"}
+            ]
+        },  // Se sincroniza desde config.json
+        oportunidades: {enabled: true, multiplicador: 3},  // Se sincroniza desde config.json
         descuentos: {
-            enabled: false,  // true para activar, false para desactivar
-            reglas: [
-                { cantidad: 10, precio: 35, ahorro: 5 },
-                { cantidad: 20, precio: 70, ahorro: 10 },
-                { cantidad: 50, precio: 175, ahorro: 25 },
-                { cantidad: 100, precio: 350, ahorro: 50 }
-            ]
-        },
-
-        // ===== CONFIGURACIÓN DE PROMOCIONES DE OPORTUNIDADES =====
-        // Muestra ejemplos atractivos de cuántas oportunidades gana el cliente
-        // Por ejemplo: "Compra 2 boletos → Gana 4 oportunidades"
-        // Se mostrarán como cards en la sección de promociones si oportunidades están habilitadas
+            enabled: false,
+            reglas: []
+        },  // Se sincroniza desde config.json
         promocionesOportunidades: {
-            enabled: true,  // true para mostrar sección, false para ocultar
-            ejemplos: [
-                { boletos: 1, oportunidades: 4 },
-                { boletos: 5, oportunidades: 20 },
-                { boletos: 10, oportunidades: 40 },
-                { boletos: 50, oportunidades: 200 }
-            ]
-        },
-
-        // ===== CONFIGURACIÓN DE OPORTUNIDADES (BOLETOS GRATIS SORPRESA) =====
-        // Asigna boletos extras automáticamente cuando el cliente compra
-        // Completamente configurable: 1 boleto → 8 oportunidades, etc.
-        // Se puede usar CON o SIN promociones
-        oportunidades: {
-            enabled: true,  // true para habilitar, false para deshabilitar
-            rango_visible: { inicio: 0, fin: 249999 },      // Boletos que ve el cliente (250k)
-            rango_oculto: { inicio: 250000, fin: 999999 },  // Pool de oportunidades (750k)
-            tipo: 'fijo',  // 'dinamico' o 'fijo'
-            
-            // OPCIÓN 1: 'dinamico' - Oportunidades basadas en cantidad de boletos comprados
-            // Ej: compra 1 boleto → 1 oportunidad, compra 10 → 20 oportunidades, etc.
-            // condiciones_dinamicas: [
-            //     {
-            //         cantidad_boletos_minima: 1,
-            //         cantidad_boletos_maxima: 10,
-            //         oportunidades_por_boleto: 1  // 1 boleto comprado = 1 oportunidad
-            //     },
-            //     {
-            //         cantidad_boletos_minima: 11,
-            //         cantidad_boletos_maxima: 50,
-            //         oportunidades_por_boleto: 2  // 11 boletos = 22 oportunidades
-            //     },
-            //     {
-            //         cantidad_boletos_minima: 51,
-            //         cantidad_boletos_maxima: 999999,
-            //         oportunidades_por_boleto: 3  // 51+ boletos = 153+ oportunidades
-            //     }
-            // ],
-
-            // OPCIÓN 2: 'fijo' - Número fijo de oportunidades sin importar cantidad
-            // Descomenta la siguiente línea si prefieres número fijo:
-            oportunidades_por_boleto: 3,  // 3 oportunidades por cada boleto comprado, sin importar cantidad total
-
-            mensajeOportunidad: "¡Felicidades! Se asignaron %oportunidades% boleto(s) de SORPRESA al azar"
-        },
-
-        // ===== CONFIGURACIÓN DE BONOS =====
-        // Habilita/deshabilita la sección de bonos y define los bonos disponibles
+            enabled: true,
+            ejemplos: []
+        },  // Se sincroniza desde config.json
+        publicacion: {
+            bonos: true,
+            promociones: true,
+            testimonios: false,
+            ruletazo: true,
+            presorteo: true,
+            progressStats: true
+        },  // Se sincroniza desde config.json
         bonos: {
-            enabled: true,  // true para mostrar sección, false para ocultar
-            items: [
-                {
-                    numero: 1,
-                    titulo: "Compra 20+ boletos",
-                    descripcion: "Si compras más de 20 boletos y resultas ganador, ¡te llevas el tanque lleno!",
-                    icono: "🏎️",
-                    color: "success"
-                },
-                {
-                    numero: 2,
-                    titulo: "Primera hora de apartado",
-                    descripcion: "Si compras más de 20 boletos y realizas tu pago en la primera hora de apartado, ¡te llevas $5,000 extras!",
-                    icono: "⏰",
-                    color: "warning"
-                },
-                {
-                    numero: 3,
-                    titulo: "Síguenos en WhatsApp",
-                    descripcion: "Si nos sigues en nuestro canal de WhatsApp, ¡te llevas otros $5,000 extras!",
-                    icono: "💬",
-                    color: "info",
-                    accion: "unirseWhatsapp"  // Botón especial para unirse
-                },
-                {
-                    numero: 4,
-                    titulo: "Compra 50+ boletos",
-                    descripcion: "Si compras más de 50 boletos y resultas ganador, además de todos los bonos anteriores, ¡te lo llevamos a domicilio!",
-                    icono: "🚚",
-                    color: "primary"
-                }
-            ]
-        },
-
-        // ===== CONFIGURACIÓN DE BONIFICACIONES (OFERTAS ESPECIALES) =====
-        // Sección simple y profesional de bonos e incentivos
-        bonificaciones: {
-            enabled: true,  // true para mostrar sección, false para ocultar
-            items: [
-                {
-                    titulo: "iPhone 17 Pro Max",
-                    condicion: "Antes del 14 de febrero"
-                },
-                {
-                    titulo: "Bono $50,000",
-                    condicion: "Compra 100+ boletos"
-                },
-                {
-                    titulo: "Bono $100,000",
-                    condicion: "Compra 200+ boletos"
-                },
-                {
-                    titulo: "Combo Total",
-                    condicion: "200+ boletos antes del 14"
-                }
-            ]
-        },
-
-        // ===== CONFIGURACIÓN DE GANADORES =====
-        // Define cuántos ganadores habrá de cada tipo
-        // Si alguno es 0, ese tipo no aparecerá
-        // Ejemplos:
-        // - Solo sorteo: {sorteo: 1, presorteo: 0, ruletazos: 0}
-        // - 3 lugares: {sorteo: 3, presorteo: 0, ruletazos: 0}
-        // - Con presorteos: {sorteo: 3, presorteo: 5, ruletazos: 0}
-        // - Completo: {sorteo: 3, presorteo: 5, ruletazos: 2}
-        ganadores: {
-            sorteo: 2,           // Ganador principal, 2do y 3er lugar (0 para deshabilitar)
-            presorteo: 1,        // Ganadores de presorteos/rifas previas (0 para deshabilitar)
-            ruletazos: 20         // Ganadores de ruletazos (0 para deshabilitar)
-        },
-
-        // ===== CONFIGURACIÓN DE PREMIOS =====
-        // Define todos los premios del sorteo de forma dinámica
-        // Se mostrarán en una sección visual entre el countdown y la info del sorteo
+            enabled: true,
+            items: []
+        },  // Se sincroniza desde config.json
+        bonosCompra: {
+            enabled: false,
+            items: []
+        },  // Se sincroniza desde config.json
+        maquinaSuerte: {
+            limiteBoletos: 500
+        },  // Se sincroniza desde config.json
         sistemaPremios: {
-            enabled: true,  // true para mostrar sección, false para ocultar
-            
-            // PREMIOS DEL SORTEO PRINCIPAL (1er, 2do, 3er lugar, etc.)
-            sorteo: [
-                {
-                    posicion: 1,
-                    nombre: "Primer Lugar",
-                    premio: "RAM 1200 2025",
-                    descripcion: "Vehículo completamente nuevo con accesorios",
-                    icono: "🥇"
-                },
-                {
-                    posicion: 2,
-                    nombre: "Segundo Lugar",
-                    premio: "$150,000 en efectivo",
-                    descripcion: "Dinero en efectivo directo a tu cuenta",
-                    icono: "🥈"
-                }
-            ],
-
-            // PREMIOS DE PRESORTEO (Sorteos previos o adicionales)
-            presorteo: [
-                {
-                    posicion: 1,
-                    nombre: "Presorteo 26 de Enero",
-                    premio: "$100,000 en efectivo",
-                    descripcion: "Ganador del presorteo del 26 de Enero",
-                    icono: "💵"
-                }
-            ],
-
-            // PREMIOS DE RULETAZOS (Múltiples premios pequeños)
-            ruletazos: [
-                {
-                    evento: "Presorteo 05 Febrero",
-                    cantidad: 10,
-                    premio: "$1,000 cada uno",
-                    icono: "🎰"
-                },
-                {
-                    evento: "Sorteo Principal 09 Febrero",
-                    cantidad: 10,
-                    premio: "$1,000 cada uno",
-                    icono: "🎰"
-                }
-            ],
-
-            // Mensaje motivacional
-            mensaje: "Múltiples oportunidades de ganar premios extraordinarios"
-        },
-
-        // Información del sorteo (configurable, aparece en tarjetas)
+            enabled: false,
+            mensaje: "",
+            sorteo: [],
+            presorteo: [],
+            ruletazos: []
+        },  // Se sincroniza desde config.json
+        
+        // Info auxiliar
         infoRifa: [
-            {
-                icono: '🗓️',
-                titulo: 'Fecha y Hora del Sorteo',
-                contenido: 'dinamico-fecha-hora'
-            },
-            {
-                icono: '📍',
-                titulo: 'Modalidad',
-                contenido: 'dinamico-modalidad'
-            },
-            {
-                icono: '🎯',
-                titulo: 'Total de Emisiones',
-                contenido: 'dinamico-emisiones'
-            }
+            { icono: '🗓️', titulo: 'Fecha y Hora del Sorteo', contenido: 'dinamico-fecha-hora' },
+            { icono: '📍', titulo: 'Modalidad', contenido: 'dinamico-modalidad' },
+            { icono: '🎯', titulo: 'Total de Emisiones', contenido: 'dinamico-emisiones' }
         ]
     },
 
     /* ============================================================ */
-    /* SECCIÓN 2B: CONFIGURACIÓN DEL SORTEO FINALIZADO              */
+    /* SECCIÓN 3: ESTADO DEL SORTEO ACTUAL                        */
     /* ============================================================ */
     
-    /**
-     * Estado del sorteo actual
-     * IMPORTANTE: Cambiar 'estado' a 'finalizado' cuando el sorteo termine
-     * Esto activará el modal de cierre automáticamente
-     */
     sorteoActivo: {
-        estado: 'activo', // 'activo' | 'proximo' | 'finalizado'
+        estado: 'activo',           // 'activo' | 'proximo' | 'finalizado'
         id: 'sorteo_001',
-        nombre: 'RAM 1200 2025 - Edición 20',
-        fechaCierre: new Date('2026-01-31T20:00:00'),
-        fechaCierreFormato: 'martes, 6 de enero, 2026 - 8:00 p.m.',
+        nombre: 'RAM 1200 2025 - Edición 20',  // ← Desde config.json
         
         /**
-         * Ganadores del sorteo
-         * Se llenan cuando el sorteo finaliza
-         * Estructura: posicion (1, 2, 3...) → premio → orden → ganador
+         * Getter dinámico: Lee fechaCierre desde rifa.fechaSorteo
          */
+        get fechaCierre() {
+            if (window.rifaplusConfig?.rifa?.fechaSorteo) {
+                return new Date(window.rifaplusConfig.rifa.fechaSorteo);
+            }
+            return new Date('2999-01-01T00:00:00');
+        },
+        
         ganadores: {
             principal: [],
             presorte: [],
             ruletazo: []
         },
         
-        /**
-         * Estadísticas del sorteo
-         */
         estadisticas: {
-            totalBoletos: 100000,
-            totalVendidos: 98542,
-            participantes: 12847,
-            recaudacion: 4927100,
-            proximoSorteo: new Date('2026-01-31T20:00:00')
+            // ⚠️ IMPORTANTE: "totalBoletos" SIEMPRE viene de rifa.totalBoletos (config.json)
+            // NO duplicar este valor aquí. Usar: window.rifaplusConfig.rifa.totalBoletos
+            totalVendidos: 0,
+            participantes: 0,
+            recaudacion: 0
         },
         
-        /**
-         * Documentos del sorteo
-         */
         documentos: {
             actaURL: null,
             videoURL: null,
             certificado: 'Verificado por notario público'
         },
         
-        /**
-         * Mensaje de agradecimiento personalizado
-         */
-        mensajeAgradecimiento: '¡Agradecemos tu participación en nuestro sorteo! Tu confianza es lo más importante para nosotros. Esperamos contar contigo en nuestro próximo sorteo.'
+        mensajeAgradecimiento: '¡Agradecemos tu participación en nuestro sorteo! Tu confianza es lo más importante para nosotros.'
     },
 
-    /**
-     * Flag para habilitar/deshabilitar compras
-     * Se actualiza automáticamente cuando sorteo finaliza
-     */
     permitirCompras: true,
 
     /* ============================================================ */
-    /* SECCIÓN 3: CONFIGURACIÓN DEL BACKEND                         */
+    /* SECCIÓN 4: CONFIGURACIÓN DEL BACKEND                        */
     /* ============================================================ */
-
-    /**
-     * URLs y endpoints del servidor API
-     * Contiene conexión a backend y rutas disponibles
-     * Auto-detecta el puerto correcto
-     */
+    
     backend: {
-        // Puerto del backend - cambiar si necesario
-        // NOTA: El backend por defecto corre en puerto 5001
-        // Si lo moviste a otro puerto, cambia AQUÍ
         puerto: 5001,
         
-        // Auto-detectar API base
         get apiBase() {
-            // En localhost/127.0.0.1 → usar local
-            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                return `http://127.0.0.1:${this.puerto}`;
-            }
-            // En producción (Netlify) → usar Render
-            return 'http://localhost:5001';
+            return window.rifaplusConfig.obtenerApiBase();
         },
+        
         endpoints: {
             ordenes: '/api/ordenes',
             boletos: '/api/public/boletos',
             stats: '/api/admin/stats',
             login: '/api/admin/login'
         },
-        // Configuración pública relacionada al panel admin (sin secretos)
+        
         admin: {
             loginEnabled: true
         }
     },
 
     /* ============================================================ */
-    /* SECCIÓN 4: CONFIGURACIÓN TÉCNICA Y BANCOS                    */
+    /* SECCIÓN 5: CONFIGURACIÓN TÉCNICA                           */
     /* ============================================================ */
-
-    /**
-     * Datos técnicos: contactos, cuentas bancarias para pagos
-     * Información sensible que se guarda en el servidor
-     */
+    /* 📡 bankAccounts se carga desde /backend/config.json         */
+    
     tecnica: {
-        numeroWhatsappOrganizador: '+52 4591153960',
-        nombreOrganizador: 'SORTEOS EL TREBOL',
+        numeroWhatsappOrganizador: '+52 4591153960',  // ← Desde config.json
+        nombreOrganizador: 'SORTEOS TORRES',  // ← Desde config.json
         bankAccounts: [
-            {
-                id: 1,
-                nombreBanco: 'SANTANDER',
-                accountNumber: '4456 1267 8989 1156',
-                beneficiary: 'Jose Luis Yepez Garcia',
-                numero_referencia: 'REF-SANT-001',
-                accountType: 'Tarjeta',
-                paymentType: 'transferencia',
-                phone: '+52 4591153960'
-            },
-            {
-                id: 2,
-                nombreBanco: 'BBVA',
-                accountNumber: '4589 1290 4589 3210',
-                numero_referencia: 'REF-BBVA-001',
-                accountType: 'Tarjeta',
-                paymentType: 'transferencia',
-                beneficiary: 'José Ayair López Pérez',
-                phone: '453 1016 8932'
-            },
-            {
-                id: 3,
-                nombreBanco: 'OXXO',
-                accountNumber: '4489 4567 0121 89561',
-                numero_referencia: 'Tu número de orden o nombre completo',
-                beneficiary: 'Sortel Torres',
-                paymentType: 'efectivo'
-            },
-            {
-                id: 4,
-                nombreBanco: 'Farmacias del Ahorro',
-                accountNumber: '4489 4567 0121 89561',
-                numero_referencia: 'Tu número de orden o nombre completo',
-                beneficiary: 'Sortel Torres',
-                paymentType: 'efectivo'
-            },
-            {
-                id: 5,
-                nombreBanco: '7-Eleven',
-                accountNumber: '4489 4567 0121 89561',
-                numero_referencia: 'Tu número de orden o nombre completo',
-                beneficiary: 'Sortel Torres',
-                paymentType: 'efectivo'
-            }
-        ]
+            {id: 1, nombreBanco: "SANTANDER", accountNumber: "4456 1267 8989 1156", beneficiary: "Jose Luis Yepez Garcia", accountType: "Tarjeta", paymentType: "transferencia"},
+            {id: 2, nombreBanco: "BBVA", accountNumber: "4589 1290 4589 3210", beneficiary: "Jose Ayair Lopez Perez", accountType: "Tarjeta", paymentType: "transferencia"},
+            {id: 3, nombreBanco: "OXXO", accountNumber: "4489 4567 0121 89561", beneficiary: "Sortel Torres", accountType: "Tarjeta", paymentType: "efectivo", numero_referencia: "ST-0001"},
+            {id: 4, nombreBanco: "Farmacias del Ahorro", accountNumber: "4489 4567 0121 89561", beneficiary: "Sortel Torres", accountType: "Tarjeta", paymentType: "efectivo", numero_referencia: "FDA-0001"},
+            {id: 5, nombreBanco: "7-Eleven", accountNumber: "4489 4567 0121 89561", beneficiary: "Sortel Torres", accountType: "Tarjeta", paymentType: "efectivo", numero_referencia: "SEVEN-0001"}
+        ]  // ← Desde config.json
     },
 
     /* ============================================================ */
-    /* SECCIÓN 6: ESTADO DINÁMICO                                   */
+    /* SECCIÓN 6: ESTADO DINÁMICO                                  */
     /* ============================================================ */
-
-    /**
-     * Estado actual que se actualiza en tiempo real
-     * Sincronizado con datos del backend
-     */
+    
     estado: {
         boletosVendidos: 0,
         boletosApartados: 0,
-        boletosDisponibles: 0,
+        boletosDisponibles: 1000,
         porcentajeVendido: 0,
         ultimaActualizacion: null
+    },
+
+    /* ============================================================ */
+    /* SECCIÓN 7: CONFIGURACIÓN DE TEMA Y COLORES                  */
+    /* ============================================================ */
+    
+    tema: {
+        colores: {
+            colorPrimario: "#1A1A1A",
+            colorSecundario: "#E63946",
+            colorAccento: "#FF3D3D",
+            colorExito: "#FF3D3D",
+            colorPeligro: "#FF3D3D",
+            colorAdvertencia: "#FF6B6B",
+            colorTexto: "#1F2937",
+            colorTextoSecundario: "#6B7280",
+            colorFondo: "#FFFFFF",
+            colorFondoSecundario: "#F5F5F5"
+        }
+    },
+
+    /* ============================================================ */
+    /* SECCIÓN 8: CONFIGURACIÓN DE SEO                             */
+    /* ============================================================ */
+    
+    seo: {
+        title: "",
+        titulo: "",
+        description: "",
+        descripcion: "",
+        keywords: "",
+        palabrasLlave: "",
+        urlBase: "http://127.0.0.1:5500/",
+        openGraph: {
+            titulo: "",
+            descripcion: "",
+            imagen: "/images/placeholder-cover.svg",
+            tipo: "website",
+            locale: "es_MX"
+        },
+        twitter: {
+            card: "summary_large_image",
+            titulo: "",
+            descripcion: "",
+            imagen: "/images/placeholder-cover.svg",
+            creador: "@joseayair"
+        },
+        author: "",
+        autor: "",
+        copyright: ""
     }
 });
 
-// Alias legible para compatibilidad: exponer `bankAccounts` en la raíz
+// ====================================
+// ALIAS Y PROPIEDADES DINÁMICAS
+// ====================================
+
+/**
+ * Alias legible para compatibilidad: exponer `bankAccounts` en raíz
+ */
 Object.defineProperty(window.rifaplusConfig, 'bankAccounts', {
     get: function() {
-        return (this.tecnica && Array.isArray(this.tecnica.bankAccounts)) ? this.tecnica.bankAccounts : [];
+        return (this.tecnica && Array.isArray(this.tecnica.bankAccounts)) 
+            ? this.tecnica.bankAccounts 
+            : [];
     },
     set: function(value) {
-        // Acepta asignaciones y las redirige al lugar correcto
         if (!this.tecnica) this.tecnica = {};
         this.tecnica.bankAccounts = value;
     },
@@ -724,718 +413,24 @@ Object.defineProperty(window.rifaplusConfig, 'bankAccounts', {
     configurable: true
 });
 
-// ====================================
-// MÉTODOS DE CONFIGURACIÓN MEJORADOS
-// ====================================
-// SINCRONIZACIÓN CON BACKEND
-// ====================================
-
-// Flag para evitar múltiples sincronizaciones simultáneas
-window.rifaplusConfig._sincronizandoBackend = false;
-window.rifaplusConfig._ultimaSincronizacion = 0;
-
-/**
- * Sincroniza la configuración del cliente desde el backend
- * Si el backend no responde, mantiene los valores locales
- * Implementa cooldown y manejo de 429 (Too Many Requests)
- * TIMEOUT REAL con AbortController (no ignora timeout)
- * 
- * NOTA: Esta función es NO-BLOQUEANTE en la inicialización
- * Si falla, el sistema sigue funcionando con config local
- */
-window.rifaplusConfig.sincronizarConfigDelBackend = async function() {
-    // Evitar sincronizaciones simultáneas
-    if (this._sincronizandoBackend) {
-        console.debug('⏳ Sincronización ya en progreso, omitiendo...');
-        return false;
-    }
-    
-    // Cooldown ESTRICTO: 5 minutos (300s) entre sincronizaciones para evitar 429
-    const ahora = Date.now();
-    const cooldownMs = 300000; // 5 minutos
-    if (this._ultimaSincronizacion && (ahora - this._ultimaSincronizacion < cooldownMs)) {
-        const segundosFaltantes = Math.ceil((cooldownMs - (ahora - this._ultimaSincronizacion)) / 1000);
-        console.debug(`⏳ Cooldown activo: próxima sincronización en ${segundosFaltantes}s`);
-        return false;
-    }
-    
-    let timeoutId = null;
-    const controller = new AbortController();
-    
-    try {
-        this._sincronizandoBackend = true;
-        const apiBase = this.backend.apiBase;
-        
-        // 🚨 TIMEOUT REAL: AbortController (no ignora timeout como fetch())
-        timeoutId = setTimeout(() => {
-            controller.abort();
-        }, 5000); // 5 segundos timeout
-        
-        const response = await fetch(`${apiBase}/api/cliente`, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
-            signal: controller.signal // ✅ Cancela request si timeout
-        });
-        
-        clearTimeout(timeoutId);
-        
-        // Manejar específicamente 429 (Too Many Requests)
-        if (response.status === 429) {
-            console.debug('⏳ Rate limit alcanzado (429). Usar configuración local');
-            this._ultimaSincronizacion = ahora;
-            return false;
-        }
-        
-        if (!response.ok) {
-            console.debug(`ℹ️  Backend no disponible (${response.status}). Usar config local`);
-            this._ultimaSincronizacion = ahora;
-            return false;
-        }
-        
-        const result = await response.json();
-        
-        if (result.success && result.data) {
-            // Fusionar configuración del backend sin sobrescribir config.js completo
-            if (result.data.cliente) {
-                // PROTECCIÓN CRÍTICA: No permitir que el backend sobrescriba cliente.nombre
-                // El nombre determina el prefijo dinámico de las órdenes
-                // Si cambia, todas las órdenes nuevas tendrán un prefijo diferente
-                const clienteCopy = Object.assign({}, result.data.cliente);
-                
-                if (clienteCopy.hasOwnProperty('nombre')) {
-                    console.debug('ℹ️ Ignorando cliente.nombre proveniente del backend (se conserva valor local)');
-                    delete clienteCopy.nombre;
-                }
-                
-                Object.assign(this.cliente, clienteCopy);
-            }
-            if (result.data.rifa) {
-                // ⚠️ PROTEGER: NUNCA sobrescribir fechaSorteo desde el backend
-                // fechaSorteo se define SOLO en js/config.js (Sección 2)
-                const fechaSorteoLocal = this.rifa.fechaSorteo;
-                const fechaSorteoFormatoLocal = this.rifa.fechaSorteoFormato;
-
-                // PROTECCIÓN ADICIONAL: No permitir que el backend sobrescriba datos
-                // del sorteo definidos en js/config.js (Sección 2).
-                // El backend puede contener valores por defecto que no deben imponerse.
-                // Si el backend incluye `precioBoleto` o `totalBoletos`, los ignoramos
-                // y conservamos los valores locales (estos son críticos para el sorteo).
-                const rifaCopy = Object.assign({}, result.data.rifa);
-                
-                if (rifaCopy.hasOwnProperty('precioBoleto')) {
-                    console.debug('ℹ️ Ignorando precioBoleto proveniente del backend (se conserva valor local)');
-                    delete rifaCopy.precioBoleto;
-                }
-                
-                if (rifaCopy.hasOwnProperty('totalBoletos')) {
-                    console.debug('ℹ️ Ignorando totalBoletos proveniente del backend (se conserva valor local)');
-                    delete rifaCopy.totalBoletos;
-                }
-                
-                Object.assign(this.rifa, rifaCopy);
-
-                // Restaurar la fecha local
-                this.rifa.fechaSorteo = fechaSorteoLocal;
-                this.rifa.fechaSorteoFormato = fechaSorteoFormatoLocal;
-            }
-            if (result.data.cuentas) {
-                this.tecnica.bankAccounts = result.data.cuentas;
-            }
-            
-            console.debug('✓ Config sincronizada desde backend (fechaSorteo protegida)');
-            this._ultimaSincronizacion = ahora;
-            return true;
-        }
-    } catch (error) {
-        // Distinguir entre timeout y otros errores
-        if (error.name === 'AbortError') {
-            console.debug('⏱️  Timeout en sincronización (5s). Usando config local');
-        } else {
-            console.debug('ℹ️  Error en sincronización (usando config local):', error.message);
-        }
-    } finally {
-        // Limpiar timeout si still running
-        if (timeoutId) {
-            clearTimeout(timeoutId);
-        }
-        this._sincronizandoBackend = false;
-    }
-    
-    return false;
-};
-
-/**
- * Inicialización completa del sistema
- */
-window.rifaplusConfig.inicializar = async function() {
-    try {
-        // 0. Calcular tiempoMs basado en tiempoApartadoHoras
-        if (this.rifa && this.rifa.tiempoApartadoHoras) {
-            this.rifa.tiempoApartadoMs = this.rifa.tiempoApartadoHoras * 60 * 60 * 1000;
-        }
-        
-        // 1. Intentar cargar configuración guardada desde localStorage
-        this.cargarDelLocal();
-        
-        // 1.1. VALIDACIÓN CRÍTICA - Verificar integridad del sorteo
-        if (!this._validarIntegridadSorteo()) {
-            console.error('🚨 Sistema detenido - errores críticos en integridad del sorteo');
-            return false;
-        }
-        
-        // 1.5. Sincronizar desde backend EN BACKGROUND (una sola vez al cargar)
-        // ✅ HABILITADO: Obtiene config actualizada del servidor (logo, cuentas, etc.)
-        // Con cooldown de 5 minutos para evitar rate limiting (429)
-        // Delay de 1s para que no múltiples páginas sincronicen al mismo tiempo
-        setTimeout(() => {
-            this.sincronizarConfigDelBackend().catch(e => {
-                console.warn('⚠️  Config local será usada (sin sincronización):', e.message);
-            }).finally(() => {
-                // Después de intentar sincronizar, inyectar logo (ya sea local o del backend)
-                if (typeof window.inyectarLogoDinamico === 'function') {
-                    window.inyectarLogoDinamico();
-                }
-            });
-        }, 1000); // Delay de 1s para evitar race condition entre páginas
-        
-        // 1.75. Sincronizar ganadores desde localStorage (GanadoresManager)
-        // Esto trae los ganadores que definió el administrador en admin-boletos.html
-        this.sincronizarGanadores();
-        
-        // 2. Aplicar configuración visual INMEDIATAMENTE
-        this.aplicarConfiguracion();
-        
-        // 3. Sincronizar estado de boletos EN BACKGROUND (no bloqueante)
-        this.sincronizarEstadoBackend().catch(e => {
-            console.warn('⚠️  Error sincronizando estado:', e.message);
-        });
-        
-        // 4. Iniciar actualizaciones automáticas
-        this.iniciarActualizacionesAutomaticas();
-        
-        console.log('✅ [Config] Sistema inicializado correctamente');
-    } catch (error) {
-        console.error('Error inicializando configuración:', error);
-    }
-};
-
-/**
- * Sincroniza estado con el backend
- * OPTIMIZADO: Usa /api/public/boletos/stats para respuesta ULTRA-RÁPIDA (< 50ms)
- * Luego carga full data en background sin bloquear UI
- * 
- * NOTA: Esta función es NO-BLOQUEANTE
- * Si falla, el sistema sigue funcionando con último estado conocido
- */
-window.rifaplusConfig.sincronizarEstadoBackend = async function() {
-    let timeoutId = null;
-    const controller = new AbortController();
-    
-    try {
-        // ⚡ STAGE 1: ULTRA-RÁPIDO - Solo conteos (< 50ms response)
-        timeoutId = setTimeout(() => {
-            controller.abort();
-        }, 2000); // 2 segundos timeout para stats
-        
-        const statsResponse = await fetch(`${this.backend.apiBase}/api/public/boletos/stats`, {
-            signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (statsResponse.ok) {
-            const statsData = await statsResponse.json();
-            
-            if (statsData.success) {
-                // ✅ Actualizar estado INSTANTÁNEAMENTE con conteos
-                // Soportar ambos formatos: con y sin wrapper 'data'
-                const data = statsData.data || statsData;
-                this.estado.boletosVendidos = data.vendidos;
-                this.estado.boletosApartados = data.reservados;
-                this.estado.boletosDisponibles = data.disponibles;
-                this.estado.porcentajeVendido = (this.estado.boletosVendidos / this.rifa.totalBoletos) * 100;
-                this.estado.ultimaActualizacion = new Date();
-                
-                // Emitir evento de actualización INMEDIATAMENTE
-                this.emitirEvento('estadoActualizado', this.estado);
-                console.debug('✅ Estado actualizado RÁPIDAMENTE desde /stats:', data);
-                
-                // 🔄 STAGE 2: BACKGROUND - Cargar datos completos sin bloquear
-                // Esto es para el grid/ruletazo, pero no detiene el flujo principal
-                this._cargarDatosCompletosEnBackground();
-            }
-        } else if (statsResponse.status === 429) {
-            console.debug('⏳ Rate limit en /api/public/boletos/stats (429)');
-            return false;
-        } else {
-            console.debug(`ℹ️  Stats Estado: ${statsResponse.status}`);
-            // Fallback: intentar cargar full data
-            this._cargarDatosCompletosEnBackground();
-        }
-        
-        return true;
-    } catch (error) {
-        // Distinguir entre timeout y otros errores
-        if (error.name === 'AbortError') {
-            console.debug('⏱️  Timeout en /stats (2s). Intentando full data en background');
-            this._cargarDatosCompletosEnBackground();
-        } else {
-            console.debug('ℹ️  Error sincronizando estado:', error.message);
-        }
-    } finally {
-        // Limpiar timeout si still running
-        if (timeoutId) {
-            clearTimeout(timeoutId);
-        }
-    }
-    
-    return false;
-};
-
-/**
- * Helper: Carga datos completos en background sin bloquear UI
- * Se ejecuta asincronamente, no importa si toma tiempo
- */
-window.rifaplusConfig._cargarDatosCompletosEnBackground = async function() {
-    try {
-        const respuesta = await fetch(`${this.backend.apiBase}/api/public/boletos`, {
-            priority: 'low' // Baja prioridad en navegadores que lo soporten
-        });
-        
-        if (respuesta.ok) {
-            const datos = await respuesta.json();
-            if (datos.success && datos.data) {
-                console.debug('✅ Datos completos cargados en background');
-                // Aquí podrían almacenarse en IndexedDB o memoria local
-                // para cuando se necesite renderizar grid/ruletazo
-            }
-        }
-    } catch (error) {
-        console.debug('ℹ️  Error cargando datos en background (no crítico):', error.message);
-    }
-};
-
-/**
- * Inicia actualizaciones automáticas del estado
- * Intervalo de 5 minutos para evitar 429 Too Many Requests
- */
-window.rifaplusConfig.iniciarActualizacionesAutomaticas = function() {
-    // Actualizar cada 300 segundos (5 minutos) para evitar rate limiting
-    // Esto permite ~12 actualizaciones/hora por cliente, muy por debajo del límite de 100/15min
-    setInterval(() => {
-        this.sincronizarEstadoBackend();
-    }, 300000);
-};
-
-/**
- * Sistema de eventos para comunicación entre componentes
- */
-window.rifaplusConfig.eventos = {};
-window.rifaplusConfig.escucharEvento = function(evento, callback) {
-    if (!this.eventos[evento]) this.eventos[evento] = [];
-    this.eventos[evento].push(callback);
-};
-
-window.rifaplusConfig.emitirEvento = function(evento, datos) {
-    if (this.eventos[evento]) {
-        this.eventos[evento].forEach(callback => callback(datos));
-    }
-};
-
-
-
-/**
- * SISTEMA DE COLORES PROFESIONAL - CENTRALIZADO EN UN SOLO LUGAR
- * ============================================================
- * 
- * ⚠️  PARA CAMBIAR COLORES:
- * 
- * 1. Edita en js/config.js (línea ~80):
- *    - colorPrimario (headers, botones principales)
- *    - colorSecundario (botones rojos, acentos)
- *    - colorAccento (highlights, borders)
- * 
- * 2. Recarga la página - ¡LISTO! Los colores se aplican automáticamente
- * 
- * 3. NO EDITES CSS FILES - todo viene de aquí
- * 
- * ============================================================
- */
-
-/**
- * Función interna: Generar paleta de colores derivados
- * Toma 3 colores base y genera variaciones automáticamente
- */
-window.rifaplusConfig._generarPaleta = function(primary, secondary, accent) {
-    return {
-        // Colores base
-        primary: primary,
-        secondary: secondary,
-        accent: accent,
-        
-        // Variaciones
-        primaryDark: this._oscurecer(primary, 30),
-        primaryLight: accent,
-        secondaryDark: this._oscurecer(secondary, 15),
-        
-        // Aliases para compatibilidad
-        'color-primary': accent,
-        'color-primary-dark': primary,
-        'color-secondary': secondary,
-        'color-action': secondary,
-        'color-alert': accent,
-    };
-};
-
-/**
- * Función interna: Oscurecer un color (hex)
- */
-window.rifaplusConfig._oscurecer = function(hex, percent) {
-    const num = parseInt(hex.replace("#", ""), 16);
-    const r = Math.max(0, (num >> 16) - percent);
-    const g = Math.max(0, ((num >> 8) & 0x00FF) - percent);
-    const b = Math.max(0, (num & 0x0000FF) - percent);
-    return "#" + ((r << 16) | (g << 8) | b).toString(16).padStart(6, "0");
-};
-
-/**
- * Aplicar configuración visual - SISTEMA CENTRALIZADO DE COLORES
- * Esta es la ÚNICA función que genera CSS de colores
- */
-window.rifaplusConfig.aplicarConfiguracion = function() {
-    try {
-        // ============================================================
-        // PASO 1: GENERAR PALETA DE COLORES DESDE VALORES BASE
-        // ============================================================
-        
-        const paleta = this._generarPaleta(
-            this.cliente.colorPrimario || '#1A1A1A',
-            this.cliente.colorSecundario || '#E63946',
-            this.cliente.colorAccento || '#FF3D3D'
-        );
-        
-        // ============================================================
-        // PASO 2: GENERAR CSS DINÁMICO ÚNICO Y LIMPIO
-        // ============================================================
-        
-        const styleId = 'rifaplus-theme-system';
-        let styleElement = document.getElementById(styleId);
-        
-        if (styleElement) {
-            styleElement.remove();
-        }
-        
-        styleElement = document.createElement('style');
-        styleElement.id = styleId;
-        styleElement.innerHTML = this._generarCssCompleto(paleta);
-        
-        // ============================================================
-        // PASO 3: INYECTAR AL HEAD (máxima prioridad)
-        // ============================================================
-        
-        if (document.head.firstChild) {
-            document.head.insertBefore(styleElement, document.head.firstChild);
-        } else {
-            document.head.appendChild(styleElement);
-        }
-        
-        // Log de confirmación
-        console.log('✅ [RifaPlus] Sistema de colores aplicado correctamente');
-        console.log('   Primary: ' + paleta.primary);
-        console.log('   Secondary: ' + paleta.secondary);
-        console.log('   Accent: ' + paleta.accent);
-        
-    } catch (error) {
-        console.error('❌ Error al aplicar configuración:', error);
-    }
-};
-
-/**
- * Función interna: Generar TODA la inyección CSS (sin duplicados)
- * ESTA ES LA ÚNICA FUENTE DE CSS DE COLORES
- */
-window.rifaplusConfig._generarCssCompleto = function(paleta) {
-    return `
-/* ═══════════════════════════════════════════════════════════════ */
-/* SISTEMA CENTRALIZADO DE COLORES - RIFAPLUS THEME ENGINE        */
-/* 🎨 Source: js/config.js (líneas ~80-120)                       */
-/* ⚠️  Para cambiar colores, edita SOLO los valores en config.js   */
-/* ═══════════════════════════════════════════════════════════════ */
-
-/* ─────────────────────────────────────────────────────────────── */
-/* 1. VARIABLES CSS ROOT - SINGLE SOURCE OF TRUTH                  */
-/* ─────────────────────────────────────────────────────────────── */
-
-:root {
-    /* Colores principales */
-    --primary: ${paleta.primary} !important;
-    --primary-dark: ${paleta.primaryDark} !important;
-    --primary-light: ${paleta.primaryLight} !important;
-    --secondary: ${paleta.secondary} !important;
-    --secondary-dark: ${paleta.secondaryDark} !important;
-    
-    /* Aliases de compatibilidad */
-    --primary-400: ${paleta.accent} !important;
-    --primary-500: ${paleta.secondary} !important;
-    --primary-600: ${paleta.secondary} !important;
-    --color-primary: ${paleta.accent} !important;
-    --color-primary-dark: ${paleta.primary} !important;
-    --color-secondary: ${paleta.secondary} !important;
-    --color-action: ${paleta.secondary} !important;
-    --color-alert: ${paleta.accent} !important;
-}
-
-/* ─────────────────────────────────────────────────────────────── */
-/* 2. HEADERS Y NAVEGACIÓN                                         */
-/* ─────────────────────────────────────────────────────────────── */
-
-.header, .navbar, .topbar, .admin-header {
-    background: ${paleta.primary} !important;
-    color: #FFFFFF !important;
-}
-
-.header *, .navbar *, .topbar *, .admin-header * {
-    color: inherit !important;
-}
-
-/* ─────────────────────────────────────────────────────────────── */
-/* 3. BOTONES PRIMARIOS                                            */
-/* ─────────────────────────────────────────────────────────────── */
-
-.btn-primary, .btn-continuar {
-    background: ${paleta.primary} !important;
-    color: #FFFFFF !important;
-    border: 2px solid ${paleta.accent} !important;
-}
-
-.btn-primary:hover, .btn-continuar:hover {
-    background: ${paleta.primary} !important;
-    border-color: ${paleta.accent} !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-    transform: translateY(-2px) !important;
-}
-
-/* ─────────────────────────────────────────────────────────────── */
-/* 4. BOTONES SECUNDARIOS Y ACENTOS                                */
-/* ─────────────────────────────────────────────────────────────── */
-
-.btn-secondary, .btn-action {
-    background: ${paleta.secondary} !important;
-    color: #FFFFFF !important;
-    border-color: ${paleta.secondary} !important;
-}
-
-.btn-secondary:hover, .btn-action:hover {
-    background: ${paleta.accent} !important;
-    border-color: ${paleta.accent} !important;
-}
-
-/* ─────────────────────────────────────────────────────────────── */
-/* 5. BOTONES ESPECIALES (copiar, descargar, etc)                  */
-/* ─────────────────────────────────────────────────────────────── */
-
-.btn-copiar {
-    background: ${paleta.secondary} !important;
-}
-
-.btn-copiar:hover {
-    background: ${paleta.accent} !important;
-}
-
-.btn-descargar {
-    background: ${paleta.primary} !important;
-}
-
-.btn-descargar:hover {
-    background: ${paleta.accent} !important;
-}
-
-/* ─────────────────────────────────────────────────────────────── */
-/* 6. UTILIDADES - CLASES DE COLOR                                 */
-/* ─────────────────────────────────────────────────────────────── */
-
-.text-info, .text-primary {
-    color: ${paleta.secondary} !important;
-}
-
-.bg-info {
-    background-color: ${paleta.secondary} !important;
-}
-
-.badge {
-    background: ${paleta.secondary} !important;
-    color: #FFFFFF !important;
-}
-
-/* ─────────────────────────────────────────────────────────────── */
-/* 7. SECCIÓN DE BONIFICACIONES (SIMPLE Y CLÁSICA)                 */
-/* ─────────────────────────────────────────────────────────────── */
-
-.bonificaciones-section {
-    padding: 2.5rem 0;
-    background: linear-gradient(180deg, #f5f7fa 0%, #ffffff 100%);
-}
-
-.bonificaciones-title {
-    font-size: 1.8rem;
-    font-weight: 700;
-    color: var(--primary-dark);
-    text-align: center;
-    margin: 0 0 2rem 0;
-    letter-spacing: -0.5px;
-}
-
-.bonificaciones-cards {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1rem;
-    max-width: 1200px;
-    margin: 0 auto;
-    width: 100%;
-}
-
-@media (max-width: 1024px) {
-    .bonificaciones-cards {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1.25rem;
-    }
-}
-
-@media (max-width: 768px) {
-    .bonificaciones-title {
-        font-size: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-    
-    .bonificaciones-cards {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-}
-
-/* ─────────────────────────────────────────────────────────────── */
-/* 8. ELEMENTOS DE INTERFAZ                                        */
-/* ─────────────────────────────────────────────────────────────── */
-
-.promo-card-grande::before {
-    background: ${paleta.primary} !important;
-}
-
-.promo-card-grande:hover {
-    border-color: ${paleta.primary} !important;
-}
-
-.promo-card-precio {
-    color: ${paleta.primary} !important;
-}
-
-.section-title {
-    color: ${paleta.primary} !important;
-}
-
-.countdown-section {
-    background: linear-gradient(135deg, ${paleta.primary} 0%, ${paleta.primaryDark} 100%) !important;
-}
-
-/* FIN DEL TEMA CENTRALIZADO - No hay más CSS de colores en otro lado */
-/* ═══════════════════════════════════════════════════════════════ */
-    `;
-};
-
-/**
- * Aplica colores a elementos específicos del DOM
- * (Los colores se aplican automáticamente via CSS, este método no hace nada actualmente)
- */
-window.rifaplusConfig.aplicarColorAElementos = function() {
-    // Ya no es necesario - los colores se aplican dinámicamente en aplicarConfiguracion()
-};
-
-// ====================================
-// COMPATIBILIDAD CON CÓDIGO EXISTENTE
-// ====================================
-
-// Mantener compatibilidad con código antiguo
-try {
-    Object.defineProperties(window.rifaplusConfig, {
-        'ticketPrice': {
-            get: function() { return this.rifa.precioBoleto; },
-            set: function(value) { this.rifa.precioBoleto = value; },
-            configurable: true
-        },
-        'totalTickets': {
-            get: function() { return this.rifa.totalBoletos; },
-            set: function(value) { this.rifa.totalBoletos = value; },
-            configurable: true
-        },
-        'drawDate': {
-            get: function() { return this.rifa.fechaSorteo; },
-            set: function(value) { this.rifa.fechaSorteo = value; },
-            configurable: true
-        },
-        'apiEndpoint': {
-            get: function() { return this.backend.apiBase + this.backend.endpoints.ordenes; },
-            set: function(value) { 
-                // Parsear URL para separar base y endpoint
-                const url = new URL(value);
-                this.backend.apiBase = url.origin;
-                this.backend.endpoints.ordenes = url.pathname;
-            },
-            configurable: true
-        }
-    });
-} catch (e) {
-    console.warn('No se pudieron definir propiedades de compatibilidad:', e.message);
-}
-
-// ====================================
-// INICIALIZACIÓN AUTOMÁTICA MEJORADA
-// ====================================
-
-// Aplicar estilos INMEDIATAMENTE (antes de DOMContentLoaded)
-if (window.rifaplusConfig && typeof window.rifaplusConfig.aplicarConfiguracion === 'function') {
-    window.rifaplusConfig.aplicarConfiguracion();
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Inicializar sistema completo (defensivo)
-    if (window.rifaplusConfig && typeof window.rifaplusConfig.inicializar === 'function') {
-        window.rifaplusConfig.inicializar();
-    } else {
-        console.warn('rifaplusConfig.inicializar no está disponible');
-    }
-});
-
-// ====================================
-// HERRAMIENTAS DE DESARROLLO
-// ====================================
-
-
-
-
-
-// Exponer para debugging
+// Alias para debugging
 window.config = window.rifaplusConfig;
 
 // ====================================
-// SISTEMA REACTIVO PARA DATOS DINÁMICOS
+// SISTEMA REACTIVO PARA CAMBIOS
 // ====================================
 
-/**
- * Listeners para cambios en la configuración
- * Permite que elementos se actualicen automáticamente
- */
 window.rifaplusConfig._changeListeners = [];
 
 /**
- * Registra un listener para cambios en la configuración
- * @param {function} callback - Se ejecuta cuando cambia algo
+ * Registra un listener para cambios en configuración
  */
 window.rifaplusConfig.onChange = function(callback) {
     this._changeListeners.push(callback);
 };
 
 /**
- * Notifica a todos los listeners que algo cambió
+ * Notifica a listeners sobre cambios
  * @private
  */
 window.rifaplusConfig._notifyListeners = function(seccion, campo, valorAnterior, valorNuevo) {
@@ -1447,27 +442,15 @@ window.rifaplusConfig._notifyListeners = function(seccion, campo, valorAnterior,
         }
     });
     
-    // Ejecutar actualización automática en DOM
     this._actualizarDOM(seccion, campo, valorNuevo);
 };
 
 /**
- * MÉTODO PRINCIPAL: Actualiza cualquier valor en la configuración dinámicamente
- * Al cambiar, se notifica automáticamente a toda la web
+ * Actualiza cualquier valor en la configuración dinámicamente
  * 
  * @param {string} seccion - 'cliente', 'rifa', 'backend', 'tecnica'
- * @param {string} campo - El campo específico a cambiar (ej: 'totalBoletos')
+ * @param {string} campo - El campo específico
  * @param {*} valorNuevo - El nuevo valor
- * 
- * @example
- * // Cambiar el total de boletos
- * window.rifaplusConfig.set('rifa', 'totalBoletos', 50000);
- * 
- * // Cambiar el nombre del cliente
- * window.rifaplusConfig.set('cliente', 'nombre', 'Mi Nuevo Negocio');
- * 
- * // Cambiar precio del boleto
- * window.rifaplusConfig.set('rifa', 'precioBoleto', 100);
  */
 window.rifaplusConfig.set = function(seccion, campo, valorNuevo) {
     if (!this[seccion]) {
@@ -1477,90 +460,43 @@ window.rifaplusConfig.set = function(seccion, campo, valorNuevo) {
     
     const valorAnterior = this[seccion][campo];
     
-    // Validar que el valor realmente cambió
     if (valorAnterior === valorNuevo) {
-        return true; // Sin cambios
+        return true;
     }
     
-    // Actualizar el valor
     this[seccion][campo] = valorNuevo;
+    console.log(`📝 Config actualizada: ${seccion}.${campo}`);
     
-    console.log(`📝 Config actualizada: ${seccion}.${campo} = ${valorNuevo} (antes: ${valorAnterior})`);
-    
-    // Guardar en localStorage
     this._guardarEnLocal();
-    
-    // Notificar listeners
     this._notifyListeners(seccion, campo, valorAnterior, valorNuevo);
     
     return true;
 };
 
 /**
- * Actualiza elementos del DOM que usan los datos cambios
+ * Actualiza elementos del DOM que usan datos
  * @private
  */
 window.rifaplusConfig._actualizarDOM = function(seccion, campo, valor) {
     try {
         if (seccion === 'rifa' && campo === 'totalBoletos') {
-            // Actualizar en admin-ruletazo.html
-            const rifaTotal = document.getElementById('rifaTotal');
-            if (rifaTotal) {
-                rifaTotal.textContent = valor.toLocaleString('es-MX');
-                console.log(`🔄 Actualizado rifaTotal en DOM: ${valor}`);
-            }
+            const elementos = ['rifaTotal', 'statTotalBoletos', 'total-boletos-info', 'totalTickets'];
+            elementos.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = valor.toLocaleString('es-MX');
+            });
             
-            // Actualizar en admin-boletos.html
-            const statTotal = document.getElementById('statTotalBoletos');
-            if (statTotal) {
-                statTotal.textContent = valor.toLocaleString('es-MX');
-                console.log(`🔄 Actualizado statTotalBoletos en DOM: ${valor}`);
-            }
-            
-            // Actualizar en index.html
-            const totalBoletosInfo = document.getElementById('total-boletos-info');
-            if (totalBoletosInfo) {
-                totalBoletosInfo.textContent = valor.toLocaleString('es-MX');
-                console.log(`🔄 Actualizado total-boletos-info en DOM: ${valor}`);
-            }
-            
-            // Actualizar en admin-dashboard.html
-            const totalTickets = document.getElementById('totalTickets');
-            if (totalTickets) {
-                totalTickets.textContent = valor.toLocaleString('es-MX');
-                console.log(`🔄 Actualizado totalTickets en DOM: ${valor}`);
-            }
-            
-            // Recargar máquina de sorteo si existe
             if (window.loadCurrentRifa && typeof window.loadCurrentRifa === 'function') {
-                console.log('🎰 Recargando máquina de sorteo...');
                 window.loadCurrentRifa();
             }
             
-            // Disparar evento personalizado
-            window.dispatchEvent(new CustomEvent('totalBoletosActualizado', { 
-                detail: { valor, anterior: window._totalBoletosAnterior } 
-            }));
+            window.dispatchEvent(new CustomEvent('totalBoletosActualizado', { detail: { valor } }));
         }
         
         if (seccion === 'rifa' && campo === 'precioBoleto') {
-            // Recargar componentes que usan el precio
             if (window.actualizarPrecioBoleto && typeof window.actualizarPrecioBoleto === 'function') {
                 window.actualizarPrecioBoleto(valor);
             }
-        }
-        
-        if (seccion === 'cliente') {
-            // Actualizar datos visuales del cliente
-            if (campo === 'nombre') {
-                const clienteNombre = document.getElementById('cliente-nombre');
-                if (clienteNombre) {
-                    clienteNombre.textContent = valor;
-                }
-            }
-            
-            // Reaplica la configuración visual
-            this.aplicarConfiguracion();
         }
     } catch (error) {
         console.warn('Error actualizando DOM:', error);
@@ -1568,27 +504,19 @@ window.rifaplusConfig._actualizarDOM = function(seccion, campo, valor) {
 };
 
 /**
- * Guarda la configuración actual en localStorage para persistencia
- * ⚠️  CRÍTICO: NUNCA guarda datos del sorteo (rifa, sorteoActivo)
- * Solo guarda datos de USUARIO (cliente, backend, tecnica)
- * 
- * Esto es FUNDAMENTAL para poder cambiar de sorteo sin conflictos
+ * Guarda configuración en localStorage (solo datos de usuario)
  * @private
  */
 window.rifaplusConfig._guardarEnLocal = function() {
     try {
-        // Solo guardar datos de usuario, NUNCA del sorteo
         const configUserOnly = {
             cliente: this.cliente,
-            // ⚠️  NUNCA guardar rifa - eso siempre viene de config.js
             backend: this.backend,
             tecnica: this.tecnica,
             _version: this._VERSION
         };
         
         localStorage.setItem('rifaplus_config_actual_v2', JSON.stringify(configUserOnly));
-        
-        // Limpiar versión vieja para evitar confusión
         localStorage.removeItem('rifaplus_config_actual');
         
     } catch (e) {
@@ -1597,35 +525,23 @@ window.rifaplusConfig._guardarEnLocal = function() {
 };
 
 /**
- * Carga la configuración desde localStorage si existe
- * ⚠️  CRÍTICO: NUNCA carga datos del sorteo
- * Solo carga datos de USUARIO que pueden ser dinámicos
- * @returns {boolean} true si se cargó algo
+ * Carga configuración desde localStorage (solo datos de usuario)
  */
 window.rifaplusConfig.cargarDelLocal = function() {
     try {
-        // Intentar cargar versión nueva (segura, sin sorteo)
         const guardada = localStorage.getItem('rifaplus_config_actual_v2');
         if (!guardada) {
-            // Limpiar versión vieja si existe
             localStorage.removeItem('rifaplus_config_actual');
             return false;
         }
         
         const config = JSON.parse(guardada);
         
-        // ✅ Solo cargar datos de USUARIO
-        if (config.cliente) {
-            Object.assign(this.cliente, config.cliente);
-        }
-        if (config.backend) {
-            Object.assign(this.backend, config.backend);
-        }
-        if (config.tecnica) {
-            Object.assign(this.tecnica, config.tecnica);
-        }
+        if (config.cliente) Object.assign(this.cliente, config.cliente);
+        if (config.backend) Object.assign(this.backend, config.backend);
+        if (config.tecnica) Object.assign(this.tecnica, config.tecnica);
         
-        console.log('✅ Configuración de usuario cargada (sorteo protegido de localStorage)');
+        console.log('✅ Configuración de usuario cargada');
         return true;
     } catch (e) {
         console.error('❌ Error cargando configuración:', e);
@@ -1634,35 +550,18 @@ window.rifaplusConfig.cargarDelLocal = function() {
 };
 
 /**
- * VALIDACIÓN CRÍTICA: Verifica que los datos del sorteo NO provengan de localStorage
- * Se ejecuta después de cargar para asegurar integridad completa
- * @returns {boolean} true si todo está correcto
+ * Valida integridad del sistema de configuración
  * @private
  */
 window.rifaplusConfig._validarIntegridadSorteo = function() {
     const errores = [];
     
-    // Verificar que rifa tiene propiedades críticas
     if (!this.rifa || !this.rifa.fechaSorteo) {
         errores.push('❌ CRÍTICO: rifa.fechaSorteo no definida');
     }
     
-    if (!this.sorteoActivo || !this.sorteoActivo.fechaCierre) {
-        errores.push('❌ CRÍTICO: sorteoActivo.fechaCierre no definida');
-    }
-    
-    // Validar que el timestamp es correcto
-    try {
-        const ts = this.obtenerTimestampSorteo();
-        if (!ts || ts <= 0) {
-            errores.push('❌ CRÍTICO: Timestamp inválido');
-        }
-    } catch (e) {
-        errores.push(`❌ CRÍTICO: Error en timestamp - ${e.message}`);
-    }
-    
     if (errores.length > 0) {
-        console.error('🚨 ERRORES DE INTEGRIDAD DEL SORTEO:');
+        console.error('🚨 ERRORES DE INTEGRIDAD:');
         errores.forEach(e => console.error(e));
         return false;
     }
@@ -1672,32 +571,14 @@ window.rifaplusConfig._validarIntegridadSorteo = function() {
 };
 
 /**
- * Limpia localStorage completamente para prepararse para un nuevo sorteo
- * IMPORTANTE: Llama esto ANTES de cambiar los datos en config.js para un nuevo sorteo
- * 
- * Uso:
- * 1. Edita los valores de rifa y sorteoActivo en config.js
- * 2. Ejecuta en consola: window.rifaplusConfig.limpiarParaNuevoSorteo()
- * 3. Recarga la página
- * 
- * @returns {boolean} true si se limpió exitosamente
+ * Limpia localStorage para nuevo sorteo
  */
 window.rifaplusConfig.limpiarParaNuevoSorteo = function() {
     try {
         console.log('🧹 Limpiando localStorage para nuevo sorteo...');
-        
-        // Borrar TODA la configuración guardada (versiones vieja y nueva)
         localStorage.removeItem('rifaplus_config_actual_v2');
         localStorage.removeItem('rifaplus_config_actual');
-        
-        // Opcionalmente: borrar datos de usuario también (carrito, cliente)
-        // Descomenta si quieres reset COMPLETAMENTE limpio:
-        // localStorage.removeItem('rifaplus_cliente');
-        // localStorage.removeItem('rifaplus_carrito');
-        // localStorage.removeItem('rifaplus_orden_actual');
-        
-        console.log('✅ localStorage limpiado para nuevo sorteo');
-        console.log('📝 Ahora cambia config.js y recarga la página');
+        console.log('✅ localStorage limpiado');
         return true;
     } catch (e) {
         console.error('❌ Error limpiando localStorage:', e);
@@ -1706,26 +587,18 @@ window.rifaplusConfig.limpiarParaNuevoSorteo = function() {
 };
 
 /**
- * Reset COMPLETO de localStorage (borra TODO incluyendo datos de usuario)
- * Use solo si necesitas borrar completamente
- * 
- * @returns {boolean} true si se limpió exitosamente
+ * Reset completo de localStorage
  */
 window.rifaplusConfig.resetCompletoStorage = function() {
     try {
-        console.log('🔥 RESET COMPLETO - Borrando TODO de localStorage...');
-        
-        // Obtener todas las keys de localStorage
+        console.log('🔥 RESET COMPLETO de localStorage...');
         const keys = Object.keys(localStorage);
         keys.forEach(key => {
             if (key.startsWith('rifaplus_') || key.startsWith('admin_')) {
                 localStorage.removeItem(key);
-                console.log(`  🗑️  Eliminado: ${key}`);
             }
         });
-        
         console.log('✅ localStorage completamente limpio');
-        console.log('🔄 Recarga la página para reiniciar desde cero');
         return true;
     } catch (e) {
         console.error('❌ Error en reset:', e);
@@ -1734,33 +607,21 @@ window.rifaplusConfig.resetCompletoStorage = function() {
 };
 
 /**
- * Obtiene un diagnóstico completo del sistema de configuración
- * Útil para debugging cuando algo no funciona correctamente
- * @returns {object} Reporte de diagnóstico
+ * Obtiene diagnóstico del sistema
  */
 window.rifaplusConfig.diagnostico = function() {
     const diag = {
         version: this._VERSION,
         timestamp: new Date().toISOString(),
         rifa: {
-            titulo: this.rifa?.titulo,
+            nombreSorteo: this.rifa?.nombreSorteo,
             fechaSorteo: this.rifa?.fechaSorteo,
             totalBoletos: this.rifa?.totalBoletos,
             precioBoleto: this.rifa?.precioBoleto
         },
-        sorteoActivo: {
-            estado: this.sorteoActivo?.estado,
-            fechaCierre: this.sorteoActivo?.fechaCierre,
-            ganadores: this.sorteoActivo?.ganadores ? 'Sí' : 'No'
-        },
         timestamps: {
             sorteo: this.obtenerTimestampSorteo?.(),
-            ahora: Date.now(),
-            diferencia: (this.obtenerTimestampSorteo?.() || 0) - Date.now()
-        },
-        localStorage: {
-            v2_existe: !!localStorage.getItem('rifaplus_config_actual_v2'),
-            v1_existe: !!localStorage.getItem('rifaplus_config_actual')
+            ahora: Date.now()
         },
         validacion: this._validarIntegridadSorteo?.()
     };
@@ -1770,9 +631,7 @@ window.rifaplusConfig.diagnostico = function() {
 };
 
 /**
- * Obtiene un valor de configuración dinámicamente
- * @param {string} ruta - Ruta: 'rifa.totalBoletos', 'cliente.nombre', etc
- * @returns {*} El valor actual
+ * Obtiene un valor dinámicamente
  */
 window.rifaplusConfig.get = function(ruta) {
     const partes = ruta.split('.');
@@ -1784,13 +643,8 @@ window.rifaplusConfig.get = function(ruta) {
     return valor;
 };
 
-// ====================================
-// HERRAMIENTAS PARA EXPORTAR/IMPORTAR
-// ====================================
-
 /**
- * Exporta la configuración actual como JSON
- * Útil para guardar cliente y crear backup
+ * Exporta configuración como JSON
  */
 window.rifaplusConfig.exportarConfiguracion = function() {
     const config = {
@@ -1798,18 +652,17 @@ window.rifaplusConfig.exportarConfiguracion = function() {
         rifa: this.rifa,
         tecnica: this.tecnica
     };
-    
     return JSON.stringify(config, null, 2);
 };
 
 /**
- * Descarga la configuración como archivo .json
+ * Descarga configuración como archivo
  */
 window.rifaplusConfig.descargarConfiguracion = function() {
     const config = this.exportarConfiguracion();
     const element = document.createElement('a');
     element.setAttribute('href', 'data:application/json;charset=utf-8,' + encodeURIComponent(config));
-    element.setAttribute('download', `config-${this.cliente.id}-${new Date().getTime()}.json`);
+    element.setAttribute('download', `config-${this.cliente.id}-${Date.now()}.json`);
     element.style.display = 'none';
     document.body.appendChild(element);
     element.click();
@@ -1817,141 +670,56 @@ window.rifaplusConfig.descargarConfiguracion = function() {
 };
 
 /**
- * Importa configuración desde archivo JSON
+ * Importa configuración desde JSON
  */
 window.rifaplusConfig.importarConfiguracion = function(jsonString) {
     try {
         const config = JSON.parse(jsonString);
-        
-        if (config.cliente) {
-            this.cliente = Object.assign({}, this.cliente, config.cliente);
-        }
-        if (config.rifa) {
-            this.rifa = Object.assign({}, this.rifa, config.rifa);
-        }
-        if (config.tecnica) {
-            this.tecnica = Object.assign({}, this.tecnica, config.tecnica);
-        }
-        
-        this.aplicarConfiguracion();
-        this.emitirEvento('configuracionActualizada', { cliente: this.cliente, rifa: this.rifa });
-        
+        if (config.cliente) this.cliente = Object.assign({}, this.cliente, config.cliente);
+        if (config.rifa) this.rifa = Object.assign({}, this.rifa, config.rifa);
+        if (config.tecnica) this.tecnica = Object.assign({}, this.tecnica, config.tecnica);
+        this.emitirEvento?.('configuracionActualizada', { cliente: this.cliente, rifa: this.rifa });
         return true;
     } catch (error) {
-        console.error('Error importando configuración:', error);
+        console.error('Error importando:', error);
         return false;
     }
 };
 
-/**
- * Obtiene URL para compartir orden con cliente
- */
-window.rifaplusConfig.generarURLCompartir = function(ordenId) {
-    const baseURL = window.location.origin;
-    return `${baseURL}/mis-boletos.html?orden=${ordenId}`;
-};
+// ====================================
+// FUNCIONES PARA GESTIÓN DE FECHA
+// ====================================
 
 /**
- * Obtiene las cuentas de pago formateadas para mostrar
- */
-window.rifaplusConfig.obtenerCuentasFormateadas = function() {
-    return this.tecnica.bankAccounts.map(cuenta => ({
-        ...cuenta,
-        numeroMascarado: `****${cuenta.accountNumber.slice(-4)}`,
-        enlaceWhatsapp: `https://wa.me/${cuenta.phone.replace(/[^0-9]/g, '')}`
-    }));
-};
-
-/**
- * Obtiene el prefijo dinámico de órdenes basado en el nombre del cliente
- * Se recalcula automáticamente si el nombre del cliente cambia
- * @returns {string} Prefijo de orden (ej: "SET", "RET", "ORD")
- */
-window.rifaplusConfig.obtenerPrefijoOrden = function() {
-    return this.cliente.prefijoOrden;
-};
-
-/**
- * FUNCIÓN CRÍTICA: Reconstruye un ID de orden con el prefijo dinámico actual
- * Toma un ID antiguo o parcial y lo convierte al prefijo actual
- * @param {string} ordenId - ID de orden completo (ej: "SY-AA005") o secuencia (ej: "AA005")
- * @returns {string} ID reconstruido con prefijo actual (ej: "RET-AA005")
- */
-window.rifaplusConfig.reconstruirIdOrdenConPrefijoActual = function(ordenId) {
-    if (!ordenId) return `${this.cliente.prefijoOrden}-AA001`;
-    
-    const prefijoActual = this.cliente.prefijoOrden;
-    console.log('🔧 reconstruirIdOrdenConPrefijoActual');
-    console.log('  - Input:', ordenId);
-    console.log('  - Prefijo actual:', prefijoActual);
-    console.log('  - Cliente.nombre:', this.cliente.nombre);
-    
-    // Si ya tiene el prefijo correcto, retornar tal cual
-    if (ordenId.startsWith(prefijoActual + '-')) {
-        console.log('  - ✅ Ya tiene prefijo correcto, retornando sin cambios');
-        return ordenId;
-    }
-    
-    // Extraer secuencia (ej: "SY-AA005" → "AA005" o "AA005" → "AA005")
-    const secuenciaMatch = ordenId.match(/-(.+)$|^([A-Z0-9]+)$/);
-    let secuencia = 'AA001';
-    
-    if (secuenciaMatch) {
-        if (secuenciaMatch[1]) {
-            secuencia = secuenciaMatch[1]; // "-AA005" case
-        } else if (secuenciaMatch[2]) {
-            secuencia = secuenciaMatch[2]; // "AA005" case sin prefijo
-        }
-    }
-    
-    const resultado = `${prefijoActual}-${secuencia}`;
-    console.log('  - Output:', resultado);
-    return resultado;
-};
-
-/* ============================================================ */
-/* FUNCIONES CENTRALIZADAS PARA GESTIÓN DE FECHA DEL SORTEO    */
-/* ============================================================ */
-
-/**
- * Obtiene la fecha ISO del sorteo desde config.rifa.fechaSorteo
- * @returns {string|null} Fecha en formato ISO con zona horaria (ej: "2025-12-20T20:00:00-06:00")
+ * Obtiene fecha ISO del sorteo
  */
 window.rifaplusConfig.obtenerFechaSorteo = function() {
-    if (!this.rifa || !this.rifa.fechaSorteo) {
-        console.error('❌ [Config] ERROR CRÍTICO: rifa.fechaSorteo no está definida en config.js');
-        return null;
-    }
-    return this.rifa.fechaSorteo;
+    if (!this.rifa) return null;
+    return this.rifa.fechaSorteo || null;
 };
 
 /**
- * Obtiene el timestamp en milisegundos de la fecha del sorteo
- * Calcula dinámicamente desde fechaSorteo, NO usa una variable guardada
- * @returns {number|null} Timestamp en milisegundos desde epoch
+ * Obtiene timestamp en ms del sorteo
  */
 window.rifaplusConfig.obtenerTimestampSorteo = function() {
     const fechaISO = this.obtenerFechaSorteo();
-    if (!fechaISO) {
-        return null;
-    }
+    if (!fechaISO) return null;
     
     try {
         const timestamp = new Date(fechaISO).getTime();
         if (isNaN(timestamp)) {
-            console.error('❌ [Config] ERROR: No se pudo parsear la fecha del sorteo:', fechaISO);
+            console.error('❌ No se pudo parsear:', fechaISO);
             return null;
         }
         return timestamp;
     } catch (error) {
-        console.error('❌ [Config] ERROR al calcular timestamp:', error);
+        console.error('❌ Error calculando timestamp:', error);
         return null;
     }
 };
 
 /**
- * Valida que la fecha del sorteo sea válida
- * @returns {object} { valida: boolean, mensaje: string, timestamp: number|null }
+ * Valida la fecha del sorteo
  */
 window.rifaplusConfig.validarFechaSorteo = function() {
     const fechaISO = this.obtenerFechaSorteo();
@@ -1959,8 +727,9 @@ window.rifaplusConfig.validarFechaSorteo = function() {
     if (!fechaISO) {
         return {
             valida: false,
-            mensaje: 'fechaSorteo no está definida en config.js',
-            timestamp: null
+            mensaje: '⏳ Sincronizando fecha desde servidor...',
+            timestamp: null,
+            pendiente: true
         };
     }
     
@@ -1978,120 +747,194 @@ window.rifaplusConfig.validarFechaSorteo = function() {
     
     return {
         valida: true,
-        mensaje: sorteoYaPaso ? 'El sorteo ya ha ocurrido' : 'Fecha válida y sorteo está activo',
+        mensaje: sorteoYaPaso ? 'El sorteo ya ha ocurrido' : 'Fecha válida',
         timestamp: timestamp,
         sorteoYaPaso: sorteoYaPaso,
-        fechaFormato: new Date(timestamp).toISOString(),
         diasRestantes: Math.floor((timestamp - ahora) / (1000 * 60 * 60 * 24))
     };
 };
 
 /**
- * Obtiene el texto formateado de la fecha del sorteo
- * @returns {string} Formato legible (ej: "20 de Diciembre 2025")
+ * Obtiene fecha ISO del sorteo
  */
-window.rifaplusConfig.obtenerFechaSorteoFormato = function() {
-    if (!this.rifa || !this.rifa.fechaSorteoFormato) {
-        console.warn('⚠️ [Config] fechaSorteoFormato no definida, usando valor por defecto');
-        return 'Fecha no disponible';
-    }
-    return this.rifa.fechaSorteoFormato;
+window.rifaplusConfig.obtenerFechaSorteo = function() {
+    if (!this.rifa) return null;
+    return this.rifa.fechaSorteo || null;
 };
 
-/* ============================================================ */
-/* SISTEMA DE SINCRONIZACIÓN DE GANADORES                       */
-/* ============================================================ */
+/**
+ * Obtiene timestamp en ms del sorteo
+ */
+window.rifaplusConfig.obtenerTimestampSorteo = function() {
+    const fechaISO = this.obtenerFechaSorteo();
+    if (!fechaISO) return null;
+    
+    try {
+        const timestamp = new Date(fechaISO).getTime();
+        if (isNaN(timestamp)) {
+            console.error('❌ No se pudo parsear:', fechaISO);
+            return null;
+        }
+        return timestamp;
+    } catch (error) {
+        console.error('❌ Error calculando timestamp:', error);
+        return null;
+    }
+};
 
 /**
- * Sincroniza los ganadores desde GanadoresManager (localStorage) al sorteoActivo
- * Transforma la estructura para que sea compatible con el modal de ganadores
- * Ordena jerárquicamente: sorteo → presorteo → ruletazos
- * 
- * FLUJO:
- * 1. GanadoresManager (localStorage) guarda: {sorteo: [...], presorteo: [...], ruletazos: [...]}
- * 2. Esta función lee esos ganadores y los pone en: sorteoActivo.ganadores.principal, .presorte, .ruletazo
- * 3. El modal de finalización leerá sorteoActivo.ganadores y mostrará los ganadores
- * 
- * @returns {boolean} true si sincronizó correctamente, false si GanadoresManager no está disponible
+ * Valida la fecha del sorteo
+ */
+window.rifaplusConfig.validarFechaSorteo = function() {
+    const fechaISO = this.obtenerFechaSorteo();
+    
+    if (!fechaISO) {
+        return {
+            valida: false,
+            mensaje: '⏳ Sincronizando fecha desde servidor...',
+            timestamp: null,
+            pendiente: true
+        };
+    }
+    
+    const timestamp = this.obtenerTimestampSorteo();
+    if (!timestamp) {
+        return {
+            valida: false,
+            mensaje: `No se pudo parsear fechaSorteo: "${fechaISO}"`,
+            timestamp: null
+        };
+    }
+    
+    const ahora = new Date().getTime();
+    const sorteoYaPaso = timestamp <= ahora;
+    
+    return {
+        valida: true,
+        mensaje: sorteoYaPaso ? 'El sorteo ya ha ocurrido' : 'Fecha válida',
+        timestamp: timestamp,
+        sorteoYaPaso: sorteoYaPaso,
+        diasRestantes: Math.floor((timestamp - ahora) / (1000 * 60 * 60 * 24))
+    };
+};
+
+/**
+ * Formatea una fecha ISO (ej: "2026-03-21T20:00:00") a formato legible (ej: "21 de Marzo del 2026")
+ * @param {string} fechaISO - Fecha en formato ISO
+ * @returns {string} Fecha formateada en español
+ */
+window.rifaplusConfig.formatearFechaISO = function(fechaISO) {
+    if (!fechaISO) return '';
+    
+    try {
+        const fecha = new Date(fechaISO);
+        if (isNaN(fecha.getTime())) {
+            console.warn('⚠️ Fecha ISO inválida:', fechaISO);
+            return '';
+        }
+        
+        const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+                      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        
+        const dia = fecha.getDate();
+        const mes = meses[fecha.getMonth()];
+        const año = fecha.getFullYear();
+        
+        return `${dia} de ${mes} del ${año}`;
+    } catch (error) {
+        console.error('Error formateando fecha:', error);
+        return '';
+    }
+};
+
+/**
+ * Obtiene fecha formateada - dinámicamente basada en fechaSorteo
+ */
+window.rifaplusConfig.obtenerFechaSorteoFormato = function() {
+    if (!this.rifa) return '';
+    
+    // ✅ Si fecha ISO existe, formatear dinámicamente (siempre recalcula)
+    if (this.rifa.fechaSorteo) {
+        return this.formatearFechaISO(this.rifa.fechaSorteo);
+    }
+    
+    // ⚠️ Fallback a valor estático si existe
+    return this.rifa.fechaSorteoFormato || '';
+};
+
+/**
+ * Obtiene fecha formateada del presorteo - dinámicamente basada en fechaPresorteo
+ */
+window.rifaplusConfig.obtenerFechaPresorteoFormato = function() {
+    if (!this.rifa) return '';
+    
+    // ✅ Si fecha ISO existe, formatear dinámicamente (siempre recalcula)
+    if (this.rifa.fechaPresorteo) {
+        return this.formatearFechaISO(this.rifa.fechaPresorteo);
+    }
+    
+    // ⚠️ Fallback a valor estático si existe
+    return this.rifa.fechaPresorteoFormato || '';
+};
+
+// ====================================
+// FUNCIONES DE SINCRONIZACIÓN
+// ====================================
+
+/**
+ * Sincroniza ganadores desde localStorage
  */
 window.rifaplusConfig.sincronizarGanadores = function() {
-    // Verificar que GanadoresManager está disponible
     if (!window.GanadoresManager) {
-        console.debug('⚠️ [Config] GanadoresManager no disponible aún, ignorando sincronización');
+        console.debug('⚠️ GanadoresManager no disponible');
         return false;
     }
 
     try {
-        // Obtener ganadores desde localStorage vía GanadoresManager
         const ganadoresDelStorage = window.GanadoresManager.obtenerTodos();
         
         if (!ganadoresDelStorage || Object.keys(ganadoresDelStorage).length === 0) {
-            console.debug('ℹ️ [Config] No hay ganadores registrados en localStorage');
+            console.debug('ℹ️ No hay ganadores registrados');
             return false;
         }
 
-        // Transformar estructura para coincidir con sorteoActivo.ganadores
-        // De: {sorteo: [...], presorteo: [...], ruletazos: [...]}
-        // A:  {principal: [...], presorte: [...], ruletazo: [...]}
-        
-        const gananesTransformados = {
+        const ganadesTransformados = {
             principal: this._transformarGanadoresTipo(ganadoresDelStorage.sorteo || []),
             presorte: this._transformarGanadoresTipo(ganadoresDelStorage.presorteo || []),
             ruletazo: this._transformarGanadoresTipo(ganadoresDelStorage.ruletazos || [])
         };
 
-        // Actualizar sorteoActivo.ganadores
-        this.sorteoActivo.ganadores = gananesTransformados;
-        
-        // Log de éxito
-        const totalGanadores = 
-            gananesTransformados.principal.length + 
-            gananesTransformados.presorte.length + 
-            gananesTransformados.ruletazo.length;
-        
-        console.debug(`✅ [Config] Ganadores sincronizados: ${totalGanadores} total (${gananesTransformados.principal.length} principal, ${gananesTransformados.presorte.length} presorte, ${gananesTransformados.ruletazo.length} ruletazo)`);
-        
+        this.sorteoActivo.ganadores = ganadesTransformados;
+        console.log('✅ Ganadores sincronizados');
         return true;
 
     } catch (error) {
-        console.warn('⚠️ [Config] Error sincronizando ganadores:', error);
+        console.warn('⚠️ Error sincronizando ganadores:', error);
         return false;
     }
 };
 
 /**
- * Transforma ganadores de una categoría para coincidir con el formato del modal
- * Mapea: numero → numeroOrden, agrega datos formateados
- * 
+ * Transforma ganadores para el modal
  * @private
- * @param {Array} ganadores - Array de ganadores del tipo (sorteo, presorteo o ruletazos)
- * @returns {Array} Ganadores transformados para el modal
  */
 window.rifaplusConfig._transformarGanadoresTipo = function(ganadores) {
     if (!Array.isArray(ganadores)) return [];
 
     return ganadores.map((ganador, index) => ({
         posicion: ganador.posicion || (index + 1),
-        numeroOrden: this.formatearNumeroBoleto(ganador.numero),  // ✅ Usar función centralizada
+        numeroOrden: this.formatearNumeroBoleto(ganador.numero),
         nombre: ganador.nombre_cliente || '-',
         apellido: ganador.apellido_cliente || '',
         nombreParcial: this._generarNombreParcial(ganador.nombre_cliente, ganador.apellido_cliente),
         ciudad: ganador.ciudad || '-',
-        estado_cliente: ganador.estado_cliente || '-',
-        estado: ganador.estado_cliente || '-',
-        fechaRegistro: ganador.fechaRegistro,
-        lugarGanado: ganador.lugarGanado || (index + 1)
+        estado: ganador.estado_cliente || '-'
     }));
 };
 
 /**
- * Genera un nombre parcial a partir de nombre y apellido
- * Ej: "Juan Manuel López" → "J.M.L."
- * 
+ * Genera nombre parcial (iniciales)
  * @private
- * @param {string} nombre - Nombre completo o primer nombre
- * @param {string} apellido - Apellido
- * @returns {string} Iniciales formateadas
  */
 window.rifaplusConfig._generarNombreParcial = function(nombre, apellido) {
     const partes = [];
@@ -2112,129 +955,182 @@ window.rifaplusConfig._generarNombreParcial = function(nombre, apellido) {
     return partes.join('.');
 };
 
-/**
- * Escucha cambios de ganadores y sincroniza automáticamente
- * Se ejecuta cuando GanadoresManager guarda nuevos ganadores
- */
-window.addEventListener('ganadesoresActualizados', function(e) {
-    console.debug('🔄 [Config] Evento de ganadores actualizados detectado, sincronizando...');
-    if (window.rifaplusConfig && typeof window.rifaplusConfig.sincronizarGanadores === 'function') {
-        window.rifaplusConfig.sincronizarGanadores();
-    }
-});
-
-console.log('✅ [Config] Sistema centralizado de fecha del sorteo inicializado');
-console.log('✅ [Config] Sistema de sincronización de ganadores inicializado');
+// ====================================
+// FUNCIONES DE CÁLCULO (CRÍTICAS)
+// ====================================
 
 /**
- * ============================================================
- * SISTEMA DINÁMICO DE DESCUENTOS Y OPORTUNIDADES
- * ============================================================
- * 
- * Métodos helper para calcular dinámicamente:
- * - Descuentos por volumen
- * - Oportunidades (boletos sorpresa)
- */
-
-/**
- * Calcula el descuento aplicable según cantidad de boletos
- * Basado en las reglas definidas en config.rifa.descuentos
- * 
- * @param {number} cantidadBoletos - Cantidad de boletos a comprar
- * @param {number} precioUnitario - Precio por boleto
- * @returns {object} { descuentoAplicable, monto, porcentaje, subtotal, total }
+ * Calcula descuento por cantidad de boletos
  */
 window.rifaplusConfig.calcularDescuento = function(cantidadBoletos, precioUnitario = null) {
     precioUnitario = precioUnitario || this.rifa.precioBoleto;
     
-    // Si descuentos no están habilitados
     if (!this.rifa.descuentos || !this.rifa.descuentos.enabled) {
         return {
             descuentoAplicable: false,
             monto: 0,
             porcentaje: 0,
             subtotal: cantidadBoletos * precioUnitario,
-            total: cantidadBoletos * precioUnitario,
-            mensaje: 'Sin descuento'
+            total: cantidadBoletos * precioUnitario
         };
     }
 
     const subtotal = cantidadBoletos * precioUnitario;
-    
-    // Buscar la regla que aplique (buscar la mayor cantidad que sea <= cantidadBoletos)
-    let reglaAplicable = null;
-    
-    for (const regla of this.rifa.descuentos.reglas) {
-        // Si la cantidad de boletos es >= cantidad en la regla
-        if (cantidadBoletos >= regla.cantidad) {
-            // Usar esta regla si es la mayor que hemos visto hasta ahora
-            if (!reglaAplicable || regla.cantidad > reglaAplicable.cantidad) {
-                reglaAplicable = regla;
+    const reglasNormalizadas = (this.rifa.descuentos.reglas || [])
+        .map((regla) => {
+            const cantidad = parseInt(regla?.cantidad, 10);
+            const total = Number(regla?.total ?? regla?.precio);
+
+            if (!Number.isFinite(cantidad) || cantidad <= 0 || !Number.isFinite(total) || total <= 0) {
+                return null;
+            }
+
+            return {
+                cantidad,
+                total,
+                precio: total
+            };
+        })
+        .filter(Boolean);
+
+    if (cantidadBoletos <= 0 || reglasNormalizadas.length === 0) {
+        return {
+            descuentoAplicable: false,
+            monto: 0,
+            porcentaje: 0,
+            subtotal: subtotal,
+            total: subtotal,
+            regla: null,
+            desglose: []
+        };
+    }
+
+    const costoRegular = Number(precioUnitario);
+    const dp = Array(cantidadBoletos + 1).fill(Infinity);
+    const ruta = Array(cantidadBoletos + 1).fill(null);
+    dp[0] = 0;
+
+    const debePreferirNuevaRuta = (costoNuevo, costoActual, rutaActual, nuevaCantidad) => {
+        if (costoNuevo < costoActual - 0.000001) return true;
+        if (Math.abs(costoNuevo - costoActual) > 0.000001) return false;
+        if (!rutaActual) return true;
+        if (rutaActual.tipo !== 'regla') return true;
+        return nuevaCantidad > (rutaActual.cantidad || 0);
+    };
+
+    for (let boletos = 1; boletos <= cantidadBoletos; boletos++) {
+        const costoUnitario = dp[boletos - 1] + costoRegular;
+        dp[boletos] = costoUnitario;
+        ruta[boletos] = {
+            previo: boletos - 1,
+            tipo: 'regular',
+            cantidad: 1,
+            total: costoRegular
+        };
+
+        for (const regla of reglasNormalizadas) {
+            if (boletos < regla.cantidad) continue;
+
+            const costoConRegla = dp[boletos - regla.cantidad] + regla.total;
+            if (debePreferirNuevaRuta(costoConRegla, dp[boletos], ruta[boletos], regla.cantidad)) {
+                dp[boletos] = costoConRegla;
+                ruta[boletos] = {
+                    previo: boletos - regla.cantidad,
+                    tipo: 'regla',
+                    cantidad: regla.cantidad,
+                    total: regla.total,
+                    regla
+                };
             }
         }
     }
 
-    // Si hay una regla aplicable
-    if (reglaAplicable) {
-        // El precio en la regla es el precio total para esa cantidad
-        // Calcular el precio por boleto: precio / cantidad
-        const precioConDescuentoPorBoleto = reglaAplicable.precio / reglaAplicable.cantidad;
-        const totalConDescuento = precioConDescuentoPorBoleto * cantidadBoletos;
-        const montoDescuento = subtotal - totalConDescuento;
-        const porcentajeDescuento = Math.round((montoDescuento / subtotal) * 100);
+    const totalConDescuento = Math.round(dp[cantidadBoletos] * 100) / 100;
+    const montoDescuento = Math.round((subtotal - totalConDescuento) * 100) / 100;
+
+    if (montoDescuento > 0) {
+        const desglose = [];
+        let cursor = cantidadBoletos;
+
+        while (cursor > 0 && ruta[cursor]) {
+            const paso = ruta[cursor];
+            if (paso.tipo === 'regla' && paso.regla) {
+                const existente = desglose.find((item) => item.cantidad === paso.regla.cantidad && item.total === paso.regla.total);
+                if (existente) {
+                    existente.veces += 1;
+                } else {
+                    desglose.push({
+                        tipo: 'regla',
+                        cantidad: paso.regla.cantidad,
+                        total: paso.regla.total,
+                        veces: 1
+                    });
+                }
+            } else {
+                const existente = desglose.find((item) => item.tipo === 'regular');
+                if (existente) {
+                    existente.cantidad += 1;
+                    existente.total += costoRegular;
+                } else {
+                    desglose.push({
+                        tipo: 'regular',
+                        cantidad: 1,
+                        total: costoRegular,
+                        veces: 1
+                    });
+                }
+            }
+            cursor = paso.previo;
+        }
+
+        const reglasUsadas = desglose
+            .filter((item) => item.tipo === 'regla')
+            .sort((a, b) => b.cantidad - a.cantidad);
 
         return {
             descuentoAplicable: true,
             monto: montoDescuento,
-            porcentaje: porcentajeDescuento,
+            porcentaje: Math.round((montoDescuento / subtotal) * 100),
             subtotal: subtotal,
             total: totalConDescuento,
-            regla: reglaAplicable,
-            mensaje: `${reglaAplicable.cantidad}+ boletos: $${(reglaAplicable.precio / reglaAplicable.cantidad).toFixed(2)}/boleto`
+            regla: reglasUsadas[0] || null,
+            desglose
         };
     }
 
-    // Si no hay regla que aplique
     return {
         descuentoAplicable: false,
         monto: 0,
         porcentaje: 0,
         subtotal: subtotal,
         total: subtotal,
-        mensaje: 'Sin descuento aplicable'
+        regla: null,
+        desglose: []
     };
 };
 
 /**
- * Calcula las oportunidades (boletos sorpresa) según cantidad de boletos comprados
- * Basado en las reglas definidas en config.rifa.oportunidades
- * 
- * @param {number} cantidadBoletos - Cantidad de boletos a comprar
- * @returns {object} { cantidad, regla, esValido, mensaje }
+ * Calcula oportunidades (boletos sorpresa)
  */
 window.rifaplusConfig.calcularOportunidades = function(cantidadBoletos) {
-    // Si oportunidades no están habilitadas
     if (!this.rifa.oportunidades || !this.rifa.oportunidades.enabled) {
         return {
             cantidad: 0,
-            regla: null,
             esValido: true,
             mensaje: 'Oportunidades deshabilitadas'
         };
     }
 
-    // TIPO FIJO: Siempre la misma cantidad
+    // Tipo fijo
     if (this.rifa.oportunidades.tipo === 'fijo' && this.rifa.oportunidades.oportunidades_fijas) {
         return {
             cantidad: this.rifa.oportunidades.oportunidades_fijas,
-            regla: null,
             esValido: true,
-            tipo: 'fijo',
-            mensaje: `Se asignarán ${this.rifa.oportunidades.oportunidades_fijas} boleto(s) sorpresa`
+            tipo: 'fijo'
         };
     }
 
-    // TIPO DINÁMICO: Basado en cantidad de boletos
+    // Tipo dinámico
     if (this.rifa.oportunidades.tipo === 'dinamico' && this.rifa.oportunidades.condiciones_dinamicas) {
         for (const condicion of this.rifa.oportunidades.condiciones_dinamicas) {
             if (cantidadBoletos >= condicion.cantidad_boletos_minima && 
@@ -2242,57 +1138,42 @@ window.rifaplusConfig.calcularOportunidades = function(cantidadBoletos) {
                 
                 const cantidadOportunidades = cantidadBoletos * condicion.oportunidades_por_boleto;
                 
-                // Validar que no exceda el rango disponible
                 const rangoDisponible = (this.rifa.oportunidades.rango_oculto.fin - 
                                         this.rifa.oportunidades.rango_oculto.inicio + 1);
                 
                 if (cantidadOportunidades > rangoDisponible) {
                     return {
                         cantidad: 0,
-                        regla: condicion,
                         esValido: false,
-                        mensaje: `No hay suficientes oportunidades disponibles (${cantidadOportunidades} > ${rangoDisponible})`
+                        mensaje: `No hay suficientes oportunidades disponibles`
                     };
                 }
 
                 return {
                     cantidad: cantidadOportunidades,
-                    regla: condicion,
                     esValido: true,
-                    tipo: 'dinamico',
-                    mensaje: `Se asignarán ${cantidadOportunidades} boleto(s) sorpresa (${condicion.oportunidades_por_boleto}x por boleto comprado)`
+                    tipo: 'dinamico'
                 };
             }
         }
     }
 
-    // Sin oportunidades aplicables
     return {
         cantidad: 0,
-        regla: null,
         esValido: true,
         mensaje: 'No hay oportunidades aplicables'
     };
 };
 
 /**
- * Calcula el resumen COMPLETO de una compra incluyendo descuentos y oportunidades
- * Esta es la función PRINCIPAL que usa el carrito
- * 
- * @param {number} cantidadBoletos - Cantidad de boletos a comprar
- * @param {number} precioUnitario - Precio por boleto (opcional, usa config.rifa.precioBoleto)
- * @returns {object} Resumen completo de la compra
+ * Calcula resumen COMPLETO de compra
  */
 window.rifaplusConfig.calcularResumenCompra = function(cantidadBoletos, precioUnitario = null) {
     precioUnitario = precioUnitario || this.rifa.precioBoleto;
     
-    // Calcular descuentos
     const descuento = this.calcularDescuento(cantidadBoletos, precioUnitario);
-    
-    // Calcular oportunidades
     const oportunidades = this.calcularOportunidades(cantidadBoletos);
     
-    // Resumen completo
     return {
         cantidadBoletos: cantidadBoletos,
         precioUnitario: precioUnitario,
@@ -2300,35 +1181,20 @@ window.rifaplusConfig.calcularResumenCompra = function(cantidadBoletos, precioUn
         descuento: {
             aplicado: descuento.descuentoAplicable,
             monto: descuento.monto,
-            porcentaje: descuento.porcentaje,
-            mensaje: descuento.mensaje
+            porcentaje: descuento.porcentaje
         },
         total: descuento.total,
         oportunidades: {
             cantidad: oportunidades.cantidad,
             aplicado: oportunidades.cantidad > 0,
             tipo: oportunidades.tipo,
-            mensaje: oportunidades.mensaje,
             esValido: oportunidades.esValido
-        },
-        resumen: {
-            lineas: [
-                `${cantidadBoletos} boleto(s) × $${precioUnitario} = $${descuento.subtotal}`,
-                descuento.descuentoAplicable ? `Descuento ${descuento.porcentaje}% = -$${descuento.monto}` : null,
-                oportunidades.cantidad > 0 ? `+ ${oportunidades.cantidad} boleto(s) SORPRESA gratis` : null
-            ].filter(l => l !== null),
-            totalFinal: descuento.total,
-            ahorro: descuento.monto
         }
     };
 };
 
 /**
- * Validar que una compra sea válida según las restricciones del sistema
- * Útil para mostrar errores antes de enviar al backend
- * 
- * @param {number} cantidadBoletos - Cantidad de boletos
- * @returns {object} { esValido, errores, advertencias }
+ * Valida que una compra sea válida
  */
 window.rifaplusConfig.validarCompra = function(cantidadBoletos) {
     const errores = [];
@@ -2350,109 +1216,274 @@ window.rifaplusConfig.validarCompra = function(cantidadBoletos) {
     return {
         esValido: errores.length === 0,
         errores: errores,
-        advertencias: advertencias,
-        esCompraValida: errores.length === 0
+        advertencias: advertencias
     };
 };
 
+// ====================================
+// FUNCIONES AUXILIARES
+// ====================================
+
 /**
- * FUNCIÓN AUXILIAR: Obtiene el rango máximo de boletos que el usuario puede buscar/ver
- * Dinámico según si las oportunidades están habilitadas
- * 
- * Si oportunidades está HABILITADA:
- *   - Retorna rango_visible.fin (el rango visible al cliente, típicamente 0-499,999)
- * 
- * Si oportunidades está DESHABILITADA:
- *   - Retorna totalBoletos (todos los boletos disponibles)
- * 
- * @returns {number} El rango máximo de búsqueda/visualización
+ * Obtiene rango máximo de boletos
  */
 window.rifaplusConfig.obtenerRangoMaximoBoletos = function() {
-    // Si oportunidades está habilitada, usar rango_visible
     if (this.rifa.oportunidades && this.rifa.oportunidades.enabled && this.rifa.oportunidades.rango_visible) {
         return this.rifa.oportunidades.rango_visible.fin;
     }
-    
-    // Por defecto, usar total de boletos
-    return this.rifa.totalBoletos;
+    const total = this.obtenerTotalBoletos();
+    return Math.max(0, total - 1);
 };
 
 /**
- * FUNCIÓN AUXILIAR: Obtiene el rango inicial de boletos
- * Dinámico según si las oportunidades están habilitadas
- * 
- * Si oportunidades está HABILITADA:
- *   - Retorna rango_visible.inicio (típicamente 0)
- * 
- * Si oportunidades está DESHABILITADA:
- *   - Retorna 1 (los boletos comienzan en 1)
- * 
- * @returns {number} El rango inicial
+ * Obtiene rango mínimo de boletos
  */
 window.rifaplusConfig.obtenerRangoMinimoBoletos = function() {
     if (this.rifa.oportunidades && this.rifa.oportunidades.enabled && this.rifa.oportunidades.rango_visible) {
         return this.rifa.oportunidades.rango_visible.inicio;
     }
-    return 1;
+    return 0;
 };
 
 /**
- * FUNCIÓN CENTRALIZADA: Formatea un número de boleto u oportunidad con dígitos dinámicos
- * Se adapta automáticamente según totalBoletos en config.js
- * 
- * NOTA: Se usa para AMBOS boletos (0-249999) y oportunidades (250000-999999)
- * Por eso no validamos rango estricto - solo formateamos el número
- * 
- * EJEMPLO:
- * Si totalBoletos = 250000 (6 dígitos):
- *   formatearNumeroBoleto(123) → "000123"
- *   formatearNumeroBoleto(599805) → "599805" (oportunidad, también 6 dígitos)
- * 
- * Si totalBoletos = 1000000 (7 dígitos):
- *   formatearNumeroBoleto(123) → "0000123"
- * 
- * @param {number|string} numero - Número de boleto u oportunidad a formatear
- * @returns {string} Número formateado con ceros a la izquierda
+ * Formatea número de boleto con dígitos dinámicos
  */
 window.rifaplusConfig.formatearNumeroBoleto = function(numero) {
-    const totalBoletos = this.rifa?.totalBoletos || 250000;
+    const totalBoletos = this.obtenerTotalBoletos();
     const digitos = String(totalBoletos - 1).length;
     const num = parseInt(numero, 10);
     
-    // Validación mínima: solo verificar que sea un número válido
     if (isNaN(num) || num < 0) {
-        console.warn(`⚠️ [formatearNumeroBoleto] Número inválido: ${numero}`);
-        return '?'.repeat(digitos); // Mostrar signos de interrogación si es inválido
+        console.warn(`⚠️ Número inválido: ${numero}`);
+        return '?'.repeat(digitos);
     }
     
     return String(num).padStart(digitos, '0');
 };
 
-console.log('✅ [Config] Sistema de cálculo dinámico (descuentos + oportunidades) inicializado');
-console.log('✅ [Config] Funciones auxiliares de rango dinámico registradas (obtenerRangoMaximoBoletos, obtenerRangoMinimoBoletos)');
-console.log('✅ [Config] Función centralizada de formateo de boletos registrada (formatearNumeroBoleto)');
+/**
+ * Obtiene prefijo de orden
+ */
+window.rifaplusConfig.obtenerPrefijoOrden = function() {
+    return this.cliente.prefijoOrden;
+};
+
+window.rifaplusConfig.esOrdenIdOficial = function(ordenId) {
+    const valor = String(ordenId || '').trim().toUpperCase();
+    return /^[A-Z0-9]+-[A-Z]{2}\d{3}$/.test(valor);
+};
+
+window.rifaplusConfig.ordenIdTienePrefijoActual = function(ordenId) {
+    const valor = String(ordenId || '').trim().toUpperCase();
+    const prefijoActual = String(this.cliente.prefijoOrden || '').trim().toUpperCase();
+
+    if (!valor || !prefijoActual) return false;
+    return valor.startsWith(`${prefijoActual}-`);
+};
 
 /**
- * FUNCIÓN DEBUG: Muestra los colores actuales aplicados
- * Útil para verificar que los colores se están aplicando correctamente
- * Ejecuta en consola: window.rifaplusConfig.mostrarColoresAplicados()
+ * Reconstruye ID de orden con prefijo actual
  */
-window.rifaplusConfig.mostrarColoresAplicados = function() {
-    const root = document.documentElement;
-    const estilos = getComputedStyle(root);
+window.rifaplusConfig.reconstruirIdOrdenConPrefijoActual = function(ordenId) {
+    if (!ordenId) return `${this.cliente.prefijoOrden}-AA001`;
     
-    console.log('🎨 COLORES APLICADOS ACTUALMENTE:');
-    console.log('═════════════════════════════════════════');
-    console.log('Primario:', this.cliente.colorPrimario, '→', root.style.getPropertyValue('--primary').trim() || 'No aplicado');
-    console.log('Secundario:', this.cliente.colorSecundario, '→', root.style.getPropertyValue('--secondary').trim() || 'No aplicado');
-    console.log('Acento:', this.cliente.colorAccento, '→', root.style.getPropertyValue('--color-primary').trim() || 'No aplicado');
-    console.log('Éxito:', this.cliente.colorExito, '→', root.style.getPropertyValue('--success').trim() || 'No aplicado');
-    console.log('Peligro:', this.cliente.colorPeligro, '→', root.style.getPropertyValue('--danger').trim() || 'No aplicado');
-    console.log('Advertencia:', this.cliente.colorAdvertencia, '→', root.style.getPropertyValue('--warning').trim() || 'No aplicado');
-    console.log('Texto:', this.cliente.colorTexto, '→', root.style.getPropertyValue('--text-dark').trim() || 'No aplicado');
-    console.log('Texto Secundario:', this.cliente.colorTextoSecundario, '→', root.style.getPropertyValue('--text-light').trim() || 'No aplicado');
-    console.log('Fondo:', this.cliente.colorFondo, '→', root.style.getPropertyValue('--bg-white').trim() || 'No aplicado');
-    console.log('Fondo Secundario:', this.cliente.colorFondoSecundario, '→', root.style.getPropertyValue('--bg-light').trim() || 'No aplicado');
-    console.log('═════════════════════════════════════════');
-    console.log('✅ Si ves valores en la derecha, los colores están correctamente aplicados');
+    const prefijoActual = this.cliente.prefijoOrden;
+    
+    if (ordenId.startsWith(prefijoActual + '-')) {
+        return ordenId;
+    }
+    
+    const secuenciaMatch = ordenId.match(/-(.+)$|^([A-Z0-9]+)$/);
+    let secuencia = 'AA001';
+    
+    if (secuenciaMatch) {
+        if (secuenciaMatch[1]) {
+            secuencia = secuenciaMatch[1];
+        } else if (secuenciaMatch[2]) {
+            secuencia = secuenciaMatch[2];
+        }
+    }
+    
+    return `${prefijoActual}-${secuencia}`;
 };
+
+/**
+ * Obtiene cuentas formateadas
+ */
+window.rifaplusConfig.obtenerCuentasFormateadas = function() {
+    if (!Array.isArray(this.tecnica.bankAccounts) || this.tecnica.bankAccounts.length === 0) {
+        return [];
+    }
+    return this.tecnica.bankAccounts.map(cuenta => ({
+        ...cuenta,
+        numeroMascarado: `****${cuenta.accountNumber.slice(-4)}`,
+        enlaceWhatsapp: cuenta.phone ? `https://wa.me/${cuenta.phone.replace(/[^0-9]/g, '')}` : ''
+    }));
+};
+
+/**
+ * Genera URL para compartir orden
+ */
+window.rifaplusConfig.generarURLCompartir = function(ordenId) {
+    const baseURL = window.location.origin;
+    return `${baseURL}/mis-boletos.html?orden=${ordenId}`;
+};
+
+// ====================================
+// INICIALIZACIÓN Y LOGGING
+// ====================================
+
+/**
+ * ============================================================
+ * GETTERS SEGUROS - Acceso robusta a valores críticos
+ * Garantizan que siempre devuelvan valores válidos
+ * ============================================================
+ */
+
+/**
+ * Obtiene nombreSorteo de forma robusta
+ * @returns {string} Nombre del sorteo (con fallback)
+ */
+window.rifaplusConfig.obtenerNombreSorteo = function() {
+    const nombre = this.rifa?.nombreSorteo;
+    if (nombre && typeof nombre === 'string' && nombre.trim().length > 0) {
+        return nombre.trim();
+    }
+    return 'SORTEO EN VIVO';
+};
+
+/**
+ * Obtiene totalBoletos de forma robusta
+ * @returns {number} Total de boletos (con fallback)
+ */
+window.rifaplusConfig.obtenerTotalBoletos = function() {
+    const total = this.rifa?.totalBoletos;
+    if (typeof total === 'number' && !Number.isNaN(total) && total > 0) {
+        return Math.floor(total);
+    }
+
+    try {
+        const cached = Number(localStorage.getItem('rifaplus_total_boletos_cache') || 0);
+        if (Number.isFinite(cached) && cached > 0) {
+            return Math.floor(cached);
+        }
+    } catch (error) {
+        console.debug('ℹ️ No se pudo leer rifaplus_total_boletos_cache:', error.message);
+    }
+
+    return 1000;
+};
+
+/**
+ * Obtiene precioBoleto de forma robusta
+ * @returns {number} Precio unitario (con fallback)
+ */
+window.rifaplusConfig.obtenerPrecioBoleto = function() {
+    const precio = this.rifa?.precioBoleto;
+    if (typeof precio === 'number' && !Number.isNaN(precio) && precio > 0) {
+        return parseFloat(precio);
+    }
+    return 100;
+};
+
+/**
+ * Obtiene edicionNombre de forma robusta
+ * @returns {string} Nombre de la edición (con fallback)
+ */
+window.rifaplusConfig.obtenerEdicionNombre = function() {
+    const edicion = this.rifa?.edicionNombre;
+    if (edicion && typeof edicion === 'string' && edicion.trim().length > 0) {
+        return edicion.trim();
+    }
+    return '';
+};
+
+/**
+ * ============================================================
+ * ACTUALIZADOR CENTRALIZADO - Nombre del Cliente
+ * Actualiza TODOS los elementos que muestran cliente.nombre
+ * Se llama automáticamente cuando sincroniza config
+ * ============================================================
+ */
+
+window.rifaplusConfig.actualizarNombreClienteEnUI = function() {
+    // ⚠️ IMPORTANTE: Usar el valor ACTUAL de this.cliente.nombre, no un fallback
+    const nombreCliente = this.cliente?.nombre ? this.cliente.nombre.trim() : 'SORTEO';
+    const sincronizacionCompleta = Boolean(this.cliente?.nombre && this.cliente.nombre.trim());
+    
+    // Si el nombre cambió, registrar en logs
+    if (sincronizacionCompleta) {
+        console.log('🔄 [UI-Update] Actualizando nombre del cliente en TODOS los elementos:', nombreCliente);
+    } else {
+        console.info('ℹ️ [UI-Update] Nombre aún no sincronizado; usando fallback temporal:', nombreCliente);
+    }
+    
+    // 1️⃣ FOOTER - Todos los HTML que tienen id="footerNombre"
+    const footerNombre = document.getElementById('footerNombre');
+    if (footerNombre) {
+        const anterior = footerNombre.textContent;
+        footerNombre.textContent = nombreCliente;
+        if (anterior !== nombreCliente) {
+            console.log(`✅ [UI-Update] #footerNombre: "${anterior}" → "${nombreCliente}"`);
+        }
+    }
+    
+    // 2️⃣ FOOTER COPYRIGHT - Actualizar el copyright con el nombre
+    const footerCopyright = document.getElementById('footerCopyright');
+    if (footerCopyright) {
+        const anio = this.cliente?.anioActual || new Date().getFullYear();
+        const nuevoValor = `&copy; ${anio} <strong>${nombreCliente}</strong>. Todos los derechos reservados.`;
+        if (footerCopyright.innerHTML !== nuevoValor) {
+            footerCopyright.innerHTML = nuevoValor;
+            console.log(`✅ [UI-Update] #footerCopyright actualizado`);
+        }
+    }
+    
+    // 3️⃣ ADMIN HEADER - admin-header-title-sub en cualquier página admin
+    const adminHeaderTitle = document.querySelector('.admin-header-title-sub');
+    if (adminHeaderTitle) {
+        const anterior = adminHeaderTitle.textContent;
+        adminHeaderTitle.textContent = nombreCliente;
+        if (anterior !== nombreCliente) {
+            console.log(`✅ [UI-Update] .admin-header-title-sub: "${anterior}" → "${nombreCliente}"`);
+        }
+    }
+    
+    // 4️⃣ ORDEN FORMAL - Si existe el elemento orden-organizador
+    const ordenOrganizador = document.querySelector('.orden-organizador');
+    if (ordenOrganizador) {
+        const anterior = ordenOrganizador.textContent;
+        ordenOrganizador.textContent = nombreCliente;
+        if (anterior !== nombreCliente) {
+            console.log(`✅ [UI-Update] .orden-organizador: "${anterior}" → "${nombreCliente}"`);
+        }
+    }
+    
+    // 5️⃣ FOOTER-BOTTOM - Si tiene el nombre del organizador
+    const footerTextos = document.querySelectorAll('.footer-bottom p, .footer-bottom strong');
+    footerTextos.forEach(el => {
+        if (el.textContent.includes('SORTEO') || el.textContent.includes('SORTEOS') || el.textContent.includes('Sorteos')) {
+            // Mantener el texto pero actualizar si es necesario
+            if (el.textContent.includes('©')) {
+                // Contiene copyright, actualizar solo el nombre
+                const anterior = el.textContent;
+                el.textContent = el.textContent.replace(/SORTEO\w*|SORTEOS\s+\w+|Sorteos\s+\w+/g, nombreCliente);
+                if (anterior !== el.textContent) {
+                    console.log(`✅ [UI-Update] Footer text actualizado`);
+                }
+            }
+        }
+    });
+};
+
+// Event listener para ganadores
+window.addEventListener('ganadesoresActualizados', function() {
+    console.debug('🔄 Sincronizando ganadores...');
+    if (window.rifaplusConfig && typeof window.rifaplusConfig.sincronizarGanadores === 'function') {
+        window.rifaplusConfig.sincronizarGanadores();
+    }
+});
+
+console.log('✅ [RifaPlus Config v3.1.0] Inicializado (arquitectura sin duplicación)');
+console.log('✅ [RifaPlus Config] Funciones, getters y métodos registrados');
+console.log('✅ [RifaPlus Config] Datos se sincronizan desde /backend/config.json');

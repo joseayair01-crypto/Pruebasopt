@@ -1,0 +1,233 @@
+✅ DB: Conectando a PostgreSQL desde DATABASE_URL
+   URL: postgresql://postgres.invryobypnyhcacuifjw:fr%3FRmm7%40yRb4L...
+✅ Cloudinary configurado correctamente
+   Cloud: dxu3imvxt
+⚙️  Configuración de expiración cargada:
+   - Tiempo reservado: 1 horas
+   - Intervalo limpieza: 5 minutos
+   - Precio boleto: $8
+📝 Config cargado desde config.json (versión: 1)
+✅ ConfigManager inicializado
+🚀 Servidor RifaPlus corriendo en puerto 5001
+📍 Ambiente: development
+🛡️  Protección contra crashes activada
+
+✅ Tabla orden_oportunidades ya existe
+🔒 Verificando constraint único para oportunidades activas...
+✅ Constraint único ya existe
+
+╔════════════════════════════════════════════════════════╗
+║         🚀 SERVICIO DE EXPIRACIÓN INICIADO             ║
+╠════════════════════════════════════════════════════════╣
+║ Intervalo: 5 minutos                              
+║ Tiempo apartado: 1 horas                        
+║ Próxima ejecución: 2026-02-11T18:01:30.612Z
+╚════════════════════════════════════════════════════════╝
+[PublicBoletos] Vendidos: 6, Apartados: 200, Oportunidades: 749382, Total apartados: 749582, Time: 292ms
+✅ [verificarToken] Token válido, usuario: admin
+
+[2026-02-11T17:56:32.614Z] 🔍 [ExpService] INICIANDO LIMPIEZA
+   Límite: 2026-02-11T16:56:32.614Z
+   Búsqueda: órdenes 'pendiente' creadas ANTES de 2026-02-11T16:56:32.614Z
+   NOTA: Órdenes con 'comprobante_recibido' NO expiran
+✅ [ExpService] 1 orden(es) pendiente(s), pero DENTRO del plazo
+✅ [verificarToken] Token válido, usuario: admin
+📋 [INFO] GET /api/public/ordenes-cliente exitoso { whatsapp: '4332424323', cantidad_ordenes: 1, ip: '::ffff:127.0.0.1' }
+✅ [verificarToken] Token válido, usuario: admin
+[PublicBoletos] Usando cache (1689ms viejo)
+✅ [verificarToken] Token válido, usuario: admin
+📊 [GET /api/admin/oportunidades-stats] Iniciando...
+📋 [GET /api/admin/oportunidades-stats] Conteos: { disponible: 749382, apartado: 600, asignado: 18, cancelado: 0 }
+✅ [GET /api/admin/oportunidades-stats] Cálculos: {
+  totalConfigurado: 750000,
+  totalEnBD: 750000,
+  disponible: 749382,
+  asignado: 18,
+  apartado: 600,
+  enUso: 618,
+  porcentajeUso: 0
+}
+[Comprobante Upload] Iniciando upload: {
+  numero_orden: 'ST-AA021',
+  whatsapp_received: true,
+  archivo_received: true,
+  archivo_mimetype: 'image/png',
+  archivo_size: 1672352,
+  req_files_keys: [ 'comprobante' ],
+  req_body_keys: [ 'whatsapp' ]
+}
+[Comprobante Upload] Error capturado: error: update "ordenes" set "estado" = $1, "comprobante_path" = $2, "comprobante_fecha" = $3, "updated_at" = $4 where "numero_orden" = $5 - column "comprobante_fecha" of relation "ordenes" does not exist
+    at Object.queryBuilder (/Users/ayair/Desktop/rifas-web/backend/node_modules/knex/lib/knex-builder/make-knex.js:112:26)
+    at createQueryBuilder (/Users/ayair/Desktop/rifas-web/backend/node_modules/knex/lib/knex-builder/make-knex.js:320:26)
+    at knex (/Users/ayair/Desktop/rifas-web/backend/node_modules/knex/lib/knex-builder/make-knex.js:101:12)
+    at /Users/ayair/Desktop/rifas-web/backend/server.js:2672:15
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  length: 139,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '62',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'analyze.c',
+  line: '2528',
+  routine: 'transformUpdateTargetList',
+  originalStack: 'error: update "ordenes" set "estado" = $1, "comprobante_path" = $2, "comprobante_fecha" = $3, "updated_at" = $4 where "numero_orden" = $5 - column "comprobante_fecha" of relation "ordenes" does not exist\n' +
+    '    at parseErrorMessage (/Users/ayair/Desktop/rifas-web/backend/node_modules/pg-protocol/dist/parser.js:305:11)\n' +
+    '    at Parser.handlePacket (/Users/ayair/Desktop/rifas-web/backend/node_modules/pg-protocol/dist/parser.js:143:27)\n' +
+    '    at Parser.parse (/Users/ayair/Desktop/rifas-web/backend/node_modules/pg-protocol/dist/parser.js:37:38)\n' +
+    '    at TLSSocket.<anonymous> (/Users/ayair/Desktop/rifas-web/backend/node_modules/pg-protocol/dist/index.js:11:42)\n' +
+    '    at TLSSocket.emit (node:events:519:28)\n' +
+    '    at addChunk (node:internal/streams/readable:561:12)\n' +
+    '    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)\n' +
+    '    at Readable.push (node:internal/streams/readable:392:5)\n' +
+    '    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)'
+}
+❌ [ERROR] POST /api/public/ordenes-cliente/:numero_orden/comprobante error {
+  error: 'update "ordenes" set "estado" = $1, "comprobante_path" = $2, "comprobante_fecha" = $3, "updated_at" = $4 where "numero_orden" = $5 - column "comprobante_fecha" of relation "ordenes" does not exist',
+  stack: 'error: update "ordenes" set "estado" = $1, "comprobante_path" = $2, "comprobante_fecha" = $3, "updated_at" = $4 where "numero_orden" = $5 - column "comprobante_fecha" of relation "ordenes" does not exist\n' +
+    '    at Object.queryBuilder (/Users/ayair/Desktop/rifas-web/backend/node_modules/knex/lib/knex-builder/make-knex.js:112:26)\n' +
+    '    at createQueryBuilder (/Users/ayair/Desktop/rifas-web/backend/node_modules/knex/lib/knex-builder/make-knex.js:320:26)\n' +
+    '    at knex (/Users/ayair/Desktop/rifas-web/backend/node_modules/knex/lib/knex-builder/make-knex.js:101:12)\n' +
+    '    at /Users/ayair/Desktop/rifas-web/backend/server.js:2672:15\n' +
+    '    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)',
+  ip: '::ffff:127.0.0.1'
+}
+✅ [verificarToken] Token válido, usuario: admin
+📊 [GET /api/admin/oportunidades-stats] Iniciando...
+📋 [GET /api/admin/oportunidades-stats] Conteos: { disponible: 749382, apartado: 600, asignado: 18, cancelado: 0 }
+✅ [GET /api/admin/oportunidades-stats] Cálculos: {
+  totalConfigurado: 750000,
+  totalEnBD: 750000,
+  disponible: 749382,
+  asignado: 18,
+  apartado: 600,
+  enUso: 618,
+  porcentajeUso: 0
+}
+✅ [verificarToken] Token válido, usuario: admin
+✅ [verificarToken] Token válido, usuario: admin
+📊 [GET /api/admin/oportunidades-stats] Iniciando...
+📋 [GET /api/admin/oportunidades-stats] Conteos: { disponible: 749382, apartado: 600, asignado: 18, cancelado: 0 }
+✅ [GET /api/admin/oportunidades-stats] Cálculos: {
+  totalConfigurado: 750000,
+  totalEnBD: 750000,
+  disponible: 749382,
+  asignado: 18,
+  apartado: 600,
+  enUso: 618,
+  porcentajeUso: 0
+}
+✅ [verificarToken] Token válido, usuario: admin
+✅ [verificarToken] Token válido, usuario: admin
+📊 [GET /api/admin/oportunidades-stats] Iniciando...
+📋 [GET /api/admin/oportunidades-stats] Conteos: { disponible: 749382, apartado: 600, asignado: 18, cancelado: 0 }
+✅ [GET /api/admin/oportunidades-stats] Cálculos: {
+  totalConfigurado: 750000,
+  totalEnBD: 750000,
+  disponible: 749382,
+  asignado: 18,
+  apartado: 600,
+  enUso: 618,
+  porcentajeUso: 0
+}
+[PublicBoletos] Usando cache (4ms viejo)
+[PublicBoletos] Usando cache (5ms viejo)
+[PublicBoletos] Usando cache (10ms viejo)
+✅ [verificarToken] Token válido, usuario: admin
+📊 [GET /api/admin/oportunidades-stats] Iniciando...
+[PublicBoletos] Usando cache (182ms viejo)
+[PublicBoletos] Usando cache (189ms viejo)
+[PublicBoletos] Usando cache (207ms viejo)
+[PublicBoletos] Usando cache (214ms viejo)
+✅ [verificarToken] Token válido, usuario: admin
+📊 [GET /api/admin/oportunidades-stats] Iniciando...
+[PublicBoletos] Usando cache (226ms viejo)
+[PublicBoletos] Usando cache (228ms viejo)
+📋 [GET /api/admin/oportunidades-stats] Conteos: { disponible: 749382, apartado: 600, asignado: 18, cancelado: 0 }
+✅ [GET /api/admin/oportunidades-stats] Cálculos: {
+  totalConfigurado: 750000,
+  totalEnBD: 750000,
+  disponible: 749382,
+  asignado: 18,
+  apartado: 600,
+  enUso: 618,
+  porcentajeUso: 0
+}
+📋 [GET /api/admin/oportunidades-stats] Conteos: { disponible: 749382, apartado: 600, asignado: 18, cancelado: 0 }
+✅ [GET /api/admin/oportunidades-stats] Cálculos: {
+  totalConfigurado: 750000,
+  totalEnBD: 750000,
+  disponible: 749382,
+  asignado: 18,
+  apartado: 600,
+  enUso: 618,
+  porcentajeUso: 0
+}
+[PublicBoletos] Usando cache (2829ms viejo)
+✅ [verificarToken] Token válido, usuario: admin
+✅ [verificarToken] Token válido, usuario: admin
+✅ [verificarToken] Token válido, usuario: admin
+[PublicBoletos] Usando cache (3ms viejo)
+[PublicBoletos] Usando cache (6ms viejo)
+[PublicBoletos] Usando cache (7ms viejo)
+✅ [verificarToken] Token válido, usuario: admin
+📊 [GET /api/admin/oportunidades-stats] Iniciando...
+📋 [GET /api/admin/oportunidades-stats] Conteos: { disponible: 749382, apartado: 600, asignado: 18, cancelado: 0 }
+✅ [GET /api/admin/oportunidades-stats] Cálculos: {
+  totalConfigurado: 750000,
+  totalEnBD: 750000,
+  disponible: 749382,
+  asignado: 18,
+  apartado: 600,
+  enUso: 618,
+  porcentajeUso: 0
+}
+[PublicBoletos] Usando cache (1961ms viejo)
+✅ [verificarToken] Token válido, usuario: admin
+✅ [verificarToken] Token válido, usuario: admin
+[PublicBoletos] Usando cache (6ms viejo)
+[PublicBoletos] Usando cache (8ms viejo)
+[PublicBoletos] Usando cache (13ms viejo)
+✅ [verificarToken] Token válido, usuario: admin
+📊 [GET /api/admin/oportunidades-stats] Iniciando...
+📋 [GET /api/admin/oportunidades-stats] Conteos: { disponible: 749382, apartado: 600, asignado: 18, cancelado: 0 }
+✅ [GET /api/admin/oportunidades-stats] Cálculos: {
+  totalConfigurado: 750000,
+  totalEnBD: 750000,
+  disponible: 749382,
+  asignado: 18,
+  apartado: 600,
+  enUso: 618,
+  porcentajeUso: 0
+}
+[PublicBoletos] Usando cache (2437ms viejo)
+✅ [verificarToken] Token válido, usuario: admin
+✅ [verificarToken] Token válido, usuario: admin
+[PublicBoletos] Usando cache (3744ms viejo)
+[PublicBoletos] Usando cache (3753ms viejo)
+[PublicBoletos] Usando cache (3771ms viejo)
+[PublicBoletos] Usando cache (3777ms viejo)
+✅ [verificarToken] Token válido, usuario: admin
+📊 [GET /api/admin/oportunidades-stats] Iniciando...
+[PublicBoletos] Usando cache (3795ms viejo)
+[PublicBoletos] Usando cache (3799ms viejo)
+📋 [GET /api/admin/oportunidades-stats] Conteos: { disponible: 749382, apartado: 600, asignado: 18, cancelado: 0 }
+✅ [GET /api/admin/oportunidades-stats] Cálculos: {
+  totalConfigurado: 750000,
+  totalEnBD: 750000,
+  disponible: 749382,
+  asignado: 18,
+  apartado: 600,
+  enUso: 618,
+  porcentajeUso: 0
+}
+✅ [verificarToken] Token válido, usuario: admin
+✅ [verificarToken] Token válido, usuario: admin

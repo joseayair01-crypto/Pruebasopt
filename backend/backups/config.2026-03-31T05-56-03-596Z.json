@@ -1,0 +1,342 @@
+{
+  "cliente": {
+    "id": "SaDev",
+    "nombre": "SaDev",
+    "prefijoOrden": "SS",
+    "eslogan": "Desarrollando sueños, creando realidades",
+    "email": "joseayairlp12@gmail.com",
+    "telefono": "+524591109088",
+    "imagenPrincipal": "https://res.cloudinary.com/dxu3imvxt/image/upload/v1774666913/rifaplus/sorteos/ymvrzwdkloo3slhkzm2j.png",
+    "redesSociales": {
+      "whatsapp": "+524591076909",
+      "facebook": "https://www.facebook.com/profile.php?id=100008315310869&locale=es_LA",
+      "facebookUsuario": "Ayair",
+      "instagram": "https://www.instagram.com/joseayair",
+      "instagramUsuario": "@joseayair",
+      "tiktok": "",
+      "canalWhatsapp": "https://chat.whatsapp.com/grupo-sorteos",
+      "canalWhatsappNombre": "Sorteos Yepe"
+    },
+    "mensajesWhatsapp": {
+      "confirmacion": "",
+      "rechazo": "",
+      "recordatorio": "",
+      "ganador": ""
+    },
+    "logo": "https://res.cloudinary.com/dxu3imvxt/image/upload/v1774673215/rifaplus/sorteos/qzfjmawh4hhknsi64p1k.png",
+    "logotipo": "https://res.cloudinary.com/dxu3imvxt/image/upload/v1774673215/rifaplus/sorteos/qzfjmawh4hhknsi64p1k.png"
+  },
+  "rifa": {
+    "edicionNombre": "Sorteo Piloto - Campus 2",
+    "nombreSorteo": "Desayuno completo 🥙🍳 + Bebida 🥤 - Cafetería Campus 2",
+    "descripcion": "Este 16 de abril, participa por un almuerzo completo + una bebida de tu preferencia, el costo del boleto es totalmente gratis.\n¡No te quedes sin participar!.",
+    "totalBoletos": 1000,
+    "precioBoleto": 1,
+    "tiempoApartadoHoras": 2,
+    "intervaloLimpiezaMinutos": 10,
+    "rangos": [
+      {
+        "inicio": 0,
+        "fin": 999,
+        "nombre": "1"
+      }
+    ],
+    "oportunidades": {
+      "enabled": false,
+      "multiplicador": 3
+    },
+    "descuentos": {
+      "enabled": false,
+      "reglas": []
+    },
+    "promocionesOportunidades": {
+      "enabled": true,
+      "ejemplos": []
+    },
+    "promocionPorTiempo": {
+      "enabled": false,
+      "precioProvisional": null,
+      "fechaInicio": null,
+      "fechaFin": null
+    },
+    "descuentoPorcentaje": {
+      "enabled": false,
+      "porcentaje": 100,
+      "fechaInicio": "2026-03-29T14:35",
+      "fechaFin": "2026-03-31T22:00"
+    },
+    "bonos": {
+      "enabled": true,
+      "items": [
+        {
+          "emoji": "🥤",
+          "titulo": "Bebida de tu preferencia adicional ",
+          "descripcion": "SI resultas el ganador del sorteo y nos sigues al menos en una de nuestras redes sociales, te llevas este bono adicional.",
+          "accion": "ninguna"
+        }
+      ]
+    },
+    "sistemaPremios": {
+      "enabled": true,
+      "mensaje": "Múltiples oportunidades de ganar premios extraordinarios",
+      "sorteo": [
+        {
+          "posicion": 1,
+          "nombre": "Primer Lugar",
+          "premio": "Desayuno completo de la cafeteria del campus 2",
+          "descripcion": "Como bono adicional te puedes llevar una bebida de tu preferencia",
+          "icono": "🥇"
+        }
+      ],
+      "presorteo": [
+        {
+          "posicion": 1,
+          "nombre": "gtrgt",
+          "premio": "gtgtg",
+          "descripcion": "tgtrgr",
+          "icono": "🎁"
+        }
+      ],
+      "ruletazos": [
+        {
+          "posicion": 1,
+          "nombre": "Ruletazo 1",
+          "premio": "Ruletazo 1",
+          "descripcion": "Ganador 1 de ruletazo",
+          "icono": "🎰"
+        },
+        {
+          "posicion": 2,
+          "nombre": "Ruletazo 2",
+          "premio": "Ruletazo 2",
+          "descripcion": "Ganador 2 de ruletazo",
+          "icono": "🎰"
+        },
+        {
+          "posicion": 3,
+          "nombre": "Ruletazo 3",
+          "premio": "Ruletazo 3",
+          "descripcion": "Ganador 3 de ruletazo",
+          "icono": "🎰"
+        },
+        {
+          "posicion": 4,
+          "nombre": "Ruletazo 4",
+          "premio": "Ruletazo 4",
+          "descripcion": "Ganador 4 de ruletazo",
+          "icono": "🎰"
+        },
+        {
+          "posicion": 5,
+          "nombre": "Ruletazo 5",
+          "premio": "Ruletazo 5",
+          "descripcion": "Ganador 5 de ruletazo",
+          "icono": "🎰"
+        }
+      ]
+    },
+    "fechaSorteo": "2026-03-30T21:45:00",
+    "fechaSorteoFormato": "30 de Marzo del 2026",
+    "horaSorteo": "21:45",
+    "zonaHoraria": "Hora Centro México",
+    "modalidadSorteo": "Transmisión en Vivo por Facebook",
+    "fechaPresorteo": "2026-03-30T22:47:00",
+    "fechaPresorteoFormato": "30 de Marzo del 2026",
+    "horaPresorteo": "22:47",
+    "galeria": {
+      "enabled": true,
+      "imagenes": [
+        {
+          "url": "https://res.cloudinary.com/dxu3imvxt/image/upload/v1774666870/rifaplus/sorteos/yebmm8hzvbmhyjwqlo9i.png",
+          "titulo": "Imagen 1",
+          "descripcion": "",
+          "publicId": "rifaplus/sorteos/yebmm8hzvbmhyjwqlo9i"
+        },
+        {
+          "url": "https://res.cloudinary.com/dxu3imvxt/image/upload/v1774666885/rifaplus/sorteos/ad9oabeglian4lc0g2sa.png",
+          "titulo": "Imagen 2",
+          "descripcion": "",
+          "publicId": "rifaplus/sorteos/ad9oabeglian4lc0g2sa"
+        }
+      ]
+    },
+    "informacionSorteo": [
+      {
+        "titulo": "El sorteo se llevara a cabo",
+        "descripcion": "El día 16 de abril del 2026, a las 9:00 am, por lo que el sorteo se cerrara 20 minutos antes de esta hora y solo participaran los boletos comprados antes de esa hora"
+      },
+      {
+        "titulo": "Elección del ganador ",
+        "descripcion": "El Ganador será elegido al azar, mediante un ruletazo en esta misma web, al ganador se le notificara por medio del whatsapp registrado en su orden de compra, ademas también, podrán ver el ganador en esta web, al finalizar el sorteo será visible el numero del boleto ganador."
+      },
+      {
+        "titulo": "Bono del sorteo",
+        "descripcion": "El bono consiste en una bebida des su preferencia de la cafetería campus 2, solo podrás acceder a este bono si resultas ganador y sigues alguna de nuestras redes sociales."
+      },
+      {
+        "titulo": "Maximo de boletos por persona",
+        "descripcion": "Solo podrás adquirir un máximo de 5 boletos por persona, ordenes con un número mayor de boletos se descartan automáticamente "
+      }
+    ],
+    "informacionSorteoIntro": "Este es nuestro primer sorteo en la plataforma y queremos invitarte a ser parte de este inicio. La participación es totalmente gratuita, pero si deseas apoyarnos y ayudarnos a impulsar este proyecto, puedes adquirir tu boleto y acompañarnos en esta primera etapa.",
+    "estado": "activo",
+    "publicacion": {
+      "bonos": true,
+      "promociones": true,
+      "testimonios": false,
+      "ruletazo": true,
+      "presorteo": true,
+      "progressStats": true
+    },
+    "maquinaSuerte": {
+      "limiteBoletos": 10
+    },
+    "ayuda": {
+      "preguntasFrecuentes": [
+        {
+          "pregunta": "¿Cómo sé que mi pago fue confirmado?",
+          "respuesta": "Después de subir tu comprobante, el administrador lo revisará en máximo 24 horas.\n\nTu orden pasará a estado \"Confirmada\" en \"Mis Boletos\". No necesitas esperar notificación: verifica directamente en la web que tu comprobante fue validado."
+        }
+      ]
+    },
+    "bonosCompra": {
+      "enabled": true,
+      "items": [
+        {
+          "emoji": "🥤",
+          "titulo": "Bebida adicional",
+          "descripcion": "Para ser acreedor al bono adicional, debes seguirnos en al menos una de nuestras redes sociales oficiales."
+        }
+      ]
+    }
+  },
+  "tecnica": {
+    "bankAccounts": [
+      {
+        "id": 1,
+        "nombreBanco": "SANTANDER",
+        "accountNumber": "4456 1267 8989 1156",
+        "beneficiary": "Jose Luis Yepez Garcia",
+        "accountType": "Tarjeta",
+        "paymentType": "transferencia",
+        "numero_referencia": "",
+        "phone": ""
+      },
+      {
+        "id": 2,
+        "nombreBanco": "BBVA",
+        "accountNumber": "4589 1290 4589 3210",
+        "beneficiary": "Jose Ayair Lopez Perez",
+        "accountType": "Tarjeta",
+        "paymentType": "transferencia",
+        "numero_referencia": "",
+        "phone": ""
+      },
+      {
+        "id": 3,
+        "nombreBanco": "NU-MEXICO",
+        "accountNumber": "3412 5679 4512 5632",
+        "beneficiary": "José Ayair LP",
+        "accountType": "Tarjeta",
+        "paymentType": "efectivo",
+        "numero_referencia": "Tú numero de orden o Nombre completo",
+        "phone": ""
+      }
+    ]
+  },
+  "tema": {
+    "preset": "dorado",
+    "colorPrimario": "#d4a017",
+    "colorAcento": "#3f2d14",
+    "colorFondo": "#f7efe0",
+    "colores": {
+      "colorPrimario": "#d4a017",
+      "colorSecundario": "#3f2d14",
+      "colorAccento": "#3f2d14",
+      "colorFondo": "#f7efe0",
+      "colorSuperficie": "#f7efe0",
+      "colorTexto": "#0f172a",
+      "colorTextoSecundario": "#707276",
+      "primary": "#d4a017",
+      "primaryDark": "#a57d12",
+      "primaryLight": "#f1e1bc",
+      "secondary": "#3f2d14",
+      "success": "#16a34a",
+      "danger": "#dc2626",
+      "textDark": "#0f172a",
+      "textLight": "#707276",
+      "bgLight": "#f7efe0",
+      "bgWhite": "#f7efe0",
+      "borderColor": "#d2ccc3"
+    },
+    "personalizado": false,
+    "colorSuperficie": "#f7efe0",
+    "colorTexto": "#0f172a"
+  },
+  "seo": {
+    "title": "Desayuno completo 🥙🍳 + Bebida 🥤 - Cafetería Campus 2 | SaDev",
+    "description": "Participa en nuestra rifa piloto por tan solo 0 pesos, agradecemos tu participacion",
+    "image": "https://res.cloudinary.com/dxu3imvxt/image/upload/v1773361553/rifaplus/sorteos/qxvschbvl2sslhitqpsi.png",
+    "titulo": "Desayuno completo 🥙🍳 + Bebida 🥤 - Cafetería Campus 2 | SaDev",
+    "descripcion": "Participa en nuestra rifa piloto por tan solo 0 pesos, agradecemos tu participacion",
+    "imagen": "https://res.cloudinary.com/dxu3imvxt/image/upload/v1773361553/rifaplus/sorteos/qxvschbvl2sslhitqpsi.png",
+    "keywords": "sorteo, rifa, SUPERCOMBO PARA TODOS, SORTEOS LOPEZ",
+    "palabrasLlave": "sorteo, rifa, SUPERCOMBO PARA TODOS, SORTEOS LOPEZ",
+    "author": "SORTEOS LOPEZ",
+    "autor": "SORTEOS LOPEZ",
+    "urlBase": "",
+    "openGraph": {
+      "titulo": "Desayuno completo 🥙🍳 + Bebida 🥤 - Cafetería Campus 2 | SaDev",
+      "descripcion": "Participa en nuestra rifa piloto por tan solo 0 pesos, agradecemos tu participacion",
+      "imagen": "https://res.cloudinary.com/dxu3imvxt/image/upload/v1773361553/rifaplus/sorteos/qxvschbvl2sslhitqpsi.png",
+      "tipo": "website",
+      "locale": "es_MX"
+    },
+    "twitter": {
+      "card": "summary_large_image",
+      "titulo": "Desayuno completo 🥙🍳 + Bebida 🥤 - Cafetería Campus 2 | SaDev",
+      "descripcion": "Participa en nuestra rifa piloto por tan solo 0 pesos, agradecemos tu participacion",
+      "imagen": "https://res.cloudinary.com/dxu3imvxt/image/upload/v1773361553/rifaplus/sorteos/qxvschbvl2sslhitqpsi.png",
+      "creador": ""
+    }
+  },
+  "cache": {
+    "enableRedis": false,
+    "ttlSeconds": 300,
+    "policies": {
+      "publicBoletos": 600,
+      "adminStats": 300,
+      "ordenesCliente": 120,
+      "oportunidades": 900
+    }
+  },
+  "rate_limits": {
+    "development": {
+      "general": 10000,
+      "login": 1000,
+      "ordenes": 1000,
+      "windowMs": 900000
+    },
+    "production": {
+      "general": 100,
+      "login": 5,
+      "ordenes": 10,
+      "windowMs": 900000
+    }
+  },
+  "database": {
+    "pool": {
+      "min": 1,
+      "max": 5,
+      "acquireTimeoutMillis": 30000,
+      "idleTimeoutMillis": 15000,
+      "reapIntervalMillis": 1000
+    },
+    "queryTimeout": 30000
+  },
+  "server": {
+    "port": 5001,
+    "compression": true,
+    "trustProxy": true
+  }
+}

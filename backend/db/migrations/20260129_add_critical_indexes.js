@@ -40,7 +40,7 @@ exports.up = async (knex) => {
         console.log('   ✅ idx_opp_numero_oportunidad creado');
 
         // ✅ ÍNDICE 4: boletos_estado - búsqueda por numero_orden Y estado
-        // Usado en: crearOrdenConBoletos(), liberarBoletos()
+        // Usado en: liberarBoletos(), actualizaciones de boletos
         await knex.raw(`
             CREATE INDEX IF NOT EXISTS idx_boletos_numero_orden_estado 
             ON boletos_estado(numero_orden, estado);

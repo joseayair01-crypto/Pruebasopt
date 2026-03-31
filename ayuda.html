@@ -6,13 +6,20 @@
     <!-- METADATOS DINÁMICOS - Inyectados por js/meta-inyector.js desde config.js -->
     <title>Ayuda - Sorteos Torres</title>
     <link rel="stylesheet" href="css/styles.css?v=20251228.15">
-    <link rel="preload" as="image" href="images/logo.png" fetchpriority="high">
-    <link rel="icon" href="images/logo.png" sizes="32x32">
-    <link rel="apple-touch-icon" href="images/logo.png">
+    <script>
+        (function() {
+            const cachedLogo = localStorage.getItem('rifaplus_cached_logo') || 'images/placeholder-logo.svg';
+            window.__RIFAPLUS_CACHED_LOGO__ = cachedLogo;
+            document.write('<link rel="preload" as="image" href="' + cachedLogo + '" fetchpriority="high">');
+            document.write('<link rel="icon" href="' + cachedLogo + '" sizes="32x32">');
+            document.write('<link rel="apple-touch-icon" href="' + cachedLogo + '">');
+        })();
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css ">
     <!-- ✅ PRIMERO: Inyector de metadatos (se ejecuta ANTES que todo) -->
     <script src="js/config.js"></script>
+    <script src="js/config-sync.js"></script>
     <script src="js/meta-inyector.js"></script>
     <script src="js/theme-loader.js?v=20251216"></script>
     <script>
@@ -20,7 +27,6 @@
             ['rifaplus_fecha_sorteo','rifaplus_timestamp_sorteo','rifaplus_fecha_cierre'].forEach(k => localStorage.removeItem(k));
         })();
     </script>
-    <script src="js/config.js?v=1766990666"></script>
     <script src="js/theme-dynamic.js"></script>
     <style>
         /* Estilos específicos para FAQ */
@@ -50,6 +56,84 @@
         .faq-subtitle {
             font-size: 1.1rem;
             color: var(--text-light);
+            max-width: 54ch;
+            margin: 0 auto;
+            line-height: 1.65;
+        }
+
+        .confirmacion-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            padding: 2rem 2.2rem;
+            margin-bottom: 2.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .confirmacion-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary) 0%, rgba(24, 119, 242, 0.18) 100%);
+        }
+
+        .confirmacion-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.4rem 0.75rem;
+            border-radius: 999px;
+            background: rgba(24, 119, 242, 0.08);
+            color: var(--primary);
+            font-size: 0.76rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+
+        .confirmacion-title {
+            font-size: 1.45rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin: 0 0 0.75rem;
+            line-height: 1.35;
+        }
+
+        .confirmacion-text {
+            color: var(--text-light);
+            font-size: 0.98rem;
+            line-height: 1.65;
+            margin: 0 0 1.4rem;
+            max-width: 62ch;
+        }
+
+        .confirmacion-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
+        .confirmacion-item {
+            padding: 0.15rem 0.2rem 0.15rem 0;
+        }
+
+        .confirmacion-item strong {
+            display: block;
+            color: var(--text-dark);
+            font-size: 0.95rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .confirmacion-item span {
+            display: block;
+            color: var(--text-light);
+            font-size: 0.9rem;
+            line-height: 1.55;
         }
 
         /* Instrucciones de compra */
@@ -65,20 +149,28 @@
             font-size: 1.75rem;
             font-weight: 700;
             color: var(--primary);
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
             text-align: center;
+        }
+
+        .instrucciones-subtitle {
+            text-align: left;
+            color: var(--text-light);
+            font-size: 0.98rem;
+            line-height: 1.6;
+            margin: 0 0 1.5rem 0;
         }
 
         .pasos-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 2rem;
-            margin-top: 1.5rem;
+            margin-top: 1rem;
         }
 
         @media (min-width: 768px) {
             .pasos-grid {
-                grid-template-columns: repeat(4, 1fr);
+                grid-template-columns: repeat(5, 1fr);
             }
         }
 
@@ -105,7 +197,7 @@
         }
 
         .paso-titulo {
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             font-weight: 700;
             color: var(--text-dark);
             margin-bottom: 0.5rem;
@@ -114,6 +206,18 @@
         .paso-texto {
             color: var(--text-light);
             font-size: 0.95rem;
+            line-height: 1.55;
+        }
+
+        .instrucciones-nota {
+            margin-top: 1.5rem;
+            padding: 1rem 1.25rem;
+            border-radius: 10px;
+            background: #f8fafc;
+            border-left: 4px solid var(--primary);
+            color: var(--text-dark);
+            font-size: 0.95rem;
+            line-height: 1.55;
         }
 
         /* FAQ acordeón */
@@ -158,7 +262,8 @@
             transition: transform 0.3s ease;
         }
 
-        .faq-item.active .faq-pregunta::after {
+        .faq-item.active .faq-pregunta::after,
+        .faq-item.activo .faq-pregunta::after {
             transform: rotate(90deg);
         }
 
@@ -171,7 +276,8 @@
             line-height: 1.6;
         }
 
-        .faq-item.active .faq-respuesta {
+        .faq-item.active .faq-respuesta,
+        .faq-item.activo .faq-respuesta {
             padding: 0 1.5rem 1.5rem;
             max-height: 500px;
         }
@@ -202,57 +308,53 @@
         .contacto-redes {
             display: flex;
             justify-content: center;
-            gap: 1.5rem;
+            gap: 3rem;
             flex-wrap: wrap;
+            margin: 2rem 0;
         }
 
-        .contacto-red {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.5rem;
-            width: 120px;
-        }
-
-        .contacto-red-link {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.5rem;
-            text-decoration: none;
-            color: var(--text-dark);
-            font-weight: 600;
-            transition: var(--transition-fast);
-            cursor: pointer;
-            padding: 0.5rem;
-            border-radius: 8px;
-        }
-
-        .contacto-red-link:hover {
-            color: var(--primary);
-            transform: translateY(-2px);
-        }
-
-        .contacto-icon {
-            width: 60px;
-            height: 60px;
+        .social-icon-circle {
+            width: 80px;
+            height: 80px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
+            text-decoration: none;
+            flex: none;
+            cursor: pointer;
+            font-size: 2rem;
             color: white;
-            margin-bottom: 0.5rem;
+            transition: transform 0.2s ease;
         }
 
-        .whatsapp-icon { background: #25D366; }
-        .facebook-icon { background: #1877F2; }
-        .instagram-icon { background: #E4405F; }
+        .social-icon-circle:hover {
+            transform: scale(1.05);
+        }
+
+        .whatsapp-circle {
+            background: #25D366;
+        }
+
+        .facebook-circle {
+            background: #1877F2;
+        }
+
+        .instagram-circle {
+            background: #E4405F;
+        }
+
+        .tiktok-circle {
+            background: #000000;
+        }
 
         /* Responsive */
         @media (max-width: 768px) {
             .faq-title { font-size: 2rem; }
             .instrucciones-title { font-size: 1.5rem; }
+            .confirmacion-title { font-size: 1.35rem; }
+            .confirmacion-grid { grid-template-columns: 1fr; }
+            .pasos-grid { grid-template-columns: 1fr; }
             .paso-numero { width: 48px; height: 48px; font-size: 1.25rem; }
             .contacto-title { font-size: 1.5rem; }
         }
@@ -271,7 +373,10 @@
             </div>
             <a href="index.html#top" class="logo" data-logo-src>
                 <div class="logo-circle">
-                    <img src="images/logo.png" alt="SORTEOS YEPE" class="logo-image" fetchpriority="high" width="320" height="137">
+                    <script>
+                        document.write('<img src="' + (window.__RIFAPLUS_CACHED_LOGO__ || "images/placeholder-logo.svg") + '" alt="SORTEOS YEPE" class="logo-image dynamic-logo" data-dynamic-logo="true" fetchpriority="high" width="320" height="137">');
+                    </script>
+                    <noscript><img src="images/placeholder-logo.svg" alt="SORTEOS YEPE" class="logo-image dynamic-logo" data-dynamic-logo="true" fetchpriority="high" width="320" height="137"></noscript>
                 </div>
             </a>
             <nav class="nav">
@@ -305,167 +410,73 @@
         <div class="container">
             <section class="faq-section">
                 <div class="faq-header">
-                    <h1 class="faq-title">❓ Ayuda - Guía Completa</h1>
-                    <p class="faq-subtitle">Todo lo que necesitas saber para comprar boletos y participar en el sorteo de forma segura</p>
+                    <h1 class="faq-title">Centro de ayuda</h1>
+                    <p class="faq-subtitle">Aquí encuentras el proceso de compra, la validación del pago y las respuestas clave para participar con claridad.</p>
                 </div>
 
                 <!-- CARD IMPORTANTE: Confirmación -->
-                <div style="background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%); border-left: 6px solid #FF9800; padding: 1.5rem; border-radius: 8px; margin-bottom: 2.5rem;">
-                    <h3 style="margin: 0 0 1rem 0; color: #E65100; display: flex; align-items: center; gap: 0.5rem;">
-                        <i class="fas fa-check-circle"></i> Proceso de Confirmación
-                    </h3>
-                    <p style="margin: 0.5rem 0; color: #333;">
-                        <strong>✅ Lo importante:</strong> Una vez que <strong>subes tu comprobante de pago</strong>, el administrador lo revisará <strong>en máximo 24 horas</strong>. 
-                    </p>
-                    <p style="margin: 0.5rem 0; color: #333;">
-                        <strong>📍 No esperes notificación</strong> - <strong>verifica directamente en "Mis Boletos"</strong> si tu orden cambió a estado <strong>"Confirmado"</strong>. Si el comprobante es auténtico, ¡ya estás participando!
-                    </p>
-                    <p style="margin: 0.5rem 0; color: #333;">
-                        <strong>💡 Consejo:</strong> Aunque no hayas recibido confirmación oficial, <strong>tu orden está en el sistema</strong>. Puedes verificar cualquier momento en "Mis Boletos" que tus boletos están apartados y en espera de confirmación.
-                    </p>
-                </div>
+                <section class="confirmacion-card">
+                    <div class="confirmacion-kicker"><i class="fas fa-receipt"></i> Confirmación de pago</div>
+                    <h2 class="confirmacion-title">Tu compra queda lista cuando la orden aparece como <strong>Confirmada</strong>.</h2>
+                    <p class="confirmacion-text">Después de subir tu comprobante, la revisión se realiza en un plazo máximo de 24 horas. La referencia final siempre es el estado de tu orden en <strong>Mis Boletos</strong>.</p>
+                    <div class="confirmacion-grid">
+                        <div class="confirmacion-item">
+                            <strong>1. Sube tu comprobante</strong>
+                            <span>Hazlo desde <strong>Mis Boletos</strong> con foto, captura o PDF.</span>
+                        </div>
+                        <div class="confirmacion-item">
+                            <strong>2. Espera validación</strong>
+                            <span>El pago se revisa y la orden permanece registrada en el sistema.</span>
+                        </div>
+                        <div class="confirmacion-item">
+                            <strong>3. Verifica tu estado</strong>
+                            <span>Si ves <strong>Confirmada</strong>, ya estás participando.</span>
+                        </div>
+                    </div>
+                </section>
 
                 <!-- INSTRUCCIONES DE COMPRA -->
                 <section class="instrucciones-card">
                     <h2 class="instrucciones-title">📋 Cómo Comprar Boletos</h2>
+                    <p class="instrucciones-subtitle">El proceso es sencillo: eliges tus boletos, guardas tu orden, haces el pago, subes tu comprobante y después revisas en <strong>"Mis Boletos"</strong> que tu orden ya aparezca como <strong>Confirmada</strong>.</p>
+
                     <div class="pasos-grid">
                         <div class="paso-item">
                             <div class="paso-numero">1</div>
-                            <div class="paso-titulo">Selecciona tus boletos</div>
-                            <div class="paso-texto">Elige manualmente, busca números, o usa la "Máquina de la Suerte". Agrégalos al carrito.</div>
+                            <div class="paso-titulo">Elige tus boletos</div>
+                            <div class="paso-texto">Selecciona tus números manualmente o usa la máquina de la suerte.</div>
                         </div>
                         <div class="paso-item">
                             <div class="paso-numero">2</div>
-                            <div class="paso-titulo">Completa tus datos</div>
-                            <div class="paso-texto">Ingresa nombre completo, número de WhatsApp, estado y ciudad para tu registro.</div>
+                            <div class="paso-titulo">Guarda tu orden</div>
+                            <div class="paso-texto">Escribe tus datos y confirma la compra. Tus boletos quedan apartados a tu nombre.</div>
                         </div>
                         <div class="paso-item">
                             <div class="paso-numero">3</div>
-                            <div class="paso-titulo">Selecciona forma de pago</div>
-                            <div class="paso-texto">Elige la cuenta bancaria donde deseas hacer tu transferencia o depósito.</div>
+                            <div class="paso-titulo">Realiza el pago</div>
+                            <div class="paso-texto">Haz tu transferencia o depósito usando los datos que aparecen en tu orden.</div>
                         </div>
                         <div class="paso-item">
                             <div class="paso-numero">4</div>
-                            <div class="paso-titulo">Guarda tu orden</div>
-                            <div class="paso-texto">Recibirás un número de orden único para tu referencia. ¡Tus boletos están apartados!</div>
+                            <div class="paso-titulo">Sube tu comprobante</div>
+                            <div class="paso-texto">Entra a "Mis Boletos" y sube una foto, captura o PDF de tu pago.</div>
                         </div>
                         <div class="paso-item">
                             <div class="paso-numero">5</div>
-                            <div class="paso-titulo">Realiza tu pago</div>
-                            <div class="paso-texto">Haz tu transferencia o depósito al banco seleccionado con los datos que se muestran.</div>
+                            <div class="paso-titulo">Verifica tu estado</div>
+                            <div class="paso-texto">Tu compra queda lista cuando en "Mis Boletos" veas la orden como <strong>Confirmada</strong>.</div>
                         </div>
-                        <div class="paso-item">
-                            <div class="paso-numero">6</div>
-                            <div class="paso-titulo">Sube tu comprobante</div>
-                            <div class="paso-texto">Desde el botón flotante o en "Mis Boletos", sube foto, captura o PDF de tu comprobante.</div>
-                        </div>
-                        <div class="paso-item">
-                            <div class="paso-numero">7</div>
-                            <div class="paso-titulo">El administrador verifica</div>
-                            <div class="paso-texto">Revisamos tu comprobante para confirmar que es auténtico (máximo 24 horas).</div>
-                        </div>
-                        <div class="paso-item">
-                            <div class="paso-numero">8</div>
-                            <div class="paso-titulo">¡Participas!</div>
-                            <div class="paso-texto">Tu orden aparecerá como confirmada en "Mis Boletos" - ¡ya estás en el sorteo!</div>
-                        </div>
+                    </div>
+
+                    <div class="instrucciones-nota">
+                        <strong>Importante:</strong> guardar la orden no significa que el pago ya fue validado. Primero tus boletos quedan <strong>apartados</strong> y después pasan a <strong>confirmados</strong> cuando se revisa tu comprobante.
                     </div>
                 </section>
 
                 <!-- PREGUNTAS FRECUENTES -->
                 <section class="faq-questions">
                     <h2 class="instrucciones-title">🔍 Preguntas Frecuentes</h2>
-                    <div class="faq-items">
-                        <div class="faq-item">
-                            <div class="faq-pregunta" role="button" aria-expanded="false">¿Cómo sé que mi pago fue confirmado?</div>
-                            <div class="faq-respuesta">
-                                <p>Después de subir tu comprobante, el administrador lo revisará <strong>en máximo 24 horas</strong>. Tu orden pasará a estado <strong>"Confirmada"</strong> en "Mis Boletos". <strong>No necesitas esperar notificación</strong> - verifica directamente en la web que tu comprobante fue validado.</p>
-                            </div>
-                        </div>
-                        <div class="faq-item">
-                            <div class="faq-pregunta" role="button" aria-expanded="false">¿Qué pasa si mi orden aún no está confirmada?</div>
-                            <div class="faq-respuesta">
-                                <p>Si tu orden está en estado <strong>"En revisión"</strong>, significa que tu comprobante está siendo verificado. <strong>¡No te preocupes!</strong> - una vez confirmado, podrás ver el estado cambiar en "Mis Boletos" automáticamente. Si pasan 24h sin confirmación, contacta a administración.</p>
-                            </div>
-                        </div>
-                        <div class="faq-item">
-                            <div class="faq-pregunta" role="button" aria-expanded="false">¿Qué tipo de comprobante debo subir?</div>
-                            <div class="faq-respuesta">
-                                <p>Acepta cualquiera de estas opciones:</p>
-                                <ul style="text-align: left; margin-top: 0.5rem;">
-                                    <li>📸 <strong>Foto</strong> de tu recibo o pantalla del banco</li>
-                                    <li>📷 <strong>Captura de pantalla</strong> de tu transferencia confirmada</li>
-                                    <li>📄 <strong>PDF</strong> del comprobante de pago</li>
-                                </ul>
-                                <p style="margin-top: 0.5rem;">Asegúrate de que se vea claramente: cantidad, fecha, banco receptor y nombre en la cuenta.</p>
-                            </div>
-                        </div>
-                        <div class="faq-item">
-                            <div class="faq-pregunta" role="button" aria-expanded="false">¿Puedo comprar más de un boleto a la vez?</div>
-                            <div class="faq-respuesta">
-                                <p>¡Claro! Puedes comprar <strong>cuantos boletos quieras</strong>. Además, ofrecemos <strong>promociones especiales</strong>:</p>
-                                <ul style="text-align: left; margin-top: 0.5rem;">
-                                    <li>💰 10 boletos por $450 (con descuento)</li>
-                                    <li>💰 20 boletos por $800 (mayor descuento)</li>
-                                </ul>
-                                <p style="margin-top: 0.5rem;">Todos los boletos se verán en tu orden y participarán en el sorteo.</p>
-                            </div>
-                        </div>
-                        <div class="faq-item">
-                            <div class="faq-pregunta" role="button" aria-expanded="false">¿Es seguro usar WhatsApp para comprar?</div>
-                            <div class="faq-respuesta">
-                                <p>Tu número de WhatsApp se usa <strong>solo para comunicación</strong>, no para pagos. <strong>Tu orden ya está guardada en el sistema</strong> cuando completas los datos. Si algo falla, tu información ya está registrada y puedes subir el comprobante desde "Mis Boletos".</p>
-                            </div>
-                        </div>
-                        <div class="faq-item">
-                            <div class="faq-pregunta" role="button" aria-expanded="false">¿Puedo cambiar mis boletos después de pagar?</div>
-                            <div class="faq-respuesta">
-                                <p><strong>No.</strong> Una vez que confirmas tu orden y apartas tus boletos, los números seleccionados se reservan bajo tu nombre. Esto garantiza que nadie más pueda comprarlos.</p>
-                            </div>
-                        </div>
-                        <div class="faq-item">
-                            <div class="faq-pregunta" role="button" aria-expanded="false">¿Qué pasa si me equivoco en mis datos?</div>
-                            <div class="faq-respuesta">
-                                <p>Puedes <strong>contactar al administrador</strong> antes de hacer el pago para cambiar tus datos. Una vez que hagas la transferencia, será muy difícil modificar los datos. Si ya pagaste, comunícate por WhatsApp con tu número de orden para reportar el error.</p>
-                            </div>
-                        </div>
-                        <div class="faq-item">
-                            <div class="faq-pregunta" role="button" aria-expanded="false">¿Cuándo es el sorteo?</div>
-                            <div class="faq-respuesta">
-                                <p>El sorteo se realizará <strong>en vivo</strong> en nuestra página de Facebook en la fecha y hora especificadas en el inicio de la web. <strong>Todos los boletos confirmados participan automáticamente</strong> - no necesitas hacer nada más.</p>
-                            </div>
-                        </div>
-                        <div class="faq-item">
-                            <div class="faq-pregunta" role="button" aria-expanded="false">¿Qué pasa si el boleto que elegí se vende antes?</div>
-                            <div class="faq-respuesta">
-                                <p>El sistema <strong>actualiza en tiempo real</strong> los boletos disponibles. Si un boleto aparece disponible cuando lo secciones, <strong>nadie más puede comprarlo</strong> al mismo tiempo. Si otro usuario completa su compra primero, el boleto se marca como vendido inmediatamente.</p>
-                            </div>
-                        </div>
-                        <div class="faq-item">
-                            <div class="faq-pregunta" role="button" aria-expanded="false">¿Dónde veo mi orden después de comprar?</div>
-                            <div class="faq-respuesta">
-                                <p>Después de completar tu compra, ve a <strong>"Mis Boletos"</strong> en el menú principal. Aquí podrás:</p>
-                                <ul style="text-align: left; margin-top: 0.5rem;">
-                                    <li>📝 Ver todos tus números</li>
-                                    <li>💾 Subir tu comprobante de pago</li>
-                                    <li>✅ Verificar el estado: "En revisión" o "Confirmado"</li>
-                                    <li>📸 Cambiar tu foto de participante</li>
-                                </ul>
-                            </div>
-                        </div>
-                        <div class="faq-item">
-                            <div class="faq-pregunta" role="button" aria-expanded="false">¿Cómo cambio mi foto de participación?</div>
-                            <div class="faq-respuesta">
-                                <p>En la sección <strong>"Mis Boletos"</strong>, al lado de tu nombre encontrarás la opción para cambiar tu foto. Puedes usar una foto de tu perfil o una imagen nueva. Esta foto aparecerá si ganas el sorteo.</p>
-                            </div>
-                        </div>
-                        <div class="faq-item">
-                            <div class="faq-pregunta" role="button" aria-expanded="false">¿Puedo participar desde cualquier país?</div>
-                            <div class="faq-respuesta">
-                                <p>Depende de tu país y nuestras cuentas bancarias disponibles. En el paso de pago, verás las opciones disponibles. Si tu país no aparece, <strong>contacta a administración</strong> para ver si es posible hacer una transferencia internacional.</p>
-                            </div>
-                        </div>
-                    </div>
+                    <div class="faq-items" id="faqItemsContainer"></div>
                 </section>
 
                 <!-- CONTACTO -->
@@ -483,26 +494,23 @@
     <!-- FOOTER REDISEÑADO -->
     <footer class="footer">
         <div class="container">
+            <!-- 📱 BOLETERA DIGITAL CTA - LÍNEA DISCRETA -->
+            <div class="footer-boletera-cta">
+                <div class="boletera-content">
+                    ¿Necesitas una boletera digital? <a href="https://api.whatsapp.com/send?phone=524341068932&text=Hola%2C%20me%20interesa%20conocer%20m%C3%A1s%20sobre%20las%20boleteras%20digitales" class="btn-boletera-whatsapp" target="_blank" rel="noopener noreferrer">Consulta aquí</a>
+                </div>
+            </div>
+
             <div class="footer-main">
                 <!-- Columna izquierda: Logo y nombre -->
                 <div class="footer-logo-section">
                     <div class="footer-logo-box">
-                        <img src="images/logo.png" alt="SORTEOS YEPE" class="footer-logo-img" width="200" height="100">
+                        <img src="images/placeholder-logo.svg" alt="SORTEOS YEPE" class="footer-logo-img dynamic-logo" data-dynamic-logo="true" width="200" height="100">
                     </div>
-                    <h3 id="footerNombre" class="footer-client-name">SORTEOS YEPE</h3>
+                    <h3 id="footerNombre" class="footer-client-name">SORTEO</h3>
                     <p id="footerEslogan" class="footer-eslogan">Rifas 100% Transparentes y Seguras</p>
                 </div>
 
-                <!-- Columna central: Enlaces -->
-                <div class="footer-links-section">
-                    <h4 class="footer-links-title">Enlaces</h4>
-                    <ul class="footer-links-list">
-                        <li><a href="index.html">Inicio</a></li>
-                        <li><a href="compra.html">Comprar Boletos</a></li>
-                        <li><a href="ayuda.html">Ayuda</a></li>
-                        <li><a href="mis-boletos.html">Mis Boletos</a></li>
-                    </ul>
-                </div>
 
                 <!-- Columna derecha: Contacto y redes sociales -->
                 <div class="footer-contact-section">
@@ -522,21 +530,24 @@
 
             <!-- Copyright -->
             <div class="footer-bottom">
-                <p id="footerCopyright">&copy; 2025 <strong>SORTEOS YEPE</strong>. Todos los derechos reservados.</p>
+                <p id="footerCopyright">&copy; 2025 <strong>SORTEO</strong>. Todos los derechos reservados.</p>
             </div>
         </div>
     </footer>
 
     <script>
     // Actualizar footer dinámicamente desde config.js
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', async function() {
+        if (window.rifaplusConfig?.sincronizarConfigDelBackend) {
+            await window.rifaplusConfig.sincronizarConfigDelBackend();
+        }
         const config = window.rifaplusConfig;
         if (!config) return;
 
         // Actualizar nombre en footer
-        const footerNombre = document.getElementById('footerNombre');
-        if (footerNombre) {
-            footerNombre.textContent = config.cliente.nombre;
+        // ✅ CENTRALIZADO: Usar función que se actualiza automáticamente
+        if (typeof window.rifaplusConfig !== 'undefined' && typeof window.rifaplusConfig.actualizarNombreClienteEnUI === 'function') {
+            window.rifaplusConfig.actualizarNombreClienteEnUI();
         }
 
         // Actualizar eslogan en footer
@@ -546,34 +557,7 @@
         }
 
         // Actualizar redes sociales en footer
-        const footerSocial = document.getElementById('footerSocial');
-        if (footerSocial) {
-            footerSocial.innerHTML = '';
-            if (config.cliente.redesSociales.whatsapp) {
-                const whatsappLink = document.createElement('a');
-                whatsappLink.href = `https://wa.me/${config.cliente.redesSociales.whatsapp.replace(/[^0-9]/g, '')}`;
-                whatsappLink.target = '_blank';
-                whatsappLink.title = 'WhatsApp';
-                whatsappLink.innerHTML = '<i class="fab fa-whatsapp"></i>';
-                footerSocial.appendChild(whatsappLink);
-            }
-            if (config.cliente.redesSociales.facebook) {
-                const facebookLink = document.createElement('a');
-                facebookLink.href = config.cliente.redesSociales.facebook;
-                facebookLink.target = '_blank';
-                facebookLink.title = 'Facebook';
-                facebookLink.innerHTML = '<i class="fab fa-facebook-f"></i>';
-                footerSocial.appendChild(facebookLink);
-            }
-            if (config.cliente.redesSociales.instagram) {
-                const instagramLink = document.createElement('a');
-                instagramLink.href = config.cliente.redesSociales.instagram;
-                instagramLink.target = '_blank';
-                instagramLink.title = 'Instagram';
-                instagramLink.innerHTML = '<i class="fab fa-instagram"></i>';
-                footerSocial.appendChild(instagramLink);
-            }
-        }
+        renderizarFooterSocial();
 
         // Actualizar información de contacto
         const footerEmail = document.getElementById('footerEmail');
@@ -592,9 +576,74 @@
         const footerCopyright = document.getElementById('footerCopyright');
         if (footerCopyright) {
             const anio = config.cliente.anioActual || new Date().getFullYear();
-            footerCopyright.innerHTML = `&copy; ${anio} <strong>${config.cliente.nombre}</strong>. Todos los derechos reservados.`;
+            // Nombre ya se actualiza con actualizarNombreClienteEnUI() en script anterior
         }
     });
+    
+    // Función para actualizar redes sociales en footer
+    function renderizarFooterSocial() {
+        const footerSocial = document.getElementById('footerSocial');
+        const config = window.rifaplusConfig;
+        
+        if (!footerSocial || !config?.cliente?.redesSociales) return;
+        
+        const redes = config.cliente.redesSociales;
+        if (!redes || Object.values(redes).every(v => !v)) return;
+        
+        footerSocial.innerHTML = '';
+        
+        if (redes.whatsapp) {
+            const whatsappLink = document.createElement('a');
+            whatsappLink.href = `https://wa.me/${redes.whatsapp.replace(/[^0-9]/g, '')}`;
+            whatsappLink.target = '_blank';
+            whatsappLink.title = 'WhatsApp';
+            whatsappLink.innerHTML = '<i class="fab fa-whatsapp"></i>';
+            footerSocial.appendChild(whatsappLink);
+        }
+        if (redes.facebook) {
+            const facebookLink = document.createElement('a');
+            facebookLink.href = redes.facebook;
+            facebookLink.target = '_blank';
+            facebookLink.title = 'Facebook';
+            facebookLink.innerHTML = '<i class="fab fa-facebook-f"></i>';
+            footerSocial.appendChild(facebookLink);
+        }
+        if (redes.instagram) {
+            const instagramLink = document.createElement('a');
+            instagramLink.href = redes.instagram;
+            instagramLink.target = '_blank';
+            instagramLink.title = 'Instagram';
+            instagramLink.innerHTML = '<i class="fab fa-instagram"></i>';
+            footerSocial.appendChild(instagramLink);
+        }
+    }
+    
+    // Re-ejecutar footer cuando config-sync actualice
+    if (typeof window.rifaplusConfig !== 'undefined' && typeof window.rifaplusConfig.escucharEvento === 'function') {
+        window.rifaplusConfig.escucharEvento('configuracionActualizada', function() {
+            // ✅ Actualizar eslogan
+            const footerEslogan = document.getElementById('footerEslogan');
+            if (footerEslogan) {
+                footerEslogan.textContent = window.rifaplusConfig.cliente.eslogan || 'Rifas 100% Transparentes y Seguras';
+            }
+            
+            // ✅ Actualizar email y teléfono
+            const footerEmail = document.getElementById('footerEmail');
+            if (footerEmail && window.rifaplusConfig.cliente.email) {
+                footerEmail.href = `mailto:${window.rifaplusConfig.cliente.email}`;
+                footerEmail.textContent = window.rifaplusConfig.cliente.email;
+            }
+            
+            const footerTelefono = document.getElementById('footerTelefono');
+            if (footerTelefono && window.rifaplusConfig.cliente.telefono) {
+                footerTelefono.href = `tel:${window.rifaplusConfig.cliente.telefono.replace(/[^0-9+]/g, '')}`;
+                footerTelefono.textContent = window.rifaplusConfig.cliente.telefono;
+            }
+            
+            // ✅ Actualizar redes sociales
+            renderizarFooterSocial();
+        });
+    }
     </script>
 
     <!-- MODAL CARRITO EXPANDIBLE -->
@@ -609,7 +658,7 @@
                 <!-- Mensaje si está vacío -->
                 <div class="carrito-vacio" id="carritoVacio">
                     <div class="carrito-vacio-content">
-                        <img src="images/logo.png" alt="Logo" class="carrito-logo">
+                        <img src="images/placeholder-logo.svg" alt="Logo" class="carrito-logo dynamic-logo" data-dynamic-logo="true">
                         <p class="carrito-vacio-titulo">Tu carrito está vacío</p>
                         <p class="carrito-vacio-subtitulo">¡Comienza a seleccionar tus boletos favoritos!</p>
                         <button class="btn btn-primary btn-carrito-comprar" id="btnIrAComprar">
@@ -660,38 +709,130 @@
     <script src="js/main.js?v=20251115"></script>
     <script src="js/calculo-precios.js?v=20251230.1"></script>
 
-    <script src="js/carrito-global.js?v=1766990666"></script>
-    <script src="js/flujo-compra.js"></script>
+    <script defer src="js/oportunidades-manager.js"></script>
+    <script src="js/carrito-global.js?v=20260218"></script>
+    <script defer src="js/carrito-oportunidades.js"></script>
+    <script src="js/flujo-compra.js?v=20260329.3"></script>
     <script src="js/orden-formal.js"></script>
-    <script src="js/modal-contacto.js?v=20251115"></script>
+    <script src="js/modal-contacto.js?v=20260329.2"></script>
+    <script src="js/btn-flotante-animator.js"></script>
+
     <script>
+        const FAQS_AYUDA_PREDETERMINADAS = [
+            {
+                pregunta: '¿Cómo sé que mi pago fue confirmado?',
+                respuesta: 'Después de subir tu comprobante, el administrador lo revisará en máximo 24 horas.\n\nTu orden pasará a estado "Confirmada" en "Mis Boletos". No necesitas esperar notificación: verifica directamente en la web que tu comprobante fue validado.'
+            },
+            {
+                pregunta: '¿Qué pasa si mi orden aún no está confirmada?',
+                respuesta: 'Si tu orden está en estado "En revisión", significa que tu comprobante está siendo verificado.\n\nNo te preocupes. Una vez confirmado, podrás ver el estado cambiar en "Mis Boletos" automáticamente. Si pasan 24 horas sin confirmación, contacta a administración.'
+            },
+            {
+                pregunta: '¿Qué tipo de comprobante debo subir?',
+                respuesta: 'Acepta cualquiera de estas opciones:\n- Foto de tu recibo o pantalla del banco\n- Captura de pantalla de tu transferencia confirmada\n- PDF del comprobante de pago\n\nAsegúrate de que se vea claramente: cantidad, fecha, banco receptor y nombre en la cuenta.'
+            },
+            {
+                pregunta: '¿Puedo comprar más de un boleto a la vez?',
+                respuesta: 'Claro. Puedes comprar cuantos boletos quieras.\n\nAdemás, si tienes promociones activas en el sorteo, esas ventajas también aplican en tu compra.'
+            },
+            {
+                pregunta: '¿Es seguro usar WhatsApp para comprar?',
+                respuesta: 'Tu número de WhatsApp se usa solo para comunicación, no para pagos.\n\nTu orden ya está guardada en el sistema cuando completas los datos. Si algo falla, tu información queda registrada y puedes subir el comprobante desde "Mis Boletos".'
+            },
+            {
+                pregunta: '¿Puedo cambiar mis boletos después de pagar?',
+                respuesta: 'No. Una vez que confirmas tu orden y apartas tus boletos, los números seleccionados se reservan bajo tu nombre.\n\nEso garantiza que nadie más pueda comprarlos.'
+            },
+            {
+                pregunta: '¿Qué pasa si me equivoco en mis datos?',
+                respuesta: 'Puedes contactar al administrador antes de hacer el pago para corregir tus datos.\n\nSi ya pagaste, comunícate por WhatsApp con tu número de orden para reportar el error.'
+            },
+            {
+                pregunta: '¿Cuándo es el sorteo?',
+                respuesta: 'El sorteo se realizará en vivo en la fecha y hora especificadas en la web.\n\nTodos los boletos confirmados participan automáticamente, no necesitas hacer nada más.'
+            },
+            {
+                pregunta: '¿Qué pasa si el boleto que elegí se vende antes?',
+                respuesta: 'El sistema actualiza en tiempo real los boletos disponibles.\n\nSi un boleto aparece disponible cuando lo seleccionas, nadie más puede comprarlo al mismo tiempo. Si otro usuario completa su compra primero, el boleto se marca como vendido inmediatamente.'
+            },
+            {
+                pregunta: '¿Dónde veo mi orden después de comprar?',
+                respuesta: 'Después de completar tu compra, entra a "Mis Boletos".\n- Ver todos tus números\n- Subir tu comprobante de pago\n- Verificar el estado de tu orden\n- Cambiar tu foto de participante'
+            },
+            {
+                pregunta: '¿Cómo cambio mi foto de participación?',
+                respuesta: 'En la sección "Mis Boletos", al lado de tu nombre encontrarás la opción para cambiar tu foto.\n\nPuedes usar una foto de tu perfil o una imagen nueva. Esa foto aparecerá si ganas el sorteo.'
+            },
+            {
+                pregunta: '¿Puedo participar desde cualquier país?',
+                respuesta: 'Depende de tu país y de las cuentas bancarias disponibles.\n\nSi tu país no aparece como opción viable, contacta a administración para validar si es posible una transferencia internacional.'
+            }
+        ];
+
+        function escaparHtmlFaq(valor = '') {
+            return String(valor)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function normalizarFaqsAyuda(items) {
+            const base = Array.isArray(items) && items.length ? items : FAQS_AYUDA_PREDETERMINADAS;
+            return base.map((item) => ({
+                pregunta: String(item?.pregunta || '').trim(),
+                respuesta: String(item?.respuesta || '').trim()
+            })).filter((item) => item.pregunta && item.respuesta);
+        }
+
+        function convertirRespuestaFaqAHtml(respuesta = '') {
+            const bloques = String(respuesta || '').split(/\n\s*\n/).map((bloque) => bloque.trim()).filter(Boolean);
+
+            return bloques.map((bloque) => {
+                const lineas = bloque.split('\n').map((linea) => linea.trim()).filter(Boolean);
+                const todasSonLista = lineas.length > 0 && lineas.every((linea) => linea.startsWith('- '));
+
+                if (todasSonLista) {
+                    return `<ul style="text-align: left; margin-top: 0.5rem;">${lineas.map((linea) => `<li>${escaparHtmlFaq(linea.slice(2))}</li>`).join('')}</ul>`;
+                }
+
+                return `<p>${lineas.map((linea) => escaparHtmlFaq(linea)).join('<br>')}</p>`;
+            }).join('');
+        }
+
+        function renderizarFaqsAyuda() {
+            const contenedor = document.getElementById('faqItemsContainer');
+            if (!contenedor) return;
+
+            const faqs = normalizarFaqsAyuda(window.rifaplusConfig?.rifa?.ayuda?.preguntasFrecuentes);
+            contenedor.innerHTML = faqs.map((faq) => `
+                <div class="faq-item">
+                    <div class="faq-pregunta" role="button" aria-expanded="false">${escaparHtmlFaq(faq.pregunta)}</div>
+                    <div class="faq-respuesta">
+                        ${convertirRespuestaFaqAHtml(faq.respuesta)}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function inicializarAcordeonFaqAyuda() {
+            if (typeof inicializarFAQ === 'function') {
+                inicializarFAQ();
+            }
+        }
+
         // Inicializar acordeón FAQ
         document.addEventListener('DOMContentLoaded', function() {
-            const faqItems = document.querySelectorAll('.faq-item');
-            
-            faqItems.forEach(item => {
-                const pregunta = item.querySelector('.faq-pregunta');
-                const respuesta = item.querySelector('.faq-respuesta');
-                
-                pregunta.addEventListener('click', () => {
-                    const isActive = item.classList.contains('active');
-                    
-                    // Cerrar todos
-                    faqItems.forEach(i => {
-                        i.classList.remove('active');
-                        i.querySelector('.faq-respuesta').style.maxHeight = '0';
-                        i.querySelector('.faq-pregunta').setAttribute('aria-expanded', 'false');
-                    });
-                    
-                    // Abrir este si no estaba activo
-                    if (!isActive) {
-                        item.classList.add('active');
-                        pregunta.setAttribute('aria-expanded', 'true');
-                        // Ajustar altura dinámicamente
-                        respuesta.style.maxHeight = respuesta.scrollHeight + 'px';
-                    }
+            renderizarFaqsAyuda();
+            inicializarAcordeonFaqAyuda();
+
+            if (window.rifaplusConfig?.escucharEvento) {
+                window.rifaplusConfig.escucharEvento('configuracionActualizada', function() {
+                    renderizarFaqsAyuda();
+                    inicializarAcordeonFaqAyuda();
                 });
-            });
+            }
             
             // Funcionalidad del carrito modal
             const carritoModal = document.getElementById('carritoModal');
@@ -730,81 +871,69 @@
             }
             
             // Cargar dinámicamente las redes sociales desde config.js
-            const contactoRedes = document.querySelector('.contacto-redes');
-            if (contactoRedes && window.config && window.config.cliente && window.config.cliente.redesSociales) {
-                const redes = window.config.cliente.redesSociales;
+            function renderizarRedesContacto() {
+                const contactoRedes = document.querySelector('.contacto-redes');
                 
-                // Limpiar contenido previo (si existe)
-                contactoRedes.innerHTML = '';
-                
-                // WhatsApp - siempre usar el número del organizador
-                if (redes.whatsapp) {
-                    const whatsappPhone = redes.whatsapp.replace(/[^0-9]/g, '');
-                    const whatsappUrl = `https://wa.me/${whatsappPhone}`;
+                if (contactoRedes && window.config && window.config.cliente && window.config.cliente.redesSociales) {
+                    const redes = window.config.cliente.redesSociales;
+                    contactoRedes.innerHTML = '';
                     
-                    const whatsappDiv = document.createElement('div');
-                    whatsappDiv.className = 'contacto-red';
-                    whatsappDiv.innerHTML = `
-                        <a href="${whatsappUrl}" target="_blank" rel="noopener noreferrer" class="contacto-red-link">
-                            <div class="contacto-icon whatsapp-icon">
-                                <i class="fab fa-whatsapp"></i>
-                            </div>
-                            <span>WhatsApp</span>
-                        </a>
-                    `;
-                    contactoRedes.appendChild(whatsappDiv);
-                }
-                
-                // Facebook
-                let facebookUrl = null;
-                if (redes.facebook) {
-                    // Si ya es URL completa, usarla directamente; si no, construir
-                    if (redes.facebook.includes('facebook.com')) {
-                        facebookUrl = redes.facebook;
-                    } else {
-                        facebookUrl = `https://facebook.com/${redes.facebook}`;
+                    // WhatsApp
+                    if (redes.whatsapp) {
+                        const whatsappPhone = redes.whatsapp.replace(/[^0-9]/g, '');
+                        const whatsappUrl = `https://wa.me/${whatsappPhone}`;
+                        const whatsappLink = document.createElement('a');
+                        whatsappLink.href = whatsappUrl;
+                        whatsappLink.target = '_blank';
+                        whatsappLink.rel = 'noopener noreferrer';
+                        whatsappLink.className = 'social-icon-circle whatsapp-circle';
+                        whatsappLink.innerHTML = '<i class="fab fa-whatsapp"></i>';
+                        contactoRedes.appendChild(whatsappLink);
                     }
-                }
-                
-                if (facebookUrl) {
-                    const facebookDiv = document.createElement('div');
-                    facebookDiv.className = 'contacto-red';
-                    facebookDiv.innerHTML = `
-                        <a href="${facebookUrl}" target="_blank" rel="noopener noreferrer" class="contacto-red-link">
-                            <div class="contacto-icon facebook-icon">
-                                <i class="fab fa-facebook-f"></i>
-                            </div>
-                            <span>Facebook</span>
-                        </a>
-                    `;
-                    contactoRedes.appendChild(facebookDiv);
-                }
-                
-                // Instagram
-                let instagramUrl = null;
-                if (redes.instagram) {
-                    // Si ya es URL completa, usarla directamente; si no, construir
-                    if (redes.instagram.includes('instagram.com')) {
-                        instagramUrl = redes.instagram;
-                    } else {
-                        instagramUrl = `https://instagram.com/${redes.instagram}`;
+                    
+                    // Facebook
+                    if (redes.facebook) {
+                        const facebookUrl = redes.facebook.includes('facebook.com') ? redes.facebook : `https://facebook.com/${redes.facebook}`;
+                        const facebookLink = document.createElement('a');
+                        facebookLink.href = facebookUrl;
+                        facebookLink.target = '_blank';
+                        facebookLink.rel = 'noopener noreferrer';
+                        facebookLink.className = 'social-icon-circle facebook-circle';
+                        facebookLink.innerHTML = '<i class="fab fa-facebook-f"></i>';
+                        contactoRedes.appendChild(facebookLink);
                     }
-                }
-                
-                if (instagramUrl) {
-                    const instagramDiv = document.createElement('div');
-                    instagramDiv.className = 'contacto-red';
-                    instagramDiv.innerHTML = `
-                        <a href="${instagramUrl}" target="_blank" rel="noopener noreferrer" class="contacto-red-link">
-                            <div class="contacto-icon instagram-icon">
-                                <i class="fab fa-instagram"></i>
-                            </div>
-                            <span>Instagram</span>
-                        </a>
-                    `;
-                    contactoRedes.appendChild(instagramDiv);
+                    
+                    // Instagram
+                    if (redes.instagram) {
+                        const instagramUrl = redes.instagram.includes('instagram.com') ? redes.instagram : `https://instagram.com/${redes.instagram}`;
+                        const instagramLink = document.createElement('a');
+                        instagramLink.href = instagramUrl;
+                        instagramLink.target = '_blank';
+                        instagramLink.rel = 'noopener noreferrer';
+                        instagramLink.className = 'social-icon-circle instagram-circle';
+                        instagramLink.innerHTML = '<i class="fab fa-instagram"></i>';
+                        contactoRedes.appendChild(instagramLink);
+                    }
+                    
+                } else {
+                    setTimeout(renderizarRedesContacto, 500);
                 }
             }
+            
+            // Esperar a que config esté lista
+            if (document.readyState === 'complete') {
+                console.log('[CONTACTO] DOM ya está completo, renderizando...');
+                renderizarRedesContacto();
+            } else {
+                console.log('[CONTACTO] Esperando a que DOM esté completo...');
+                window.addEventListener('load', renderizarRedesContacto);
+            }
+            
+            // También escuchar al evento configSyncCompleto para actualizar cuando config esté lista
+            window.addEventListener('configSyncCompleto', (event) => {
+                console.log('[CONTACTO] 📢 Evento configSyncCompleto recibido, re-renderizando redes...');
+                renderizarRedesContacto();
+            });
             
             // Animar botón flotante solo los primeros 2 segundos
             const btnFlotante = document.querySelector('.btn-flotante-comprobante');

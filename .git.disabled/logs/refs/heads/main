@@ -1,3 +1,0 @@
-0000000000000000000000000000000000000000 00b4f32c2d7a211ce4a116c79535107ca2bbce32 Ayair López <ayair@MacBook-Air-de-Ayair.local> 1766998659 -0600	commit (initial): fix: handle Postgres arrays for boletos + robust parsing; add debug_inspect_boletos
-00b4f32c2d7a211ce4a116c79535107ca2bbce32 107db99d7498efc6855f8a86bef5c2dbf79cd574 Ayair López <ayair@MacBook-Air-de-Ayair.local> 1766999123 -0600	commit: fix: GET /api/public/ordenes-cliente - handle Postgres arrays + remove missing comprobante_path column
-107db99d7498efc6855f8a86bef5c2dbf79cd574 e0e7e554c7480b0bda0fa7f952b8222b5199a970 Ayair López <ayair@MacBook-Air-de-Ayair.local> 1767001164 -0600	commit: fix: POST /api/public/ordenes-cliente comprobante - add express-fileupload, remove missing comprobante_path column

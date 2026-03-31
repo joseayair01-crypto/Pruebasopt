@@ -4,7 +4,9 @@
 
 /* Hero de orden */
 .orden-hero {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 50%, var(--secondary) 100%);
+    background:
+        radial-gradient(circle at top center, rgba(215, 176, 122, 0.18), transparent 30%),
+        linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 55%, var(--secondary) 100%);
     color: white;
     padding: 3rem 0;
     position: relative;
@@ -87,7 +89,7 @@
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-md);
     text-align: center;
-    border-left: 6px solid var(--primary);
+    border-left: 6px solid var(--primary-light);
 }
 
 @media (max-width: 768px) {
@@ -201,7 +203,7 @@
 }
 
 .boleto-chip {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary-dark) 100%);
     color: white;
     padding: 0.6rem 1rem;
     border-radius: var(--radius-md);
@@ -646,4 +648,3 @@
         padding: 0.6rem 1rem;
     }
 }
-

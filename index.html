@@ -3,25 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:* http://localhost:* https://gorgeous-heliotrope-5a6b8e.netlify.app http://localhost:5001; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' http://127.0.0.1:* http://localhost:* https: http://localhost:5001 https://gorgeous-heliotrope-5a6b8e.netlify.app; img-src 'self' data: https:;">
-    <!-- METADATOS DINÁMICOS - Inyectados por js/meta-inyector.js desde config.js -->
-    <title>Sorteos Torres - RAM 1200 2025 + $150,000 | Rifas 100% Transparentes</title>
-    <meta name="description" content="Participa en el sorteo de RAM 1200 2025 + $150,000. 100% transparente, transmisión en vivo. Compra tus boletos desde $8 MXN.">
-    <!-- Open Graph Meta Tags (DINÁMICOS - se actualizan desde config.js) -->
-    <meta property="og:title" content="Sorteos Torres - ¡Gana RAM 1200 2025 + $150,000!" />
-    <meta property="og:description" content="Participa en nuestro sorteo 100% transparente. Transmisión en vivo garantizada." />
-    <meta property="og:image" content="https://rifas-web.vercel.app/images/ImgPrincipal.png" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:* http://localhost:* https://gorgeous-heliotrope-5a6b8e.netlify.app http://localhost:5001; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://fonts.googleapis.com http://localhost:5001 http://127.0.0.1:5001; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' http://127.0.0.1:* http://localhost:* https: http://localhost:5001 http://127.0.0.1:5001 https://gorgeous-heliotrope-5a6b8e.netlify.app ws: wss: ws://localhost:5001 wss://localhost:5001 ws://127.0.0.1:5001 wss://127.0.0.1:5001; img-src 'self' data: https:;">
+    <!-- METADATOS DINÁMICOS - Se cargan en tiempo real desde /api/og-metadata y config.js -->
+    <title>Sorteos - Participa en nuestro sorteo</title>
+    <meta name="description" content="Participa en nuestro sorteo 100% transparente con múltiples oportunidades de ganar.">
+    <!-- Open Graph Meta Tags (DINÁMICOS - se actualizan desde /api/og-metadata) -->
+    <meta property="og:title" content="Sorteos" />
+    <meta property="og:description" content="Participa en nuestro sorteo." />
+    <meta property="og:image" content="images/placeholder-cover.svg" />
     <meta property="og:url" content="https://rifas-web.vercel.app" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="es_MX" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Sorteos Torres - ¡Gana RAM 1200 2025 + $150,000!" />
-    <meta name="twitter:description" content="Participa en nuestro sorteo 100% transparente. Transmisión en vivo garantizada." />
-    <meta name="twitter:image" content="https://rifas-web.vercel.app/images/ImgPrincipal.png" />
+    <meta name="twitter:title" content="Sorteos" />
+    <meta name="twitter:description" content="Participa en nuestro sorteo." />
+    <meta name="twitter:image" content="images/placeholder-cover.svg" />
     <link rel="stylesheet" href="css/styles.css?v=20251228.15">
-    <link rel="preload" as="image" href="images/logo.png" fetchpriority="high">
-    <link rel="icon" href="images/logo.png" sizes="32x32">
-    <link rel="apple-touch-icon" href="images/logo.png">
+    <script>
+        (function() {
+            const cachedLogo = localStorage.getItem('rifaplus_cached_logo') || 'images/placeholder-logo.svg';
+            window.__RIFAPLUS_CACHED_LOGO__ = cachedLogo;
+            document.write('<link rel="preload" as="image" href="' + cachedLogo + '" fetchpriority="high">');
+            document.write('<link rel="icon" href="' + cachedLogo + '" sizes="32x32">');
+            document.write('<link rel="apple-touch-icon" href="' + cachedLogo + '">');
+        })();
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/modal-contacto.css">
@@ -29,7 +35,14 @@
     <link rel="stylesheet" href="css/sistema-premios.css">
     <!-- ✅ PRIMERO: Inyector de metadatos (se ejecuta ANTES que todo) -->
     <script src="js/config.js"></script>
+    <script src="js/config-sync.js"></script>
     <script src="js/meta-inyector.js"></script>
+    <!-- ⚙️ Detectar entorno (debe ser PRIMERO, antes de socket-handler.js) -->
+    <script src="js/environment-config.js"></script>
+    <!-- 🔌 Socket.io para actualizaciones en tiempo real (carga dinámicamente desde el backend) -->
+    <script src="js/socket-handler.js"></script>
+    <!-- 🔄 SINCRONIZACIÓN EN VIVO: Cambios desde panel admin → Frontend -->
+    <script src="js/sorteo-sync.js"></script>
     <!-- ✅ Carga inteligente de boletos para 1M boletos -->
     <script src="js/boletos-loader.js"></script>
     <script>
@@ -80,7 +93,6 @@
         })();
     </script>
     <script src="js/theme-loader.js?v=20251228.15"></script>
-    <script src="js/config.js?v=2000000001"></script>
     <script src="js/theme-dynamic.js"></script>
     <!-- DEBUG: Verificar que config se cargó correctamente -->
     <script>
@@ -108,12 +120,15 @@
     <script src="js/main.js?v=20251228.15"></script>
     <script src="js/calculo-precios.js?v=20251230.1"></script>
 
-    <script src="js/storage-manager.js"></script>
-    <script src="js/carrito-global.js?v=1766990666"></script>
-    <script src="js/flujo-compra.js?v=20251228.15"></script>
+    <script defer src="js/oportunidades-manager.js"></script>
+    <script src="js/storage-manager-v2.js"></script>
+    <script src="js/carrito-global.js?v=20260218"></script>
+    <script defer src="js/carrito-oportunidades.js"></script>
+    <script src="js/flujo-compra.js?v=20260329.3"></script>
     <script src="js/modal-conflicto-boletos.js?v=20260127"></script>
-    <script src="js/orden-formal.js?v=20251228.15"></script>
-    <script src="js/modal-contacto.js?v=20251228.15"></script>
+    <script src="js/orden-formal.js?v=20260329.1"></script>
+    <script src="js/modal-contacto.js?v=20260329.2"></script>
+    <script src="js/btn-flotante-animator.js"></script>
 </head>
 <body>
     <!-- HEADER CON MENÚ -->
@@ -129,7 +144,10 @@
 
             <a href="#top" class="logo" data-logo-src id="logoLink">
                 <div class="logo-circle">
-                    <img src="images/logo.png" alt="SORTEOS EL TREBOL" class="logo-image dynamic-logo" data-dynamic-logo="true" fetchpriority="high" width="320" height="137">
+                    <script>
+                        document.write('<img src="' + (window.__RIFAPLUS_CACHED_LOGO__ || "images/placeholder-logo.svg") + '" alt="SORTEOS EL TREBOL" class="logo-image dynamic-logo" data-dynamic-logo="true" fetchpriority="high" width="320" height="137">');
+                    </script>
+                    <noscript><img src="images/placeholder-logo.svg" alt="SORTEOS EL TREBOL" class="logo-image dynamic-logo" data-dynamic-logo="true" fetchpriority="high" width="320" height="137"></noscript>
                 </div>
             </a>
 
@@ -193,13 +211,12 @@
     <!-- CUENTA REGRESIVA - URGENCIA -->
     <section class="countdown-section">
         <div class="container">
-            <div class="countdown-card">
-                <div class="countdown-header">
-                    <span class="countdown-badge">🔥 OPORTUNIDAD ÚNICA</span>
+                <div class="countdown-card">
+                    <div class="countdown-header">
                     <h2 class="countdown-title">¡El Sorteo Está Cada Vez Más Cerca!</h2>
-                    <p class="countdown-subtitle" id="countdownSubtitle">No pierdas tu oportunidad de ganar este increíble premio.
-                    <strong>Cada boleto comprado aumenta tus posibilidades de ser el afortunado ganador.</strong></p>
-                </div>
+                    <p class="countdown-subtitle" id="countdownSubtitle">La cuenta regresiva para el sorteo ya está en marcha.
+                    <strong>Asegura tu participación antes del cierre del sorteo.</strong></p>
+                    </div>
                 
                 <div class="countdown-timer" aria-live="polite">
                     <div class="countdown-item">
@@ -242,8 +259,8 @@
                     <p class="urgency-text">¿Listo para participar? Tu oportunidad está aquí</p>
                     <button class="btn btn-urgency" onclick="window.location.href='compra.html'">
                         Comprar boletos ahora
+                        <span class="btn-arrow">→</span>
                     </button>
-                    <p class="small-text">Compra segura • Entrega inmediata • Soporte 24/7</p>
                 </div>
             </div>
         </div>
@@ -289,40 +306,17 @@
     <section class="rifa-descripcion-formal">
         <div class="container">
             <div class="descripcion-content">
-                <h2 class="descripcion-titulo">Información del Sorteo</h2>
-                <div class="descripcion-intro">
-                    <p>
-                        <strong>Segunda Edición - SORTEOS EL TREBOL</strong><br>
-                        Te presentamos un evento excepcional donde el ganador afortunado se llevará 
-                        <strong>una hermosa RAM 700 2025 completamente nueva</strong>.
-                    </p>
+                <div class="descripcion-header">
+                    <span class="descripcion-eyebrow">Informacion Importante</span>
+                    <h2 class="descripcion-titulo">Información del Sorteo</h2>
+                    <p class="descripcion-bajada">Consulta aquí las condiciones, detalles y aclaraciones más importantes antes de participar.</p>
+                </div>
+                <div class="descripcion-intro" id="descripcionIntro">
+                    <!-- Se carga dinámicamente desde config -->
                 </div>
                 
-                <div class="descripcion-texto">
-                    <div class="descripcion-seccion">
-                        <h3>🎰 Ruletazos Adicionales</h3>
-                        <p>
-                            Además del sorteo principal, se realizarán <strong>5 ruletazos de $1,000 cada uno</strong>, 
-                            dándote más oportunidades de ganar premios extraordinarios.
-                        </p>
-                    </div>
-
-                    <div class="descripcion-seccion">
-                        <h3>🔢 Sistema de Ganador Especial</h3>
-                        <p>
-                            El sorteo está basado en el ganador del "sorteo mayor". Los <strong>últimos 3 dígitos</strong> del número ganador 
-                            serán los <strong>primeros 3 dígitos</strong> del ganador de este sorteo, y los <strong>primeros 3 serán los últimos</strong>. 
-                            Un sistema único y transparente.
-                        </p>
-                    </div>
-
-                    <div class="descripcion-seccion descripcion-condicion">
-                        <h3>⚠️ Condición de Realización</h3>
-                        <p>
-                            Este sorteo está condicionado a la venta del <strong>80% de los boletos</strong>. En caso de no cumplirse esta condición, 
-                            la fecha del sorteo se pospondrá automáticamente al próximo "sorteo mayor".
-                        </p>
-                    </div>
+                <div class="descripcion-texto" id="descripcionTextoDinamico">
+                    <!-- Se carga dinámicamente desde admin -->
                 </div>
 
                 <!-- Información del Sorteo (Tarjetas) -->
@@ -338,79 +332,128 @@
 
     <style>
         .rifa-descripcion-formal {
-            background: #f8f9fa;
-            padding: 4rem 1.5rem;
-            border-top: 1px solid #e0e0e0;
+            background: linear-gradient(180deg, #f8fafc 0%, #ffffff 44%, #f8fafc 100%);
+            padding: 4.5rem 1.5rem;
+            border-top: 1px solid rgba(15, 23, 42, 0.08);
         }
 
         .descripcion-content {
-            max-width: 900px;
+            max-width: 980px;
             margin: 0 auto;
         }
 
-        .descripcion-titulo {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #1a1a1a;
-            margin-bottom: 1.5rem;
+        .descripcion-header {
+            max-width: 760px;
+            margin: 0 auto 2rem;
             text-align: center;
         }
 
+        .descripcion-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.4rem 0.9rem;
+            margin-bottom: 0.9rem;
+            border-radius: 999px;
+            background: rgba(15, 58, 125, 0.08);
+            border: 1px solid rgba(15, 58, 125, 0.12);
+            color: var(--primary);
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .descripcion-titulo {
+            font-size: clamp(2rem, 4vw, 2.7rem);
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.03em;
+            margin-bottom: 0.75rem;
+            text-align: center;
+        }
+
+        .descripcion-bajada {
+            margin: 0;
+            color: #475569;
+            font-size: 1rem;
+            line-height: 1.7;
+        }
+
         .descripcion-intro {
-            background: white;
-            padding: 1.5rem;
-            border-radius: var(--radius-md);
+            background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+            padding: 1.7rem 1.8rem;
+            border-radius: 22px;
             margin-bottom: 2rem;
-            border-left: 3px solid #333;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-left: 4px solid var(--primary);
+            box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
         }
 
         .descripcion-intro p {
             margin: 0;
-            font-size: 1rem;
-            line-height: 1.6;
-            color: #333;
+            font-size: 1.04rem;
+            line-height: 1.8;
+            color: #1e293b;
         }
 
         .descripcion-intro strong {
-            color: #1a1a1a;
-            font-weight: 600;
+            color: #0f172a;
+            font-weight: 700;
         }
 
         .descripcion-texto {
+            display: grid;
+            gap: 1rem;
             font-size: 1rem;
             line-height: 1.8;
-            color: #333;
+            color: #334155;
         }
 
         .descripcion-texto p {
-            margin-bottom: 1.5rem;
-            text-align: justify;
+            margin: 0;
+            text-align: left;
         }
 
         .descripcion-texto strong {
-            color: #1a1a1a;
-            font-weight: 600;
+            color: #0f172a;
+            font-weight: 700;
         }
 
         .descripcion-seccion {
-            background: white;
-            padding: 1.5rem;
-            border-radius: var(--radius-md);
-            margin-bottom: 1.5rem;
-            border-left: 3px solid #666;
+            position: relative;
+            background: #ffffff;
+            padding: 1.35rem 1.45rem;
+            border-radius: 18px;
+            margin-bottom: 0;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+            overflow: hidden;
+        }
+
+        .descripcion-seccion::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
         }
 
         .descripcion-seccion h3 {
-            font-size: 1.1rem;
-            color: #1a1a1a;
+            font-size: 1.08rem;
+            color: #0f172a;
             margin-top: 0;
-            margin-bottom: 0.75rem;
-            font-weight: 600;
+            margin-bottom: 0.62rem;
+            font-weight: 700;
+            line-height: 1.4;
         }
 
         .descripcion-seccion p {
             margin: 0;
-            color: #555;
+            color: #475569;
+            line-height: 1.75;
         }
 
         .descripcion-condicion {
@@ -423,85 +466,157 @@
         }
 
         .info-rifa-cards {
-            margin-top: 3rem;
-            padding-top: 2rem;
-            border-top: 1px solid #e0e0e0;
+            margin-top: 3.2rem;
+            padding-top: 2.1rem;
+            border-top: 1px solid rgba(15, 23, 42, 0.08);
         }
 
         .info-rifa-subtitle {
             font-size: 1.2rem;
-            color: #1a1a1a;
-            margin-bottom: 2rem;
+            color: #0f172a;
+            margin-bottom: 1.6rem;
             text-align: center;
-            font-weight: 600;
+            font-weight: 700;
+            letter-spacing: -0.02em;
         }
 
         @media (max-width: 768px) {
             .rifa-descripcion-formal {
-                padding: 2.5rem 1rem;
+                padding: 3rem 1rem;
+            }
+
+            .descripcion-header {
+                margin-bottom: 1.5rem;
             }
 
             .descripcion-titulo {
                 font-size: 1.6rem;
-                margin-bottom: 1.25rem;
+                margin-bottom: 0.6rem;
             }
 
             .descripcion-intro {
-                padding: 1.25rem;
+                padding: 1.25rem 1.1rem;
                 margin-bottom: 1.5rem;
+                border-radius: 18px;
             }
 
             .descripcion-texto {
                 font-size: 0.95rem;
             }
 
-            .descripcion-texto p {
-                text-align: left;
-            }
-
             .descripcion-seccion {
-                padding: 1.25rem;
-                margin-bottom: 1rem;
+                padding: 1.1rem 1rem;
+                border-radius: 16px;
             }
 
             .descripcion-seccion h3 {
                 font-size: 1rem;
             }
         }
+
+        @media (max-width: 480px) {
+            .descripcion-eyebrow {
+                font-size: 0.72rem;
+                padding: 0.34rem 0.75rem;
+            }
+
+            .descripcion-bajada {
+                font-size: 0.92rem;
+            }
+
+            .descripcion-intro p,
+            .descripcion-seccion p {
+                font-size: 0.94rem;
+                line-height: 1.7;
+            }
+        }
     </style>
 
     <script>
-    // Cargar información de rifa dinámicamente desde config.js
-    document.addEventListener('DOMContentLoaded', function() {
+    // Renderiza las tarjetas de información de la rifa dinámicamente
+    function renderizarTarjetasInfo() {
         const infoGrid = document.getElementById('infoRifaGrid');
-        if (!infoGrid || !window.rifaplusConfig) return;
+        if (!infoGrid || !window.rifaplusConfig) {
+            console.debug('⏳ Esperando config para renderizar tarjetas...');
+            return false;
+        }
 
         const rifa = window.rifaplusConfig.rifa;
+        if (!rifa) {
+            console.debug('⏳ rifa no disponible aún');
+            return false;
+        }
+
+        // Limpiar grid anterior
+        infoGrid.innerHTML = '';
+        
         let infoItems = [];
         
         // ===== AGREGAR ITEMS DEL CONFIG =====
-        const configItems = rifa.infoRifa || [];
-        
-        // ===== AGREGAR TARJETA DE PRESORTEO DESPUÉS DEL PRIMER ITEM (SORTEO) =====
-        if (rifa.fechaPresorteo && rifa.horaPresorteo) {
+        const configItems = Array.isArray(rifa.infoRifa) ? rifa.infoRifa : [];
+        const itemsSinFechaPrincipal = configItems.filter((item, index) => {
+            if (index === 0) return false;
+            const contenido = String(item?.contenido || '').trim();
+            return !['dinamico-fecha-hora', 'dinamico-fecha', 'dinamico-hora'].includes(contenido);
+        });
+
+        const tarjetaFechaSorteo = {
+            titulo: 'Fecha del Sorteo',
+            icono: '🗓️',
+            contenido: 'dinamico-fecha'
+        };
+
+        const tarjetaHoraSorteo = {
+            titulo: 'Hora del Sorteo',
+            icono: '⏰',
+            contenido: 'dinamico-hora'
+        };
+
+        const tarjetaFechaHoraSorteo = {
+            titulo: 'Fecha y Hora del Sorteo',
+            icono: '🗓️',
+            contenido: 'dinamico-fecha-hora'
+        };
+
+        // ===== AGREGAR TARJETA DE PRESORTEO SOLO SI REALMENTE ESTÁ ACTIVO =====
+        const presorteoActivo = Array.isArray(rifa.sistemaPremios?.presorteo) && rifa.sistemaPremios.presorteo.length > 0;
+        if (presorteoActivo) {
+            const fechaPresorteoTexto = (() => {
+                const fechaFormateada = window.rifaplusConfig.obtenerFechaPresorteoFormato?.() || rifa.fechaPresorteoFormato;
+                const horaFormateada = rifa.horaPresorteo;
+
+                if (fechaFormateada && horaFormateada) {
+                    return `${fechaFormateada} a las ${horaFormateada}`;
+                }
+
+                if (fechaFormateada) {
+                    return `${fechaFormateada}`;
+                }
+
+                if (horaFormateada) {
+                    return `Hora por confirmar: ${horaFormateada}`;
+                }
+
+                return 'Fecha y hora por confirmar';
+            })();
+
             const presorteoItem = {
                 titulo: 'Presorteo',
                 icono: '🎊',
-                contenido: `${rifa.fechaPresorteoFormato} a las ${rifa.horaPresorteo}`
+                contenido: fechaPresorteoTexto
             };
-            // Agregar primer item (Fecha y Hora del Sorteo)
-            if (configItems.length > 0) {
-                infoItems.push(configItems[0]);
-            }
-            // Agregar presorteo en segundo lugar
-            infoItems.push(presorteoItem);
-            // Agregar el resto de items
-            if (configItems.length > 1) {
-                infoItems = infoItems.concat(configItems.slice(1));
-            }
+
+            infoItems = [
+                tarjetaFechaHoraSorteo,
+                presorteoItem,
+                ...itemsSinFechaPrincipal.slice(0, 2)
+            ];
         } else {
-            // Si no hay presorteo, usar todos los items tal cual
-            infoItems = configItems;
+            infoItems = [
+                tarjetaFechaSorteo,
+                tarjetaHoraSorteo,
+                ...itemsSinFechaPrincipal.slice(0, 2)
+            ];
         }
         
         // Función auxiliar para formatear números con comas
@@ -516,11 +631,11 @@
             // Manejar contenido dinámico
             let contenido = item.contenido;
             if (item.contenido === 'dinamico-fecha') {
-                contenido = window.rifaplusConfig.rifa.fechaSorteoFormato;
+                contenido = window.rifaplusConfig.obtenerFechaSorteoFormato?.() || window.rifaplusConfig.rifa.fechaSorteoFormato;
             } else if (item.contenido === 'dinamico-hora') {
                 contenido = `${window.rifaplusConfig.rifa.horaSorteo} (${window.rifaplusConfig.rifa.zonaHoraria})`;
             } else if (item.contenido === 'dinamico-fecha-hora') {
-                contenido = `${window.rifaplusConfig.rifa.fechaSorteoFormato} a las ${window.rifaplusConfig.rifa.horaSorteo}`;
+                contenido = `${window.rifaplusConfig.obtenerFechaSorteoFormato?.() || window.rifaplusConfig.rifa.fechaSorteoFormato} a las ${window.rifaplusConfig.rifa.horaSorteo}`;
             } else if (item.contenido === 'dinamico-modalidad') {
                 contenido = window.rifaplusConfig.rifa.modalidadSorteo;
             } else if (item.contenido === 'dinamico-boletos') {
@@ -535,7 +650,7 @@
             
             // Si es modalidad, hacer clickeable y usar icono de Facebook
             if (esModalidad) {
-                const facebookUrl = window.rifaplusConfig.cliente.redesSociales.facebook;
+                const facebookUrl = window.rifaplusConfig?.cliente?.redesSociales?.facebook;
                 infoItem.style.cursor = 'pointer';
                 infoItem.onclick = function() {
                     if (facebookUrl) {
@@ -569,6 +684,29 @@
             
             infoGrid.appendChild(infoItem);
         });
+
+        console.log(`✅ [index.html] Tarjetas renderizadas: ${infoItems.length} items`);
+        return true;
+    }
+
+    // Cargar información de rifa dinámicamente desde config.js
+    document.addEventListener('DOMContentLoaded', async function() {
+        // 🔄 Intentar renderizar tarjetas en DOMContentLoaded
+        // Si falla (config no está listo), reintentar
+        function intentarRenderizar() {
+            if (!renderizarTarjetasInfo()) {
+                // Reintenta en 300ms
+                setTimeout(intentarRenderizar, 300);
+            }
+        }
+        
+        intentarRenderizar();
+        
+        // 🎧 También escuchar evento de sincronización para re-renderizar cuando config actualice
+        window.addEventListener('configuracionActualizada', function() {
+            console.log('🔄 [index.html] Evento configuracionActualizada - Re-renderizando tarjetas...');
+            renderizarTarjetasInfo();
+        });
     });
     </script>
 
@@ -579,9 +717,37 @@
             
             <!-- PRECIO UNITARIO - Una sola tarjeta como en compra.html -->
             <div class="precios-grid-unitario">
-                <div class="precio-card-main">
-                    <h3>Precio por Boleto</h3>
-                    <div class="precio-big"><span id="precioDinamicoIndex">Cargando...</span></div>
+                <div class="precio-card-main" id="precioCardMain">
+                    <!-- PRECIO NORMAL (cuando no hay promoción) -->
+                    <div id="precioNormal" class="precio-normal-mode">
+                        <h3>Precio por Boleto</h3>
+                        <div class="precio-big"><span id="precioDinamicoIndex">Cargando...</span></div>
+                    </div>
+                    
+                    <!-- PRECIO CON OFERTA (cuando hay promoción) -->
+                    <div id="precioOferta" class="precio-oferta-mode" style="display: none;">
+                        <!-- Badge OFERTA -->
+                        <div class="oferta-badge">
+                            <span class="oferta-badge-text">OFERTA</span>
+                        </div>
+                        
+                        <!-- Precio normal tachado -->
+                        <div class="oferta-precio-normal">
+                            <h4>Precio Regular</h4>
+                            <div class="precio-tachado" id="precioNormalOferta">$20</div>
+                        </div>
+                        
+                        <!-- Precio de oferta resaltado -->
+                        <div class="oferta-precio-destacado">
+                            <h3>Precio Especial</h3>
+                            <div class="precio-oferta-big" id="precioEspecialOferta">$15</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- VIGENCIA DE LA OFERTA - Fuera de la card -->
+                <div class="oferta-vigencia" id="ofertaVigencia" style="display: none;">
+                    <span class="vigencia-text" id="vigenciaOferta">Vigencia hasta: 15/03/2026 a las 23:59</span>
                 </div>
             </div>
             
@@ -599,85 +765,526 @@
     // Cargar nombre de edición dinámicamente
     function cargarNombreEdicion() {
         const edEl = document.getElementById('edicionNombre');
-        if (!edEl || !window.rifaplusConfig || !window.rifaplusConfig.cliente) {
-            setTimeout(cargarNombreEdicion, 50);
+        if (!edEl) return;
+
+        // Obtener edicionNombre desde config.rifa
+        let rifa = window.rifaplusConfig?.rifa;
+        
+        // Si no hay config del servidor, usar fallback de config.js
+        if (!rifa && typeof window.config !== 'undefined' && window.config.rifa) {
+            console.log('📦 Usando fallback local para edicionNombre');
+            rifa = window.config.rifa;
+        }
+
+        // Si aún no hay config, reintentar
+        if (!rifa) {
+            console.log('⏳ Esperando config para edicionNombre...');
+            setTimeout(cargarNombreEdicion, 200);
             return;
         }
-        const nombreEdicion = window.rifaplusConfig.cliente.nombreEdicion;
-        if (nombreEdicion) {
-            edEl.innerHTML = nombreEdicion;
+
+        const edicionNombre = rifa.edicionNombre;
+        console.log('📋 [cargarNombreEdicion] Valor obtenido:', edicionNombre);
+        console.log('📋 [cargarNombreEdicion] Config rifa:', rifa);
+        
+        if (edicionNombre) {
+            console.log('✅ Actualizando edicionNombre a:', edicionNombre);
+            edEl.innerHTML = edicionNombre;
+        } else {
+            console.warn('⚠️ edicionNombre vacío o no definido');
         }
+    }
+
+    // Cargar título y descripción del hero dinámicamente
+    function cargarHeroContent() {
+        const titleEl = document.getElementById('heroTitle');
+        const descEl = document.getElementById('heroDescription');
+        
+        if (!titleEl || !descEl) return;
+
+        // Verificar si config está disponible
+        let rifa = window.rifaplusConfig?.rifa;
+        
+        // Si no hay config del servidor, usar fallback de config.js
+        if (!rifa && typeof window.config !== 'undefined' && window.config.rifa) {
+            console.log('📦 Usando fallback local para heroContent');
+            rifa = window.config.rifa;
+        }
+        
+        // Si aún no hay config, reintentar
+        if (!rifa) {
+            console.log('⏳ Esperando config para heroContent...');
+            setTimeout(cargarHeroContent, 200);
+            return;
+        }
+        
+        // Si aún no hay datos (sincronización en progreso), mostrar loading
+        if (!rifa.descripcion) {
+            titleEl.innerHTML = '<span class="highlight">Cargando sorteo...</span>';
+            descEl.textContent = 'Cargando...';
+            return;
+        }
+        
+        // Actualizar descripción
+        descEl.textContent = rifa.descripcion;
+        
+        // El texto exacto del formulario (sin modificaciones)
+        // Usar nombreSorteo (Hero Highlight) - NUNCA usar titulo
+        const nombreCompleto = rifa.nombreSorteo?.trim() || '';
+        
+        console.log('🎯 [cargarHeroContent] nombreSorteo valor:', nombreCompleto);
+        console.log('🎯 [cargarHeroContent] nombreSorteo valor (IGNORADO):', rifa.nombreSorteo);
+        
+        // Si no hay nombreSorteo, no actualizar el hero (mantener HTML inicial)
+        if (!nombreCompleto) {
+            console.log('⚠️ [cargarHeroContent] nombreSorteo vacío, manteniendo HTML inicial');
+            return;
+        }
+        
+        // Renderizar título - exactamente lo que viene del admin sin agregar "Gana un"
+        const tituloFinal = '<span class="highlight">' + nombreCompleto + '</span>';
+        titleEl.innerHTML = tituloFinal;
+        
+        // Actualizar el elemento del highlight para compatibilidad
+        const highlightEl = document.getElementById('heroHighlight');
+        if (highlightEl) {
+            highlightEl.textContent = nombreCompleto;
+        }
+        
+        console.log('✅ [cargarHeroContent] Hero actualizado SOLO con nombreSorteo:', nombreCompleto);
     }
     
     // Cargar precio unitario dinámicamente
     function cargarPrecioUnitario() {
         const pEl = document.getElementById('precioDinamicoIndex');
         const textoEl = document.getElementById('oportunidadesTexto');
-        if (!pEl || !window.rifaplusConfig || !window.rifaplusConfig.rifa) {
-            setTimeout(cargarPrecioUnitario, 50);
-            return;
+        const precioCardMain = document.getElementById('precioCardMain');
+        const precioNormalDiv = document.getElementById('precioNormal');
+        const precioOfertaDiv = document.getElementById('precioOferta');
+        const ofertaVigenciaDiv = document.getElementById('ofertaVigencia');
+        
+        if (!pEl) return;
+
+        // Usar getter centralizado robusto desde config.js
+        const precioBoleto = window.rifaplusConfig?.obtenerPrecioBoleto?.() || 100;
+        const ahora = new Date();
+        let hayPromocionActiva = false;
+        let precioEspecial = precioBoleto;
+        let fechaFin = null;
+        let tipoPromo = null;
+        
+        // ===== VERIFICAR PROMOCIÓN POR TIEMPO =====
+        const promoTiempo = window.rifaplusConfig?.rifa?.promocionPorTiempo;
+        let precioTiempo = null;
+        let fechaTiempo = null;
+        
+        if (promoTiempo?.enabled && promoTiempo?.precioProvisional) {
+            const fechaInicio = new Date(promoTiempo.fechaInicio);
+            const fechaFinPromo = new Date(promoTiempo.fechaFin);
+            
+            if (ahora >= fechaInicio && ahora <= fechaFinPromo) {
+                precioTiempo = promoTiempo.precioProvisional;
+                fechaTiempo = fechaFinPromo;
+            }
         }
-        const precio = window.rifaplusConfig.rifa.precioBoleto;
-        pEl.innerHTML = `$${parseFloat(precio).toFixed(2)}`;
+        
+        // ===== VERIFICAR DESCUENTO POR PORCENTAJE =====
+        const descuentoPorcentaje = window.rifaplusConfig?.rifa?.descuentoPorcentaje;
+        let precioPorcentaje = null;
+        let fechaPorcentaje = null;
+        let porcentajeDescuento = null;
+        
+        if (descuentoPorcentaje?.enabled && descuentoPorcentaje?.porcentaje) {
+            const fechaInicio = new Date(descuentoPorcentaje.fechaInicio);
+            const fechaFin = new Date(descuentoPorcentaje.fechaFin);
+            
+            if (ahora >= fechaInicio && ahora <= fechaFin) {
+                const descuento = (precioBoleto * descuentoPorcentaje.porcentaje) / 100;
+                precioPorcentaje = precioBoleto - descuento;
+                fechaPorcentaje = fechaFin;
+                porcentajeDescuento = descuentoPorcentaje.porcentaje;
+            }
+        }
+        
+        // ===== SELECCIONAR EL MEJOR DESCUENTO =====
+        if (precioTiempo !== null && precioPorcentaje !== null) {
+            // Ambos activos: usar el más barato
+            if (precioPorcentaje < precioTiempo) {
+                precioEspecial = precioPorcentaje;
+                fechaFin = fechaPorcentaje;
+                tipoPromo = 'porcentaje';
+                console.log('[PROMO] 🎯 AMBAS ACTIVAS - Usando PORCENTAJE (mejor descuento)');
+            } else {
+                precioEspecial = precioTiempo;
+                fechaFin = fechaTiempo;
+                tipoPromo = 'tiempo';
+                console.log('[PROMO] 🎯 AMBAS ACTIVAS - Usando TIEMPO (mejor descuento)');
+            }
+            hayPromocionActiva = true;
+        } else if (precioTiempo !== null) {
+            precioEspecial = precioTiempo;
+            fechaFin = fechaTiempo;
+            tipoPromo = 'tiempo';
+            hayPromocionActiva = true;
+            console.log('[PROMO] 🎯 PROMOCIÓN POR TIEMPO ACTIVA');
+        } else if (precioPorcentaje !== null) {
+            precioEspecial = precioPorcentaje;
+            fechaFin = fechaPorcentaje;
+            tipoPromo = 'porcentaje';
+            hayPromocionActiva = true;
+            console.log('[PROMO] 🎯 DESCUENTO POR PORCENTAJE ACTIVO: ' + porcentajeDescuento + '%');
+        }
+        
+        // ===== MOSTRAR PRECIO CON O SIN OFERTA =====
+        if (hayPromocionActiva && precioCardMain) {
+            console.log('🎯 PROMOCIÓN ACTIVA - Mostrando oferta');
+            
+            // Ocultar precio normal
+            if (precioNormalDiv) precioNormalDiv.style.display = 'none';
+            
+            // Mostrar precio con oferta
+            if (precioOfertaDiv) {
+                precioOfertaDiv.style.display = 'flex';
+                
+                // Actualizar precios
+                const precioNormalEl = document.getElementById('precioNormalOferta');
+                const precioEspecialEl = document.getElementById('precioEspecialOferta');
+                const badgeText = document.querySelector('.oferta-badge-text');
+                
+                if (precioNormalEl) precioNormalEl.textContent = `$${precioBoleto.toFixed(2)}`;
+                if (precioEspecialEl) precioEspecialEl.textContent = `$${precioEspecial.toFixed(2)}`;
+                
+                // Mostrar porcentaje de descuento SOLO para descuentoPorcentaje, no para promoción
+                if (badgeText && tipoPromo === 'porcentaje') {
+                    const porcentajeDescuentoReal = Math.round(((precioBoleto - precioEspecial) / precioBoleto) * 100);
+                    badgeText.textContent = `${porcentajeDescuentoReal}% OFF`;
+                } else if (badgeText) {
+                    // Para promoción por tiempo, mostrar "OFERTA"
+                    badgeText.textContent = 'OFERTA';
+                }
+            }
+            
+            // Mostrar vigencia FUERA de la card
+            if (ofertaVigenciaDiv && fechaFin) {
+                ofertaVigenciaDiv.style.display = 'flex';
+                
+                const vigenciaEl = document.getElementById('vigenciaOferta');
+                if (vigenciaEl) {
+                    // Formatear la fecha de fin
+                    const fechaFinal = new Date(fechaFin);
+                    const dia = String(fechaFinal.getDate()).padStart(2, '0');
+                    const mes = String(fechaFinal.getMonth() + 1).padStart(2, '0');
+                    const año = fechaFinal.getFullYear();
+                    
+                    // Formatear hora con AM/PM
+                    let hora = fechaFinal.getHours();
+                    const minuto = String(fechaFinal.getMinutes()).padStart(2, '0');
+                    const ampm = hora >= 12 ? 'PM' : 'AM';
+                    hora = hora % 12;
+                    hora = hora ? hora : 12; // Si es 0, mostrar como 12
+                    const horaFormato = String(hora).padStart(2, '0');
+                    
+                    vigenciaEl.textContent = `Vigencia hasta: ${dia}/${mes}/${año} a las ${horaFormato}:${minuto} ${ampm}`;
+                }
+            }
+            
+            // Actualizar card
+            pEl.innerHTML = `$${precioEspecial.toFixed(2)}`;
+        } else {
+            console.log('Modo precio normal (sin promoción)');
+            
+            // Mostrar precio normal
+            if (precioNormalDiv) precioNormalDiv.style.display = 'flex';
+            if (precioOfertaDiv) precioOfertaDiv.style.display = 'none';
+            if (ofertaVigenciaDiv) ofertaVigenciaDiv.style.display = 'none';
+            
+            pEl.innerHTML = `$${precioBoleto.toFixed(2)}`;
+        }
         
         // Mostrar/ocultar texto de oportunidades
-        const config = window.rifaplusConfig.rifa;
-        const oportunidadesConfig = config?.oportunidades;
-        const promosOportunidadesConfig = config?.promocionesOportunidades;
-        
-        if (oportunidadesConfig && oportunidadesConfig.enabled && 
-            promosOportunidadesConfig && promosOportunidadesConfig.enabled && textoEl) {
-            const opxBoleto = oportunidadesConfig.oportunidades_por_boleto || 3;
+        const rifa = window.rifaplusConfig?.rifa;
+        if (rifa?.oportunidades?.enabled && rifa?.promocionesOportunidades?.enabled && textoEl) {
+            const opxBoleto = rifa.oportunidades.multiplicador || 3;
             textoEl.style.display = 'block';
             textoEl.textContent = `Cada boleto que compres te regala ${opxBoleto} oportunidades EXTRA de ganar`;
         } else if (textoEl) {
             textoEl.style.display = 'none';
         }
+        
+        // Actualizar cada segundo si hay promoción activa
+        if (hayPromocionActiva) {
+            setTimeout(cargarPrecioUnitario, 1000);
+        }
+    }
+    
+    // Re-ejecutar cuando config-sync actualice desde el servidor
+    if (typeof window.rifaplusConfig !== 'undefined' && typeof window.rifaplusConfig.escucharEvento === 'function') {
+        window.rifaplusConfig.escucharEvento('configuracionActualizada', function() {
+            cargarNombreEdicion();
+            cargarPrecioUnitario();
+            cargarHeroContent();
+            cargarPreciosYDescuentos();
+            renderizarBonos();
+            renderizarInformacionDelSorteo();  // Actualizar información del sorteo
+            renderizarInformacionSorteoIntro();  // Cargar intro del sorteo
+            cargarGaleria();
+        });
+    }
+    
+    // Variable global para rastrear el estado del carrusel
+    window.carruselState = {
+        currentIndex: 0,
+        isInitialized: false,
+        slides: []
+    };
+
+    function actualizarModoCarrusel(slideActivo) {
+        const carrusel = document.querySelector('.carrusel');
+        if (!carrusel || !slideActivo) return;
+
+        const esVertical = slideActivo.dataset.orientation === 'vertical';
+        carrusel.classList.toggle('carrusel--vertical-active', esVertical);
+    }
+
+    // Cargar galería de imágenes dinámicamente
+    window.carruselRetries = window.carruselRetries || 0;
+    function cargarGaleria() {
+        const carruselInner = document.querySelector('.carrusel-inner');
+        const carrusel = document.querySelector('.carrusel');
+        if (!carruselInner) {
+            console.error('❌ No encontré .carrusel-inner');
+            return;
+        }
+
+        let galeria = window.rifaplusConfig?.rifa?.galeria;
+        
+        // Reintentar si no hay config (máximo 25 reintentos = 5 segundos)
+        if (!galeria) {
+            if (window.carruselRetries++ < 25) {
+                setTimeout(cargarGaleria, 200);
+            }
+            return;
+        }
+
+        window.carruselRetries = 0;
+
+        // Si galería no está habilitada, ocultar carrusel
+        if (!galeria.enabled) {
+            const carruselSection = document.querySelector('.carrusel-section');
+            if (carruselSection) carruselSection.style.display = 'none';
+            return;
+        }
+
+        // Mostrar sección
+        const carruselSection = document.querySelector('.carrusel-section');
+        if (carruselSection) carruselSection.style.display = 'block';
+
+        // Verificar que hay imágenes
+        if (!galeria.imagenes || !Array.isArray(galeria.imagenes) || galeria.imagenes.length === 0) {
+            console.warn('⚠️ Galería sin imágenes');
+            return;
+        }
+
+        // Limpiar carrusel anterior
+        carruselInner.innerHTML = '';
+
+        // Agregar cada imagen
+        galeria.imagenes.forEach((imagen, index) => {
+            const slide = document.createElement('div');
+            slide.className = 'carrusel-item';
+            if (index === 0) slide.classList.add('active');
+            
+            const img = document.createElement('img');
+            img.src = imagen.url;
+            img.alt = imagen.titulo || `Imagen ${index + 1}`;
+            img.onerror = () => console.error(`Error cargando imagen: ${imagen.url}`);
+            img.onload = () => {
+                const esVertical = img.naturalHeight > img.naturalWidth;
+                slide.dataset.orientation = esVertical ? 'vertical' : 'horizontal';
+
+                if (slide.classList.contains('active')) {
+                    actualizarModoCarrusel(slide);
+                }
+            };
+            
+            slide.appendChild(img);
+            carruselInner.appendChild(slide);
+        });
+
+        if (carrusel) {
+            carrusel.classList.remove('carrusel--vertical-active');
+        }
+
+        // Guardar referencias
+        window.carruselState.slides = carruselInner.querySelectorAll('.carrusel-item');
+        window.carruselState.currentIndex = 0;
+
+        // Inicializar controles si no lo está
+        if (!window.carruselState.isInitialized) {
+            inicializarCarruselControles();
+        }
+    }
+
+    // Inicializar funcionalidad del carrusel
+    function inicializarCarruselControles() {
+        const prevBtn = document.querySelector('.carrusel-prev');
+        const nextBtn = document.querySelector('.carrusel-next');
+
+        if (!prevBtn || !nextBtn || window.carruselState.slides.length === 0) {
+            return;
+        }
+
+        // Función para mostrar un slide específico
+        const showSlide = (index) => {
+            const slides = window.carruselState.slides;
+            
+            // Validar índice
+            if (index >= slides.length) index = 0;
+            if (index < 0) index = slides.length - 1;
+
+            window.carruselState.currentIndex = index;
+
+            // Remover active de TODOS los slides
+            slides.forEach(slide => {
+                slide.classList.remove('active');
+            });
+
+            // Activar SOLO el slide actual
+            slides[index].classList.add('active');
+            actualizarModoCarrusel(slides[index]);
+            
+            console.log(`📍 Slide ${index + 1} de ${slides.length} mostrado`);
+        };
+
+        // Botón anterior
+        prevBtn.addEventListener('click', () => {
+            window.carruselState.currentIndex--;
+            showSlide(window.carruselState.currentIndex);
+        });
+
+        // Botón siguiente
+        nextBtn.addEventListener('click', () => {
+            window.carruselState.currentIndex++;
+            showSlide(window.carruselState.currentIndex);
+        });
+
+        // Mostrar el primer slide
+        showSlide(0);
+        window.carruselState.isInitialized = true;
+
+        // 🔄 AUTO-ADVANCE: Cambiar imagen automáticamente cada 5 segundos
+        setInterval(() => {
+            window.carruselState.currentIndex++;
+            showSlide(window.carruselState.currentIndex);
+        }, 5000);
+
+        console.log(`✅ CARRUSEL LISTO Y FUNCIONAL`);
     }
     
     // Cargar descuentos/promociones dinámicamente desde config
     function cargarPreciosYDescuentos() {
         const preciosGrid = document.getElementById('preciosGrid');
-        if (!preciosGrid || !window.rifaplusConfig || !window.rifaplusConfig.rifa) {
-            setTimeout(cargarPreciosYDescuentos, 50);
+        const preciosSection = document.querySelector('.precios-section');
+        
+        if (!preciosGrid || !preciosSection) {
+            console.log('⚠️ No encontré elementos para precios');
+            return;
+        }
+
+        // Verificar si config está disponible
+        let config = window.rifaplusConfig?.rifa;
+        
+        // Si no hay config del servidor, usar fallback de config.js
+        if (!config && typeof window.config !== 'undefined' && window.config.rifa) {
+            console.log('📦 Usando fallback local para promociones/descuentos');
+            config = window.config.rifa;
+        }
+
+        // Si aún no hay config, reintentar
+        if (!config) {
+            console.log('⏳ Esperando config para promociones/descuentos...');
+            setTimeout(cargarPreciosYDescuentos, 200);
             return;
         }
 
         preciosGrid.innerHTML = '';
-        const config = window.rifaplusConfig.rifa;
+        preciosGrid.style.display = 'grid';
+        let tarjetasRendeadas = 0;
+        const oportunidadesPromosActivas = config.oportunidades?.enabled === true
+            && config.promocionesOportunidades?.enabled === true
+            && Array.isArray(config.promocionesOportunidades?.ejemplos)
+            && config.promocionesOportunidades.ejemplos.length > 0;
+
+        const aplicarLayoutPreciosGrid = (contenedor) => {
+            if (!contenedor) return;
+
+            contenedor.classList.remove(
+                'precios-grid-promos--1',
+                'precios-grid-promos--2',
+                'precios-grid-promos--3',
+                'precios-grid-promos--4',
+                'precios-grid-promos--many'
+            );
+
+            const totalCards = contenedor.children.length;
+            if (totalCards <= 0) return;
+            if (totalCards === 1) contenedor.classList.add('precios-grid-promos--1');
+            else if (totalCards === 2) contenedor.classList.add('precios-grid-promos--2');
+            else if (totalCards === 3) contenedor.classList.add('precios-grid-promos--3');
+            else if (totalCards === 4) contenedor.classList.add('precios-grid-promos--4');
+            else contenedor.classList.add('precios-grid-promos--many');
+        };
 
         // Tarjetas de descuentos si están habilitados
-        if (config.descuentos && config.descuentos.enabled && config.descuentos.reglas && config.descuentos.reglas.length > 0) {
+        if (config.descuentos?.enabled && config.descuentos?.reglas?.length > 0) {
+            console.log('✅ Renderizando descuentos:', config.descuentos.reglas.length);
             config.descuentos.reglas.forEach((regla) => {
                 const precioCard = document.createElement('div');
-                precioCard.className = 'promo-card-grande';
-                const ahorroPorcentaje = ((regla.ahorro / (regla.precio)) * 100).toFixed(0);
+                precioCard.className = 'promo-card-grande descuento-card';
+                const totalPaquete = Number(regla.total ?? regla.precio ?? 0);
                 precioCard.innerHTML = `
-                    <div class="promo-card-cantidad">${regla.cantidad} boletos</div>
-                    <div class="promo-card-precio">$${regla.precio}</div>
-                    <div class="promo-card-ahorro">💰 Ahorra $${regla.ahorro} (${ahorroPorcentaje}%)</div>
-                    <button class="btn btn-secondary" onclick="window.location.href='compra.html'">Comprar</button>
+                    <div class="promo-card-body">
+                        <span class="promo-card-tag">Promocion</span>
+                        <div class="promo-card-cantidad">${regla.cantidad} Boletos</div>
+                        <div class="promo-card-label">Solo por:</div>
+                        <div class="promo-card-precio">$${totalPaquete}</div>
+                    </div>
+                    <button class="btn btn-secondary promo-card-btn" onclick="window.location.href='compra.html'">Comprar Ahora</button>
                 `;
                 preciosGrid.appendChild(precioCard);
+                tarjetasRendeadas++;
             });
         }
 
         // Tarjetas de promociones de oportunidades si están habilitadas
-        if (config.promocionesOportunidades && config.promocionesOportunidades.enabled && 
-            config.oportunidades && config.oportunidades.enabled && 
-            config.promocionesOportunidades.ejemplos && config.promocionesOportunidades.ejemplos.length > 0) {
+        if (oportunidadesPromosActivas) {
+            console.log('✅ Renderizando promociones de oportunidades:', config.promocionesOportunidades.ejemplos.length);
             config.promocionesOportunidades.ejemplos.forEach((ejemplo) => {
                 const oportunidadCard = document.createElement('div');
-                oportunidadCard.className = 'promo-card-grande';
-                oportunidadCard.style.backgroundColor = '#f8fafc';
+                oportunidadCard.className = 'promo-card-grande oportunidad-card';
                 oportunidadCard.innerHTML = `
-                    <div class="promo-card-cantidad">${ejemplo.boletos} boleto${ejemplo.boletos > 1 ? 's' : ''}</div>
-                    <div style="font-size: 1.2rem; color: #666; margin: 0.5rem 0;">=</div>
-                    <div class="promo-card-cantidad">${ejemplo.oportunidades} oportunidade${ejemplo.oportunidades > 1 ? 's' : ''}</div>
-                    <button class="btn btn-secondary" onclick="window.location.href='compra.html'">Comprar</button>
+                    <div class="promo-card-body">
+                        <span class="promo-card-tag">Oportunidades</span>
+                        <div class="promo-card-cantidad">${ejemplo.boletos} Boleto${ejemplo.boletos > 1 ? 's' : ''}</div>
+                        <div class="promo-card-equals">=</div>
+                        <div class="promo-card-precio promo-card-precio--dark">${ejemplo.oportunidades} Oportunidade${ejemplo.oportunidades > 1 ? 's' : ''}</div>
+                        <div class="promo-card-note">Mas oportunidades de ganar</div>
+                    </div>
+                    <button class="btn btn-secondary promo-card-btn" onclick="window.location.href='compra.html'">Comprar Ahora</button>
                 `;
                 preciosGrid.appendChild(oportunidadCard);
+                tarjetasRendeadas++;
             });
+        }
+
+        // Si no hay tarjetas, mostrar mensaje
+        if (tarjetasRendeadas === 0) {
+            console.log('ℹ️ No hay descuentos ni promociones habilitadas');
+            preciosGrid.style.display = 'none';
+        } else {
+            preciosGrid.style.display = 'grid';
+            aplicarLayoutPreciosGrid(preciosGrid);
+            console.log('✅ Total de tarjetas renderizadas:', tarjetasRendeadas);
         }
     }
 
@@ -687,19 +1294,83 @@
             cargarNombreEdicion();
             cargarPrecioUnitario();
             cargarPreciosYDescuentos();
+            cargarHeroContent();
+            renderizarRedesSociales();
+            renderizarBonos();
+            renderizarInformacionDelSorteo();
+            renderizarInformacionSorteoIntro();
+            cargarGaleria();
         });
     } else {
         cargarNombreEdicion();
         cargarPrecioUnitario();
         cargarPreciosYDescuentos();
+        cargarHeroContent();
+        renderizarRedesSociales();
+        renderizarBonos();
+        renderizarInformacionDelSorteo();
+        renderizarInformacionSorteoIntro();
+        cargarGaleria();
     }
+    
+    // ============================================================
+    // MONITOR: Verificar cambios desde admin (edicionNombre y nombreSorteo)
+    // ============================================================
+    window.ultimoEdicionNombre = window.rifaplusConfig?.rifa?.edicionNombre;
+    window.ultimoNombreSorteo = window.rifaplusConfig?.rifa?.nombreSorteo;
+    window.ultimasPromocionesEjemplos = JSON.stringify(window.rifaplusConfig?.rifa?.promocionesOportunidades?.ejemplos || []);
+    
+    // ✅ Event listener para cambios en promociones desde admin
+    window.addEventListener('configActualizada', (event) => {
+        console.log('🔄 [Event] Configuración actualizada desde admin:', event.detail);
+        if (event.detail.promocionesOportunidades) {
+            console.log('📢 Rerendeando tarjetas de promociones...');
+            cargarPreciosYDescuentos();
+        }
+    });
+    
+    setInterval(() => {
+        const actualEdicionNombre = window.rifaplusConfig?.rifa?.edicionNombre;
+        const actualNombreSorteo = window.rifaplusConfig?.rifa?.nombreSorteo;
+        const actualEjemplos = JSON.stringify(window.rifaplusConfig?.rifa?.promocionesOportunidades?.ejemplos || []);
+        
+        // Monitorear cambios en edicionNombre (párrafo de arriba)
+        if (actualEdicionNombre !== window.ultimoEdicionNombre) {
+            console.log('🔄 [Monitor] Cambio detectado en edicionNombre:', {
+                anterior: window.ultimoEdicionNombre,
+                actual: actualEdicionNombre
+            });
+            window.ultimoEdicionNombre = actualEdicionNombre;
+            cargarNombreEdicion();
+        }
+        
+        // Monitorear cambios en nombreSorteo (hero highlight)
+        if (actualNombreSorteo !== window.ultimoNombreSorteo) {
+            console.log('🔄 [Monitor] Cambio detectado en nombreSorteo:', {
+                anterior: window.ultimoNombreSorteo,
+                actual: actualNombreSorteo
+            });
+            window.ultimoNombreSorteo = actualNombreSorteo;
+            cargarHeroContent();
+        }
+        
+        // Monitorear cambios en promociones de oportunidades
+        if (actualEjemplos !== window.ultimasPromocionesEjemplos) {
+            console.log('🔄 [Monitor] Cambio detectado en promociones de oportunidades');
+            window.ultimasPromocionesEjemplos = actualEjemplos;
+            cargarPreciosYDescuentos();
+        }
+    }, 1000); // Verificar cada segundo
     </script>
 
     <!-- BONOS SECTION -->
     <section class="bonos-section" id="bonosSection" style="display: none;">
         <div class="container">
-            <h2 class="section-title">Bonos Especiales</h2>
-            <p class="bonos-subtitle">Obtén beneficios extras al participar en nuestro sorteo</p>
+            <div class="bonos-header">
+                <span class="bonos-eyebrow">Bonos Vigentes</span>
+                <h2 class="section-title">Bonos Especiales</h2>
+                <p class="bonos-subtitle">Cumple las condiciones de cada bono y participa por premios o beneficios adicionales.</p>
+            </div>
             <div class="bonos-grid" id="bonosGrid">
                 <!-- Se carga dinámicamente desde config.js -->
             </div>
@@ -708,50 +1379,69 @@
 
     <style>
         .bonos-section {
-            background: #f8f9fa;
-            padding: 4rem 1.5rem;
-            border-top: 1px solid #e0e0e0;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 55%, #ffffff 100%);
+            padding: 4.5rem 1.5rem;
+            border-top: 1px solid rgba(15, 23, 42, 0.08);
+        }
+
+        .bonos-header {
+            max-width: 760px;
+            margin: 0 auto 2.2rem;
+            text-align: center;
+        }
+
+        .bonos-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.4rem 0.88rem;
+            margin-bottom: 0.9rem;
+            border-radius: 999px;
+            background: rgba(15, 58, 125, 0.08);
+            border: 1px solid rgba(15, 58, 125, 0.12);
+            color: var(--primary);
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
         }
 
         .bonos-section .section-title {
-            margin-bottom: 3rem;
+            margin-bottom: 0.75rem;
             text-align: center;
+            color: #0f172a;
+            letter-spacing: -0.03em;
         }
 
         .bonos-subtitle {
             text-align: center;
-            color: #666;
+            color: #475569;
             font-size: 1rem;
-            margin-bottom: 3rem;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
+            line-height: 1.7;
+            margin: 0;
         }
 
         .bonos-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1.25rem;
-            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-width: 920px;
             margin: 0 auto;
         }
 
-        .bonos-grid > :last-child:nth-child(odd) {
-            grid-column: 1;
-        }
-
         .bono-card {
-            background: white;
-            border-radius: var(--radius-md);
-            padding: 1.25rem;
-            border: 1px solid #e0e0e0;
-            transition: all var(--transition-normal);
             position: relative;
-            overflow: hidden;
-            display: flex;
-            flex-direction: row;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
             align-items: center;
-            gap: 1.25rem;
+            gap: 1.1rem;
+            background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+            border-radius: 22px;
+            padding: 1.25rem 1.35rem;
+            border: 1px solid rgba(15, 23, 42, 0.09);
+            transition: all var(--transition-normal);
+            overflow: hidden;
+            box-shadow: 0 16px 34px rgba(15, 23, 42, 0.05);
         }
 
         .bono-card::before {
@@ -760,63 +1450,72 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 3px;
-            background: var(--bono-color-start);
-            transform: scaleX(0);
-            transition: transform var(--transition-normal);
-            transform-origin: left;
+            height: 4px;
+            background: linear-gradient(90deg, var(--bono-color-start), var(--bono-color-end));
         }
 
         .bono-card:hover {
             border-color: var(--bono-color-start);
-            transform: translateY(-4px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            transform: translateY(-3px);
+            box-shadow: 0 20px 38px rgba(15, 23, 42, 0.08);
         }
 
-        .bono-card:hover::before {
-            transform: scaleX(1);
-        }
-
-        .bono-numero {
+        .bono-icono {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
+            width: 58px;
+            height: 58px;
+            border-radius: 18px;
             background: var(--bono-bg);
             color: var(--bono-color-start);
-            font-weight: 700;
-            font-size: 1.2rem;
-            margin-bottom: 0.5rem;
+            font-size: 1.6rem;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
         }
 
         .bono-header {
             display: flex;
             flex-direction: column;
             align-items: flex-start;
-            gap: 0.5rem;
+            gap: 0.45rem;
             flex: 1;
+            min-width: 0;
+        }
+
+        .bono-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.26rem 0.62rem;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.04);
+            color: var(--bono-color-start);
+            border: 1px solid rgba(15, 23, 42, 0.07);
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
         }
 
         .bono-titulo {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #1a1a1a;
+            font-size: 1.08rem;
+            font-weight: 700;
+            color: #0f172a;
             margin: 0;
-            line-height: 1.2;
+            line-height: 1.35;
         }
 
         .bono-descripcion {
-            font-size: 0.85rem;
-            color: #666;
+            font-size: 0.92rem;
+            color: #475569;
             margin: 0;
-            line-height: 1.4;
+            line-height: 1.7;
             flex: 1;
         }
 
         .bono-accion {
-            margin-top: 0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
             flex-shrink: 0;
         }
 
@@ -825,17 +1524,18 @@
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
-            padding: 0.65rem 1.2rem;
+            padding: 0.78rem 1.1rem;
             background: #25D366;
             color: white;
             border: none;
-            border-radius: var(--radius-sm);
-            font-weight: 600;
-            font-size: 0.8rem;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 0.82rem;
             cursor: pointer;
             transition: all var(--transition-normal);
             white-space: nowrap;
             text-decoration: none;
+            box-shadow: 0 12px 24px rgba(37, 211, 102, 0.22);
         }
 
         .bono-btn-whatsapp:hover {
@@ -848,11 +1548,66 @@
             font-size: 1.2rem;
         }
 
+        .bono-btn-redes {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.42rem;
+            padding: 0.8rem 1.15rem;
+            background: #12324b;
+            color: #ffffff;
+            border: 1px solid rgba(18, 50, 75, 0.28);
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 0.84rem;
+            cursor: pointer;
+            transition: transform 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease, background 0.25s ease;
+            white-space: nowrap;
+            text-decoration: none;
+            box-shadow: 0 12px 22px rgba(18, 50, 75, 0.2);
+            animation: bonoBtnPulse 2.8s ease-in-out infinite;
+        }
+
+        .bono-btn-redes:hover {
+            transform: translateY(-2px);
+            background: #184262;
+            border-color: rgba(18, 50, 75, 0.38);
+            box-shadow: 0 16px 30px rgba(18, 50, 75, 0.28);
+            filter: brightness(1.03);
+        }
+
+        @keyframes bonoBtnPulse {
+            0%, 100% {
+                transform: translateY(0) scale(1);
+                box-shadow: 0 12px 22px rgba(18, 50, 75, 0.2);
+            }
+            12% {
+                transform: translateY(-1px) scale(1.02);
+                box-shadow: 0 16px 28px rgba(18, 50, 75, 0.28);
+            }
+            18% {
+                transform: translateY(0) scale(1);
+            }
+            24% {
+                transform: translateX(-1px);
+            }
+            30% {
+                transform: translateX(1px);
+            }
+            36% {
+                transform: translateX(0);
+            }
+        }
+
+        .contacto-section {
+            scroll-margin-top: 96px;
+        }
+
         /* Colores para diferentes bonos */
         .bono-card.bono-success {
-            --bono-color-start: #10b981;
-            --bono-color-end: #059669;
-            --bono-bg: rgba(16, 185, 129, 0.1);
+            --bono-color-start: #5f7b69;
+            --bono-color-end: #486151;
+            --bono-bg: rgba(95, 123, 105, 0.12);
         }
 
         .bono-card.bono-warning {
@@ -875,13 +1630,7 @@
 
         @media (max-width: 1024px) {
             .bonos-grid {
-                grid-template-columns: 1fr;
-                gap: 1.25rem;
-                max-width: 800px;
-            }
-
-            .bonos-grid > :last-child:nth-child(odd) {
-                grid-column: 1;
+                max-width: 860px;
             }
         }
 
@@ -890,81 +1639,104 @@
                 padding: 3rem 1rem;
             }
 
-            .bonos-grid {
-                grid-template-columns: 1fr;
-                gap: 1.25rem;
-            }
-
-            .bonos-grid > :last-child:nth-child(odd) {
-                grid-column: 1;
+            .bonos-header {
+                margin-bottom: 1.6rem;
             }
 
             .bono-card {
-                padding: 1rem;
-                gap: 1rem;
+                grid-template-columns: auto 1fr;
+                align-items: flex-start;
+                gap: 0.95rem;
+            }
+
+            .bono-accion {
+                grid-column: 1 / -1;
+                width: 100%;
+                justify-content: flex-start;
             }
 
             .bono-icono {
                 font-size: 1.5rem;
+                width: 52px;
+                height: 52px;
             }
 
-            .bono-titulo {
+            .bonos-subtitle {
                 font-size: 0.95rem;
-            }
-
-            .bono-descripcion {
-                font-size: 0.8rem;
             }
         }
 
         @media (max-width: 640px) {
             .bonos-grid {
-                grid-template-columns: 1fr;
                 gap: 1rem;
                 max-width: 100%;
                 padding: 0;
             }
 
-            .bonos-grid > :last-child:nth-child(odd) {
-                grid-column: 1;
-            }
-
             .bono-card {
-                padding: 0.875rem;
-                gap: 0.875rem;
+                grid-template-columns: 1fr;
+                padding: 1rem 0.95rem;
+                gap: 0.8rem;
             }
 
             .bono-icono {
-                font-size: 1.4rem;
+                width: 48px;
+                height: 48px;
+                font-size: 1.35rem;
             }
 
             .bono-titulo {
-                font-size: 0.9rem;
+                font-size: 1rem;
             }
 
             .bono-descripcion {
-                font-size: 0.75rem;
+                font-size: 0.84rem;
             }
 
-            .bono-btn-whatsapp {
-                padding: 0.55rem 1rem;
-                font-size: 0.75rem;
+            .bono-btn-whatsapp,
+            .bono-btn-redes {
+                width: 100%;
+                padding: 0.72rem 1rem;
+                font-size: 0.78rem;
+            }
+
+            .bonos-eyebrow {
+                font-size: 0.72rem;
+                padding: 0.34rem 0.75rem;
             }
         }
     </style>
 
     <script>
     // Cargar bonos dinámicamente desde config.js
-    document.addEventListener('DOMContentLoaded', function() {
+    function renderizarBonos() {
         const bonosSection = document.getElementById('bonosSection');
         const bonosGrid = document.getElementById('bonosGrid');
 
-        if (!bonosSection || !bonosGrid || !window.rifaplusConfig) return;
+        if (!bonosSection || !bonosGrid) {
+            console.log('⚠️ No encontré elementos para bonos');
+            return;
+        }
 
-        const config = window.rifaplusConfig.rifa.bonos;
+        // Obtener config del servidor o fallback local
+        let config = window.rifaplusConfig?.rifa?.bonos;
+        
+        // Si no hay config del servidor, usar fallback de config.js
+        if (!config && typeof window.config !== 'undefined' && window.config.rifa && window.config.rifa.bonos) {
+            console.log('📦 Usando fallback local para bonos');
+            config = window.config.rifa.bonos;
+        }
+
+        // Si aún no hay config, reintentar
+        if (!config) {
+            console.log('⏳ Esperando config para bonos...');
+            setTimeout(renderizarBonos, 200);
+            return;
+        }
 
         // Verificar si los bonos están habilitados
-        if (!config || !config.enabled) {
+        if (!config.enabled) {
+            console.log('ℹ️ Bonos deshabilitados');
             bonosSection.style.display = 'none';
             return;
         }
@@ -975,6 +1747,7 @@
 
         // Renderizar cada bono
         if (config.items && Array.isArray(config.items)) {
+            console.log('✅ Renderizando bonos:', config.items.length);
             config.items.forEach((bono) => {
                 const colorMap = {
                     success: 'bono-success',
@@ -987,8 +1760,9 @@
                 bonoCard.className = `bono-card ${colorMap[bono.color] || 'bono-primary'}`;
 
                 let contenido = `
-                    <div class="bono-icono">✔️</div>
+                    <div class="bono-icono">${bono.emoji || '✔️'}</div>
                     <div class="bono-header">
+                        <span class="bono-badge">Bono especial</span>
                         <p class="bono-titulo">${bono.titulo}</p>
                         <p class="bono-descripcion">${bono.descripcion}</p>
                     </div>
@@ -996,7 +1770,8 @@
 
                 // Agregar botón especial para WhatsApp si es necesario
                 if (bono.accion === 'unirseWhatsapp') {
-                    const whatsappUrl = window.rifaplusConfig.cliente.redesSociales.canalWhatsapp;
+                    const whatsappUrl = window.rifaplusConfig?.cliente?.redesSociales?.canalWhatsapp || 
+                                      (typeof window.config !== 'undefined' ? window.config?.cliente?.redesSociales?.canalWhatsapp : null);
                     if (whatsappUrl) {
                         contenido += `
                             <div class="bono-accion">
@@ -1009,65 +1784,145 @@
                     }
                 }
 
+                if ((colorMap[bono.color] || 'bono-primary') === 'bono-primary') {
+                    contenido += `
+                        <div class="bono-accion">
+                            <a href="#contacto" class="bono-btn-redes">
+                                Ver redes
+                            </a>
+                        </div>
+                    `;
+                }
+
                 bonoCard.innerHTML = contenido;
                 bonosGrid.appendChild(bonoCard);
             });
+        } else {
+            console.log('⚠️ No hay items en bonos');
         }
-    });
+    }
+
+    // Renderizar información del sorteo dinámicamente
+    function renderizarInformacionDelSorteo() {
+        const container = document.getElementById('descripcionTextoDinamico');
+        if (!container) return;
+
+        let informacion = window.rifaplusConfig?.rifa?.informacionSorteo;
+        
+        // Fallback a config local si no hay datos del servidor
+        if (!informacion && typeof window.config !== 'undefined' && window.config.rifa) {
+            informacion = window.config.rifa.informacionSorteo;
+        }
+
+        // Si aún no hay datos, reintentar
+        if (!informacion || !Array.isArray(informacion)) {
+            setTimeout(renderizarInformacionDelSorteo, 500);
+            return;
+        }
+
+        // Limpiar y verificar
+        container.innerHTML = '';
+        if (informacion.length === 0) return;
+
+        // Renderizar cada elemento
+        informacion.forEach((item) => {
+            try {
+                const titulo = (item.titulo || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const descripcion = (item.descripcion || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                
+                const seccionHTML = `
+                    <div class="descripcion-seccion">
+                        <h3>${titulo}</h3>
+                        <p>${descripcion}</p>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', seccionHTML);
+            } catch (error) {
+                console.error('Error renderizando elemento:', error);
+            }
+        });
+    }
+
+    function renderizarInformacionSorteoIntro() {
+        const container = document.getElementById('descripcionIntro');
+        if (!container) return;
+
+        let introText = window.rifaplusConfig?.rifa?.informacionSorteoIntro;
+        
+        // Fallback a config local si no hay datos del servidor
+        if (!introText && typeof window.config !== 'undefined' && window.config.rifa) {
+            introText = window.config.rifa.informacionSorteoIntro;
+        }
+
+        // Si aún no hay datos, reintentar
+        if (!introText) {
+            setTimeout(renderizarInformacionSorteoIntro, 500);
+            return;
+        }
+
+        // Renderizar el intro
+        try {
+            const texto = (introText || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const introHTML = `<p>${texto}</p>`;
+            container.innerHTML = introHTML;
+        } catch (error) {
+            console.error('Error renderizando intro del sorteo:', error);
+        }
+    }
     </script>
 
     <!-- POR QUÉ CONFIAR EN NOSOTROS -->
     <section class="por-que-confiar-section">
         <div class="container">
-            <h2 class="confianza-titulo">¿Por Qué Elegir Sortel Torres?</h2>
+            <h2 class="confianza-titulo">¿Por Qué Hacer Tu Plataforma De Sorteos Con SaDev?</h2>
             
             <div class="confianza-content">
                 <div class="confianza-lista">
                     <div class="confianza-item">
                         <div class="item-numero">01</div>
                         <div class="item-contenido">
-                            <h3>100% Seguro</h3>
-                            <p>Tus datos y pagos están protegidos con encriptación de nivel bancario. Compra con confianza.</p>
+                            <h3>Escala Sin Quedarte Corto</h3>
+                            <p>Podemos implementar sorteos con cientos de miles o millones de boletos, con carga optimizada, rangos inteligentes y control de disponibilidad para que tu operación siga fluida incluso cuando el proyecto crece fuerte.</p>
                         </div>
                     </div>
 
                     <div class="confianza-item">
                         <div class="item-numero">02</div>
                         <div class="item-contenido">
-                            <h3>Transparencia Total</h3>
-                            <p>Sorteos transmitidos en vivo en nuestras redes sociales. Puedes verlo todo en tiempo real sin manipulación.</p>
+                            <h3>Menos Dependencia De WhatsApp</h3>
+                            <p>Tu cliente puede generar su orden, subir comprobantes y dar seguimiento desde la misma plataforma. Eso reduce la carga manual, evita depender por completo de confirmaciones por chat y te ayuda a no poner en riesgo tus números de WhatsApp.</p>
                         </div>
                     </div>
 
                     <div class="confianza-item">
                         <div class="item-numero">03</div>
                         <div class="item-contenido">
-                            <h3>Premios Garantizados</h3>
-                            <p>Entregamos los premios a los ganadores. Miles de personas satisfechas en ediciones anteriores lo confirman.</p>
+                            <h3>Control Total Desde El Panel</h3>
+                            <p>Administras órdenes, apartados, comprobantes, promociones, bonos, cuentas de pago, usuarios, configuraciones y disponibilidad desde un panel claro. Todo queda centralizado para que tu equipo trabaje más rápido y con menos errores.</p>
                         </div>
                     </div>
 
                     <div class="confianza-item">
                         <div class="item-numero">04</div>
                         <div class="item-contenido">
-                            <h3>Compra Instantánea</h3>
-                            <p>Tu boleto disponible en segundos. Sin esperas, sin procesos complicados. Rápido y eficiente.</p>
+                            <h3>Más Herramientas, Más Conversión</h3>
+                            <p>No solo hacemos una página bonita. Implementamos funciones útiles como ruletazo, estadísticas claras, promociones dinámicas, bonos, seguimiento de boletos, estados en tiempo real y una experiencia de compra pensada para vender mejor.</p>
                         </div>
                     </div>
                 </div>
 
                 <div class="confianza-stats">
                     <div class="stat-item">
-                        <div class="stat-numero">10K+</div>
-                        <div class="stat-label">Participantes</div>
+                        <div class="stat-numero">1M+</div>
+                        <div class="stat-label">Boletos escalables</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-numero">100%</div>
-                        <div class="stat-label">Transparente</div>
+                        <div class="stat-numero">Panel</div>
+                        <div class="stat-label">Control centralizado</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-numero">24/7</div>
-                        <div class="stat-label">Soporte</div>
+                        <div class="stat-numero">Automatización</div>
+                        <div class="stat-label">Menos carga operativa</div>
                     </div>
                 </div>
             </div>
@@ -1083,8 +1938,11 @@
             return;
         }
 
-        const boletosVendidos = parseInt(document.getElementById('boletos-vendidos')?.textContent) || 0;
-        const totalBoletos = window.rifaplusConfig.rifa.totalBoletos || 1000;
+        const boletosVendidosTexto = document.getElementById('boletos-vendidos')?.textContent || '0';
+        const boletosVendidos = parseInt(boletosVendidosTexto.replace(/[^\d]/g, ''), 10) || 0;
+        const totalBoletos = typeof window.rifaplusConfig?.obtenerTotalBoletos === 'function'
+            ? window.rifaplusConfig.obtenerTotalBoletos()
+            : (window.rifaplusConfig?.rifa?.totalBoletos || 0);
         
         // Generar mensaje dinámico basado en ventas
         let mensaje = 'Miles de personas confían en nosotros cada día';
@@ -1560,7 +2418,10 @@
             if (!seccion || !contenedor) return;
 
             try {
-                const res = await fetch('http://localhost:5001/api/ganadores?limit=500');
+                const apiBase = window.rifaplusConfig?.backend?.apiBase
+                    || window.rifaplusConfig?.obtenerApiBase?.()
+                    || window.location.origin;
+                const res = await fetch(`${apiBase}/api/ganadores?limit=500`);
                 if (!res.ok) throw new Error('no_server');
                 const payload = await res.json();
                 const rows = payload && payload.data ? payload.data : [];
@@ -1641,7 +2502,7 @@
     </script>
 
     <!-- CONTACTO -->
-    <section class="contacto-section">
+    <section class="contacto-section" id="contacto">
         <div class="container">
             <h2 class="section-title">Síguenos en nuestras redes sociales y únete a nuestro canal de WhatsApp</h2>
             <div class="contacto-grid" id="contactoGrid">
@@ -1651,79 +2512,178 @@
     </section>
 
     <script>
-    // Cargar redes sociales dinámicamente desde config.js
-    document.addEventListener('DOMContentLoaded', function() {
+    // Cargar redes sociales dinámicamente desde config.json
+    function renderizarRedesSociales() {
+        console.log('📱 [Redes] Iniciando renderizarRedesSociales...');
+        console.log('   window.rifaplusConfig disponible:', !!window.rifaplusConfig);
+        console.log('   rifaplusConfig:', window.rifaplusConfig);
+        
         const contactoGrid = document.getElementById('contactoGrid');
-        if (!contactoGrid || !window.rifaplusConfig) return;
+        const footerSocial = document.getElementById('footerSocial');
+        
+        console.log('   contactoGrid:', !!contactoGrid, 'footerSocial:', !!footerSocial);
+        
+        if (!contactoGrid && !footerSocial) {
+            console.log('❌ No se encontraron elementos del DOM. Reintentando en 200ms...');
+            setTimeout(() => renderizarRedesSociales(), 200);
+            return;
+        }
+        
+        // Obtener redes sociales
+        let redes = null;
+        
+        if (window.rifaplusConfig && window.rifaplusConfig.cliente && window.rifaplusConfig.cliente.redesSociales) {
+            redes = window.rifaplusConfig.cliente.redesSociales;
+            console.log('✅ Usando redesSociales desde rifaplusConfig (del servidor)');
+        } else if (typeof config !== 'undefined' && config.cliente && config.cliente.redesSociales) {
+            redes = config.cliente.redesSociales;
+            console.log('✅ Usando redesSociales desde config.js (valores por defecto)');
+        }
+        
+        if (!redes) {
+            console.log('⚠️ No hay redesSociales disponibles. Reintentando en 200ms...');
+            setTimeout(() => renderizarRedesSociales(), 200);
+            return;
+        }
+        
+        console.log('📋 Redes encontradas:', redes);
+        
+        // Renderizar en contactoGrid
+        if (contactoGrid) {
+            console.log('🎨 Renderizando contactoGrid...');
+            contactoGrid.innerHTML = '';
+            
+            // WhatsApp - Canal
+            if (redes.canalWhatsapp) {
+                const whatsappCard = document.createElement('div');
+                whatsappCard.className = 'contacto-icono-btn';
+                whatsappCard.innerHTML = `
+                    <i class="fab fa-whatsapp contacto-icon-grande"></i>
+                    <span class="contacto-nombre-usuario">Canal ${redes.canalWhatsappNombre || 'WhatsApp'}</span>
+                    <a href="${redes.canalWhatsapp}" class="btn btn-contacto" target="_blank">
+                        Unirte
+                    </a>
+                `;
+                contactoGrid.appendChild(whatsappCard);
+                console.log('  ✓ WhatsApp canal agregado');
+            }
+            
+            // Facebook
+            if (redes.facebook) {
+                const facebookCard = document.createElement('div');
+                facebookCard.className = 'contacto-icono-btn';
+                facebookCard.innerHTML = `
+                    <i class="fab fa-facebook-f contacto-icon-grande"></i>
+                    <span class="contacto-nombre-usuario">${redes.facebookUsuario || 'Facebook'}</span>
+                    <a href="${redes.facebook}" class="btn btn-contacto" target="_blank">
+                        Seguir
+                    </a>
+                `;
+                contactoGrid.appendChild(facebookCard);
+                console.log('  ✓ Facebook agregado');
+            }
+            
+            // Instagram
+            if (redes.instagram) {
+                const instagramCard = document.createElement('div');
+                instagramCard.className = 'contacto-icono-btn';
+                instagramCard.innerHTML = `
+                    <i class="fab fa-instagram contacto-icon-grande"></i>
+                    <span class="contacto-nombre-usuario">${redes.instagramUsuario || 'Instagram'}</span>
+                    <a href="${redes.instagram}" class="btn btn-contacto" target="_blank">
+                        Seguir
+                    </a>
+                `;
+                contactoGrid.appendChild(instagramCard);
+                console.log('  ✓ Instagram agregado');
+            }
+        }
 
-        const redes = window.rifaplusConfig.cliente.redesSociales;
-        
-        // WhatsApp - Canal
-        if (redes.canalWhatsapp) {
-            const whatsappCard = document.createElement('div');
-            whatsappCard.className = 'contacto-icono-btn';
-            whatsappCard.innerHTML = `
-                <i class="fab fa-whatsapp contacto-icon-grande"></i>
-                <span class="contacto-nombre-usuario">Canal ${redes.canalWhatsappNombre || 'WhatsApp'}</span>
-                <a href="${redes.canalWhatsapp}" class="btn btn-contacto" target="_blank">
-                    Unirte
-                </a>
-            `;
-            contactoGrid.appendChild(whatsappCard);
+        // Renderizar en footer
+        if (footerSocial) {
+            console.log('🎨 Renderizando footerSocial...');
+            footerSocial.innerHTML = '';
+            
+            if (redes.facebook) {
+                const facebookLink = document.createElement('a');
+                facebookLink.href = redes.facebook;
+                facebookLink.target = '_blank';
+                facebookLink.title = 'Facebook';
+                facebookLink.innerHTML = '<i class="fab fa-facebook-f"></i>';
+                footerSocial.appendChild(facebookLink);
+                console.log('  ✓ Facebook agregado al footer');
+            }
+            if (redes.instagram) {
+                const instagramLink = document.createElement('a');
+                instagramLink.href = redes.instagram;
+                instagramLink.target = '_blank';
+                instagramLink.title = 'Instagram';
+                instagramLink.innerHTML = '<i class="fab fa-instagram"></i>';
+                footerSocial.appendChild(instagramLink);
+                console.log('  ✓ Instagram agregado al footer');
+            }
+            if (redes.whatsapp) {
+                const whatsappLink = document.createElement('a');
+                whatsappLink.href = `https://wa.me/${redes.whatsapp.replace(/\D/g, '')}`;
+                whatsappLink.target = '_blank';
+                whatsappLink.title = 'WhatsApp';
+                whatsappLink.innerHTML = '<i class="fab fa-whatsapp"></i>';
+                footerSocial.appendChild(whatsappLink);
+                console.log('  ✓ WhatsApp agregado al footer');
+            }
+            if (redes.tiktok) {
+                const tiktokLink = document.createElement('a');
+                tiktokLink.href = redes.tiktok;
+                tiktokLink.target = '_blank';
+                tiktokLink.title = 'TikTok';
+                tiktokLink.innerHTML = '<i class="fab fa-tiktok"></i>';
+                footerSocial.appendChild(tiktokLink);
+                console.log('  ✓ TikTok agregado al footer');
+            }
         }
         
-        // Facebook
-        if (redes.facebook) {
-            const facebookCard = document.createElement('div');
-            facebookCard.className = 'contacto-icono-btn';
-            facebookCard.innerHTML = `
-                <i class="fab fa-facebook-f contacto-icon-grande"></i>
-                <span class="contacto-nombre-usuario">${redes.facebookUsuario || 'Facebook'}</span>
-                <a href="${redes.facebook}" class="btn btn-contacto" target="_blank">
-                    Seguir
-                </a>
-            `;
-            contactoGrid.appendChild(facebookCard);
-        }
-        
-        // Instagram
-        if (redes.instagram) {
-            const instagramCard = document.createElement('div');
-            instagramCard.className = 'contacto-icono-btn';
-            instagramCard.innerHTML = `
-                <i class="fab fa-instagram contacto-icon-grande"></i>
-                <span class="contacto-nombre-usuario">${redes.instagramUsuario || 'Instagram'}</span>
-                <a href="${redes.instagram}" class="btn btn-contacto" target="_blank">
-                    Seguir
-                </a>
-            `;
-            contactoGrid.appendChild(instagramCard);
-        }
+        console.log('✅ renderizarRedesSociales completada');
+    }
+    
+    // Ejecutar al cargar la página
+    document.addEventListener('DOMContentLoaded', function() {
+        renderizarRedesSociales();
     });
+    
+    // Re-ejecutar cuando config-sync actualice los datos
+    const setupRedesSocialesListener = () => {
+        if (typeof window.rifaplusConfig !== 'undefined' && typeof window.rifaplusConfig.escucharEvento === 'function') {
+            window.rifaplusConfig.escucharEvento('configuracionActualizada', function(datos) {
+                console.log('🔄 [Redes] Actualizando por evento configuracionActualizada');
+                renderizarRedesSociales();
+            });
+            console.log('✅ [Redes] Event listener configurado');
+        } else {
+            console.log('⏳ [Redes] Esperando rifaplusConfig para event listener...');
+            setTimeout(setupRedesSocialesListener, 100);
+        }
+    };
+    setupRedesSocialesListener();
     </script>
 
     <!-- FOOTER REDISEÑADO -->
     <footer class="footer">
         <div class="container">
+            <!-- 📱 BOLETERA DIGITAL CTA - LÍNEA DISCRETA -->
+            <div class="footer-boletera-cta">
+                <div class="boletera-content">
+                    ¿Necesitas una boletera digital? <a href="https://wa.me/4341068932?text=Hola%2C%20me%20interesa%20conocer%20m%C3%A1s%20sobre%20las%20boleteras%20digitales" class="btn-boletera-whatsapp" target="_blank" rel="noopener noreferrer">Consulta aquí</a>
+                </div>
+            </div>
+
             <div class="footer-main">
                 <!-- Columna izquierda: Logo y nombre -->
                 <div class="footer-logo-section">
                     <div class="footer-logo-box">
-                        <img src="images/logo.png" alt="SORTEOS EL TREBOL" class="footer-logo-img dynamic-logo" data-dynamic-logo="true" width="200" height="100">
+                        <img src="images/placeholder-logo.svg" alt="SORTEOS EL TREBOL" class="footer-logo-img dynamic-logo" data-dynamic-logo="true" width="200" height="100">
                     </div>
-                    <h3 id="footerNombre" class="footer-client-name">SORTEOS YEPE</h3>
+                    <h3 id="footerNombre" class="footer-client-name">SORTEO</h3>
                     <p id="footerEslogan" class="footer-eslogan">Rifas 100% Transparentes y Seguras</p>
-                </div>
-
-                <!-- Columna central: Enlaces -->
-                <div class="footer-links-section">
-                    <h4 class="footer-links-title">Enlaces</h4>
-                    <ul class="footer-links-list">
-                        <li><a href="index.html">Inicio</a></li>
-                        <li><a href="compra.html">Comprar Boletos</a></li>
-                        <li><a href="ayuda.html">Ayuda</a></li>
-                        <li><a href="mis-boletos.html">Mis Boletos</a></li>
-                    </ul>
                 </div>
 
                 <!-- Columna derecha: Contacto y redes sociales -->
@@ -1744,7 +2704,7 @@
 
             <!-- Copyright -->
             <div class="footer-bottom">
-                <p id="footerCopyright">&copy; 2025 <strong>SORTEOS YEPE</strong>. Todos los derechos reservados.</p>
+                <p id="footerCopyright">&copy; 2025 <strong>SORTEO</strong>. Todos los derechos reservados.</p>
             </div>
         </div>
     </footer>
@@ -1755,10 +2715,9 @@
         const config = window.rifaplusConfig;
         if (!config) return;
 
-        // Actualizar nombre en footer
-        const footerNombre = document.getElementById('footerNombre');
-        if (footerNombre) {
-            footerNombre.textContent = config.cliente.nombre;
+        // Actualizar UI con función centralizada
+        if (typeof window.rifaplusConfig !== 'undefined' && typeof window.rifaplusConfig.actualizarNombreClienteEnUI === 'function') {
+            window.rifaplusConfig.actualizarNombreClienteEnUI();
         }
 
         // Actualizar eslogan en footer
@@ -1776,35 +2735,8 @@
             logoLink.setAttribute('aria-label', 'Ir a la página de inicio');
         }
 
-        // Actualizar redes sociales en footer
-        const footerSocial = document.getElementById('footerSocial');
-        if (footerSocial) {
-            footerSocial.innerHTML = '';
-            if (config.cliente.redesSociales.whatsapp) {
-                const whatsappLink = document.createElement('a');
-                whatsappLink.href = `https://wa.me/${config.cliente.redesSociales.whatsapp.replace(/[^0-9]/g, '')}`;
-                whatsappLink.target = '_blank';
-                whatsappLink.title = 'WhatsApp';
-                whatsappLink.innerHTML = '<i class="fab fa-whatsapp"></i>';
-                footerSocial.appendChild(whatsappLink);
-            }
-            if (config.cliente.redesSociales.facebook) {
-                const facebookLink = document.createElement('a');
-                facebookLink.href = config.cliente.redesSociales.facebook;
-                facebookLink.target = '_blank';
-                facebookLink.title = 'Facebook';
-                facebookLink.innerHTML = '<i class="fab fa-facebook-f"></i>';
-                footerSocial.appendChild(facebookLink);
-            }
-            if (config.cliente.redesSociales.instagram) {
-                const instagramLink = document.createElement('a');
-                instagramLink.href = config.cliente.redesSociales.instagram;
-                instagramLink.target = '_blank';
-                instagramLink.title = 'Instagram';
-                instagramLink.innerHTML = '<i class="fab fa-instagram"></i>';
-                footerSocial.appendChild(instagramLink);
-            }
-        }
+        // Renderizar redes sociales en footer (extraído en función para re-ejecutar cuando sincroniza)
+        renderizarRedesSociales();
 
         // Actualizar información de contacto
         const footerEmail = document.getElementById('footerEmail');
@@ -1819,12 +2751,8 @@
             footerTelefono.textContent = config.cliente.telefono;
         }
 
-        // Actualizar copyright
-        const footerCopyright = document.getElementById('footerCopyright');
-        if (footerCopyright) {
-            const anio = config.cliente.anioActual || new Date().getFullYear();
-            footerCopyright.innerHTML = `&copy; ${anio} <strong>${config.cliente.nombre}</strong>. Todos los derechos reservados.`;
-        }
+        // Nota: Actualizar copyright ahora se maneja desde actualizarNombreClienteEnUI() en config.js
+        // La función centralizadora ya actualiza footerCopyright cuando cliente.nombre cambia
 
         // Animar botón flotante solo los primeros 2 segundos
         const btnFlotante = document.querySelector('.btn-flotante-comprobante');
@@ -1835,6 +2763,42 @@
             }, 2000);
         }
     });
+
+    // Re-ejecutar footer cuando config-sync actualice
+    const setupFooterListener = () => {
+        if (typeof window.rifaplusConfig !== 'undefined' && typeof window.rifaplusConfig.escucharEvento === 'function') {
+            window.rifaplusConfig.escucharEvento('configuracionActualizada', function(datos) {
+                console.log('🔄 [Footer] Actualizando por evento configuracionActualizada');
+                
+                // ✅ Actualizar eslogan
+                const footerEslogan = document.getElementById('footerEslogan');
+                if (footerEslogan) {
+                    footerEslogan.textContent = window.rifaplusConfig.cliente.eslogan || 'Rifas 100% Transparentes y Seguras';
+                }
+                
+                // ✅ Actualizar email y teléfono
+                const footerEmail = document.getElementById('footerEmail');
+                if (footerEmail && window.rifaplusConfig.cliente.email) {
+                    footerEmail.href = `mailto:${window.rifaplusConfig.cliente.email}`;
+                    footerEmail.textContent = window.rifaplusConfig.cliente.email;
+                }
+                
+                const footerTelefono = document.getElementById('footerTelefono');
+                if (footerTelefono && window.rifaplusConfig.cliente.telefono) {
+                    footerTelefono.href = `tel:${window.rifaplusConfig.cliente.telefono.replace(/[^0-9+]/g, '')}`;
+                    footerTelefono.textContent = window.rifaplusConfig.cliente.telefono;
+                }
+                
+                // ✅ Actualizar redes sociales
+                renderizarRedesSociales();
+            });
+            console.log('✅ [Footer] Event listener configurado');
+        } else {
+            console.log('⏳ [Footer] Esperando rifaplusConfig para event listener...');
+            setTimeout(setupFooterListener, 100);
+        }
+    };
+    setupFooterListener();
     </script>
 
     <!-- MODAL CARRITO EXPANDIBLE -->
@@ -1849,7 +2813,7 @@
                 <!-- Mensaje si está vacío -->
                 <div class="carrito-vacio" id="carritoVacio">
                     <div class="carrito-vacio-content">
-                        <img src="images/logo.png" alt="Logo" class="carrito-logo">
+                        <img src="images/placeholder-logo.svg" alt="Logo" class="carrito-logo dynamic-logo" data-dynamic-logo="true">
                         <p class="carrito-vacio-titulo">Tu carrito está vacío</p>
                         <p class="carrito-vacio-subtitulo">¡Comienza a seleccionar tus boletos favoritos!</p>
                         <button class="btn btn-primary btn-carrito-comprar" id="btnIrAComprar">
@@ -1918,7 +2882,7 @@
     <!-- MODAL LOADING -->
     <div id="modalLoadingOrden" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center; flex-direction: column;">
         <div style="background: white; padding: 40px; border-radius: 12px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
-            <div style="width: 60px; height: 60px; border: 4px solid #f0f0f0; border-top: 4px solid #7c3aed; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;" id="spinnerOrden"></div>
+            <div style="width: 60px; height: 60px; border: 4px solid #f0f0f0; border-top: 4px solid var(--secondary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;" id="spinnerOrden"></div>
             <h3 style="margin: 0 0 10px 0; color: #333; font-size: 18px;">⏳ Apartando tu orden...</h3>
             <p style="margin: 5px 0 15px 0; color: #666; font-size: 14px;">Por favor espera, esto puede tomar algunos segundos</p>
             <p id="tiempoTranscurrido" style="margin: 0; color: #999; font-size: 12px;">Tiempo: 0s</p>

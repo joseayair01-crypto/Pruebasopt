@@ -3,28 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:* http://localhost:* https://gorgeous-heliotrope-5a6b8e.netlify.app http://localhost:5001; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' http://127.0.0.1:* http://localhost:* https: http://localhost:5001 https://gorgeous-heliotrope-5a6b8e.netlify.app; img-src 'self' data: https:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:* http://localhost:* https://gorgeous-heliotrope-5a6b8e.netlify.app http://localhost:5001; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://fonts.googleapis.com http://localhost:5001 http://127.0.0.1:5001; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' http://127.0.0.1:* http://localhost:* https: http://localhost:5001 http://127.0.0.1:5001 https://gorgeous-heliotrope-5a6b8e.netlify.app ws: wss: ws://localhost:5001 wss://localhost:5001 ws://127.0.0.1:5001 wss://127.0.0.1:5001; img-src 'self' data: https:;">
     <!-- METADATOS DINÁMICOS - Inyectados por js/meta-inyector.js desde config.js -->
-    <title>Comprar Boletos - Sorteos Torres RAM 1200 2025</title>
-    <link rel="stylesheet" href="css/styles.css?v=20251228.15">
-    <link rel="preload" as="image" href="images/logo.png" fetchpriority="high">
-    <link rel="icon" href="images/logo.png" sizes="32x32">
-    <link rel="apple-touch-icon" href="images/logo.png">
+    <title>Comprar Boletos - Sorteos Torres</title>
+    <link rel="stylesheet" href="css/styles.css?v=20260219">
+    <script>
+        (function() {
+            const cachedLogo = localStorage.getItem('rifaplus_cached_logo') || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='34' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ESaDev%3C/text%3E%3C/svg%3E";
+            window.__RIFAPLUS_CACHED_LOGO__ = cachedLogo;
+            document.write('<link rel="preload" as="image" href="' + cachedLogo + '" fetchpriority="high">');
+            document.write('<link rel="icon" href="' + cachedLogo + '" sizes="32x32">');
+            document.write('<link rel="apple-touch-icon" href="' + cachedLogo + '">');
+        })();
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/modal-contacto.css">
     <link rel="stylesheet" href="css/orden-formal.css">
-    <!-- ✅ PRIMERO: Inyector de metadatos (se ejecuta ANTES que todo) -->
+    <link rel="stylesheet" href="css/modal-orden-confirmada.css">
+    <!-- ✅ PRIMERO: Core config (se ejecuta ANTES que todo) -->
     <script src="js/config.js"></script>
+    <script src="js/config-sync.js"></script>
     <script src="js/meta-inyector.js"></script>
-    <!-- ✅ Carga inteligente de boletos para 1M boletos -->
-    <script src="js/boletos-loader.js"></script>
     <script>
-        // ============================================================
-        // LIMPIEZA COMPLETA DE CACHÉ - EJECUTAR ANTES DE CARGAR CONFIG
-        // ============================================================
-        (function limpiarCacheYFechas() {
-            // BORRAR TODOS los keys de localStorage que contengan fecha, sorteo o countdown
+        // Limpieza de caché de localStorage - elimina datos obsoletos
+        (function() {
             const keysABorrar = [
                 'rifaplus_fecha_sorteo',
                 'rifaplus_timestamp_sorteo',
@@ -37,25 +40,27 @@
             ];
             keysABorrar.forEach(k => {
                 if (localStorage.getItem(k)) {
-                    console.log('[CACHE] Eliminando:', k);
                     localStorage.removeItem(k);
                 }
             });
         })();
     </script>
-    <script src="js/config.js?v=2000000001"></script>
-    <script src="js/theme-dynamic.js?v=2000000000"></script>
-    <script src="js/modal-sorteo-finalizado.js?v=2000000000"></script>
-    <script defer src="js/oportunidades-cache.js"></script>
-    <script defer src="js/boot-cache.js"></script>
-    <script defer src="js/main.js?v=2000000000"></script>
-    <script defer src="js/calculo-precios.js?v=20260127"></script>
-    <script defer src="js/carrito-global.js?v=20260127"></script>
-    <script defer src="js/flujo-compra.js?v=20260127"></script>
-    <script defer src="js/orden-formal.js?v=20260127"></script>
-    <script defer src="js/modal-contacto.js?v=20260127"></script>
+    <script src="js/theme-dynamic.js?v=20260219"></script>
+    <script src="js/modal-sorteo-finalizado.js?v=20260219"></script>
+    <!-- ✅ CRÍTICO: storage-manager + carrito (debe estar antes que compra.js) -->
+    <script defer src="js/storage-manager-v2.js"></script>
+    <script defer src="js/main.js?v=20260219"></script>
+    <script defer src="js/calculo-precios.js?v=20260219"></script>
+    <script defer src="js/oportunidades-manager.js"></script>
+    <script defer src="js/carrito-global.js?v=20260219"></script>
+    <script defer src="js/carrito-oportunidades.js"></script>
+    <script defer src="js/flujo-compra.js?v=20260329.3"></script>
+    <script defer src="js/modal-orden-confirmada.js"></script>
+    <script defer src="js/orden-formal.js?v=20260329.1"></script>
+    <script defer src="js/modal-contacto.js?v=20260329.2"></script>
+    <script defer src="js/btn-flotante-animator.js"></script>
 
-    <script defer src="js/modal-conflicto-boletos.js?v=20260127"></script>
+    <script defer src="js/modal-conflicto-boletos.js?v=20260219"></script>
 </head>
 <body id="compra-page">
     <!-- HEADER CON MENÚ -->
@@ -71,7 +76,10 @@
 
             <a href="index.html#top" class="logo" data-logo-src id="logoLink">
                 <div class="logo-circle">
-                    <img src="images/logo.png" alt="SORTEOS YEPE" class="logo-image dynamic-logo" data-dynamic-logo="true" width="320" height="137" decoding="async">
+                    <script>
+                        document.write('<img src="' + (window.__RIFAPLUS_CACHED_LOGO__ || "data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 240 96\\'%3E%3Crect width=\\'240\\' height=\\'96\\' rx=\\'20\\' fill=\\'%230b2235\\'/%3E%3Ctext x=\\'120\\' y=\\'58\\' font-size=\\'34\\' text-anchor=\\'middle\\' fill=\\'%23ffffff\\' font-family=\\'Arial,sans-serif\\'%3ESaDev%3C/text%3E%3C/svg%3E") + '" alt="SORTEOS YEPE" class="logo-image dynamic-logo" data-dynamic-logo="true" width="320" height="137" decoding="async">');
+                    </script>
+                    <noscript><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='34' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ESaDev%3C/text%3E%3C/svg%3E" alt="SORTEOS YEPE" class="logo-image dynamic-logo" data-dynamic-logo="true" width="320" height="137" decoding="async"></noscript>
                 </div>
             </a>
 
@@ -108,12 +116,54 @@
     <section class="compra-hero compra-hero--purple">
         <div class="container">
             <div class="compra-hero-inner">
-                <h1 class="compra-hero-title">¿Listo para ganar? Elige tus boletos y participa ahora</h1>
-                <p class="compra-hero-sub">Selecciona los boletos que quieras o deja que la máquina de la suerte elija por ti. ¡Suerte y buena vibra!</p>
+                <h1 class="compra-hero-title" id="compraHeroTitle">¿Listo para ser el proximo ganador de SaDev? Elige tus boletos y participa ahora</h1>
+                <p class="compra-hero-sub">Selecciona los boletos que quieras o deja que la máquina de la suerte elija por ti. ¡Mucha Suerte!</p>
                 <div class="compra-hero-cta">
-                    <a href="#numerosGrid" class="btn btn-seleccionar">Seleccionar Boletos</a>
-                    <button id="btnProbarMaquina" class="btn btn-maquina">Máquina de la Suerte</button>
+                    <a href="#numerosGrid" class="btn btn-seleccionar">
+                        <span class="cta-icon" aria-hidden="true"><i class="fas fa-ticket-alt"></i></span>
+                        <span class="cta-title">Elegir boletos</span>
+                    </a>
+                    <button id="btnProbarMaquina" class="btn btn-maquina">
+                        <span class="cta-icon" aria-hidden="true">🎰</span>
+                        <span class="cta-title">Quiero numeros al azar</span>
+                    </button>
                 </div>
+                
+                <script>
+                    // FALLBACK ROBUSTO: Si compra.js no se ejecuta correctamente, hacer scroll aquí
+                    (function() {
+                        // Función auxiliar para scroll suave
+                        function scrollToElement(selector, offset = -80) {
+                            const elem = document.querySelector(selector) || document.getElementById(selector);
+                            if (elem) {
+                                const rect = elem.getBoundingClientRect();
+                                const y = rect.top + window.pageYOffset + offset;
+                                window.scrollTo({ top: y, behavior: 'smooth' });
+                            }
+                        }
+                        
+                        // Botón "Máquina de la Suerte"
+                        const btnMaquina = document.getElementById('btnProbarMaquina');
+                        if (btnMaquina) {
+                            btnMaquina.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                scrollToElement('maquinaCard', -80);
+                            }, true); // Usar capture para mayor prioridad
+                        }
+                        
+                        // Botón "Seleccionar Boletos"
+                        const btnSeleccionar = document.querySelector('.compra-hero-cta .btn-seleccionar');
+                        if (btnSeleccionar) {
+                            btnSeleccionar.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                // Buscar título y pasar el selector, no el elemento
+                                const titulo = document.querySelector('.seleccion-section .section-title');
+                                const selector = titulo ? '.seleccion-section .section-title' : 'numerosGrid';
+                                scrollToElement(selector, -80);
+                            }, true); // Usar capture
+                        }
+                    })();
+                </script>
             </div>
         </div>
     </section>
@@ -121,10 +171,45 @@
     <!-- SECCIÓN PRINCIPAL DE COMPRA: precio, promociones, máquina y selección -->
     <section class="compra-pricing-section">
         <div class="container">
-            <div class="precio-card-main">
-                <h3>Costo del boleto</h3>
-                <div class="precio-big"><span id="precioDinamico">Cargando...</span></div>
+            <div class="precio-card-main" id="precioCardCompra">
+                <!-- PRECIO NORMAL (cuando no hay promoción) -->
+                <div id="precioNormalCompra" class="precio-normal-mode">
+                    <p class="precio-kicker">Precio por boleto</p>
+                    <h3>Compra individual</h3>
+                    <div class="precio-big"><span id="precioDinamico">Cargando...</span></div>
+                    <p class="precio-caption">Tu entrada directa al sorteo</p>
+                </div>
+                
+                <!-- PRECIO CON OFERTA (cuando hay promoción) -->
+                <div id="precioOfertaCompra" class="precio-oferta-mode" style="display: none;">
+                    <div class="oferta-topline">
+                        <div class="oferta-badge">
+                            <span class="oferta-badge-text">OFERTA</span>
+                        </div>
+                        <p class="precio-kicker">Promoción activa</p>
+                    </div>
+                    
+                    <!-- Precio normal tachado -->
+                    <div class="oferta-precio-normal">
+                        <h4>Precio Regular</h4>
+                        <div class="precio-tachado" id="precioNormalOfertaCompra">$20</div>
+                    </div>
+                    
+                    <!-- Precio de oferta resaltado -->
+                    <div class="oferta-precio-destacado">
+                        <h3>Precio Especial</h3>
+                        <div class="precio-oferta-big" id="precioEspecialOfertaCompra">$15</div>
+                    </div>
+                    <p class="precio-caption">Aprovecha este precio antes de que termine</p>
+                </div>
             </div>
+            
+            <!-- VIGENCIA DE LA OFERTA - Fuera de la card -->
+            <div class="oferta-vigencia" id="ofertaVigenciaCompra" style="display: none;">
+                <span class="vigencia-icon" aria-hidden="true"><i class="fas fa-clock"></i></span>
+                <span class="vigencia-text" id="vigenciaOfertaCompra">Vigencia hasta: 15/03/2026 a las 23:59</span>
+            </div>
+            
             <div class="promociones-header">
                 <h3 class="promociones-title">Promociones</h3>
                 <p class="promociones-sub" id="promocionesSubText">Aprovecha los paquetes y ahorra al comprar varios boletos</p>
@@ -135,41 +220,229 @@
             </div>
 
             <script>
-            // Cargar precio y promociones dinámicamente - esperar a que config esté listo
-            function cargarPrecioYPromos() {
-                const config = window.rifaplusConfig;
+            // Cargar precio y promociones dinámicamente - DIRECTAMENTE DEL SERVIDOR SIN COOLDOWN
+            async function cargarPrecioYPromos() {
                 console.log('[PROMO] Iniciando cargarPrecioYPromos');
                 
-                if (!config || !config.rifa || !config.rifa.precioBoleto) {
-                    console.log('[PROMO] Config no lista, reintentando en 50ms');
-                    setTimeout(cargarPrecioYPromos, 50);
+                // 🔄 PASO 0: ESPERAR A QUE CONFIG ESTÉ LISTA (máx 5 segundos)
+                let intentos = 0;
+                const maxIntentios = 50; // 50 x 100ms = 5 segundos
+                while ((!window.rifaplusConfig || !window.rifaplusConfig.rifa) && intentos < maxIntentios) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    intentos++;
+                }
+                console.log('[PROMO] Config verificada tras', intentos * 100, 'ms');
+
+                const organizadorNombre = String(window.rifaplusConfig?.cliente?.nombre || 'SORTEO').trim() || 'SORTEO';
+                const compraHeroTitle = document.getElementById('compraHeroTitle');
+                if (compraHeroTitle) {
+                    compraHeroTitle.textContent = `¿Listo para ser el proximo ganador de ${organizadorNombre}? Elige tus boletos y participa ahora`;
+                }
+                
+                // 🔄 PASO 1: OBTENER PRECIO DIRECTAMENTE DEL SERVIDOR (sin cooldown)
+                // Esto asegura que siempre obtenemos el valor actual de config.json
+                let precioBoletoDelServidor = null;
+                try {
+                    const apiBase = window.rifaplusConfig?.backend?.apiBase
+                        || window.rifaplusConfig?.obtenerApiBase?.()
+                        || window.location.origin;
+                    console.log('[PROMO] Obteniendo precio del servidor...', apiBase);
+                    const response = await fetch(`${apiBase}/api/public/config`, {
+                        method: 'GET',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        precioBoletoDelServidor = data.data?.rifa?.precioBoleto;
+                        console.log('[PROMO] ✅ Precio obtenido DEL SERVIDOR:', precioBoletoDelServidor);
+                    } else {
+                        console.warn('[PROMO] Respuesta del servidor no OK:', response.status);
+                    }
+                } catch (err) {
+                    console.warn('[PROMO] ⚠️ No se pudo obtener precio del servidor:', err.message);
+                }
+                
+                // 🔄 PASO 2: Actualizar window.rifaplusConfig con precio del servidor
+                if (precioBoletoDelServidor &&precioBoletoDelServidor > 0) {
+                    window.rifaplusConfig.rifa.precioBoleto = precioBoletoDelServidor;
+                    console.log('[PROMO] ✅ window.rifaplusConfig.rifa.precioBoleto actualizado a:', precioBoletoDelServidor);
+                } else {
+                    console.warn('[PROMO] ⚠️ Precio del servidor no válido, usando valor actual:', window.rifaplusConfig?.rifa?.precioBoleto);
+                }
+                
+                // 🔄 PASO 3: Verificar que config tenga precio válido
+                const config = window.rifaplusConfig;
+                if (!config || !config.rifa || !config.rifa.precioBoleto || config.rifa.precioBoleto <= 0) {
+                    console.error('[PROMO] ❌ Config sin precio válido');
                     return;
                 }
 
-                console.log('[PROMO] Config lista, cargando precio y descuentos');
+                console.log('[PROMO] ✅ Config lista, precio final:', config.rifa.precioBoleto);
 
                 // Obtener configuraciones
+                const promocionesHeader = document.querySelector('.promociones-header');
                 const promocionesSubText = document.getElementById('promocionesSubText');
                 const descuentosConfig = config.rifa?.descuentos;
                 const oportunidadesConfig = config.rifa?.oportunidades;
                 const promosOportunidadesConfig = config.rifa?.promocionesOportunidades;
+                const oportunidadesPromosActivas = oportunidadesConfig?.enabled === true &&
+                    promosOportunidadesConfig?.enabled === true &&
+                    Array.isArray(promosOportunidadesConfig?.ejemplos) &&
+                    promosOportunidadesConfig.ejemplos.length > 0;
                 
                 // Actualizar texto promociones-sub según modalidad habilitada
-                if (oportunidadesConfig && oportunidadesConfig.enabled && 
-                    promosOportunidadesConfig && promosOportunidadesConfig.enabled) {
-                    const opxBoleto = oportunidadesConfig.oportunidades_por_boleto || 3;
+                if (oportunidadesPromosActivas) {
+                    const opxBoleto = oportunidadesConfig.multiplicador || oportunidadesConfig.oportunidades_por_boleto || 3;
                     promocionesSubText.textContent = `¡Multiplica tus oportunidades de ganar! Cada boleto que compres te regala ${opxBoleto} oportunidades EXTRA. Compra más boletos y aumenta tus probabilidades, ejemplo:`;
                 } else if (descuentosConfig && descuentosConfig.enabled) {
                     promocionesSubText.textContent = 'Aprovecha los paquetes y ahorra al comprar varios boletos';
+                } else if (promocionesSubText) {
+                    promocionesSubText.textContent = 'Promociones disponibles por tiempo limitado';
                 }
 
                 console.log('[PROMO] Texto de promociones actualizado');
 
-                // Cargar precio dinámico
+                // Cargar precio dinámico EN EL ELEMENTO
                 const precioDinamico = document.getElementById('precioDinamico');
+                const precioCardCompra = document.getElementById('precioCardCompra');
+                const precioNormalCompra = document.getElementById('precioNormalCompra');
+                const precioOfertaCompra = document.getElementById('precioOfertaCompra');
+                const ofertaVigenciaCompra = document.getElementById('ofertaVigenciaCompra');
+                
                 if (precioDinamico) {
-                    precioDinamico.textContent = `$${parseFloat(config.rifa.precioBoleto).toFixed(2)}`;
-                    console.log('[PROMO] Precio dinámico cargado');
+                    const ahora = new Date();
+                    const precioBoleto = config.rifa.precioBoleto;
+                    let hayPromocionActiva = false;
+                    let precioEspecial = precioBoleto;
+                    let fechaFin = null;
+                    let tipoPromo = null; // 'tiempo' o 'porcentaje'
+                    
+                    // ===== VERIFICAR PROMOCIÓN POR TIEMPO =====
+                    const promoTiempo = config.rifa?.promocionPorTiempo;
+                    let precioTiempo = null;
+                    let fechaTiempo = null;
+                    
+                    if (promoTiempo?.enabled && promoTiempo?.precioProvisional) {
+                        const fechaInicio = new Date(promoTiempo.fechaInicio);
+                        const fechaFinPromo = new Date(promoTiempo.fechaFin);
+                        
+                        if (ahora >= fechaInicio && ahora <= fechaFinPromo) {
+                            precioTiempo = promoTiempo.precioProvisional;
+                            fechaTiempo = fechaFinPromo;
+                        }
+                    }
+                    
+                    // ===== VERIFICAR DESCUENTO POR PORCENTAJE =====
+                    const descuentoPorcentaje = config.rifa?.descuentoPorcentaje;
+                    let precioPorcentaje = null;
+                    let fechaPorcentaje = null;
+                    let porcentajeDescuento = null;
+                    
+                    if (descuentoPorcentaje?.enabled && descuentoPorcentaje?.porcentaje) {
+                        const fechaInicio = new Date(descuentoPorcentaje.fechaInicio);
+                        const fechaFin = new Date(descuentoPorcentaje.fechaFin);
+                        
+                        if (ahora >= fechaInicio && ahora <= fechaFin) {
+                            const descuento = (precioBoleto * descuentoPorcentaje.porcentaje) / 100;
+                            precioPorcentaje = precioBoleto - descuento;
+                            fechaPorcentaje = fechaFin;
+                            porcentajeDescuento = descuentoPorcentaje.porcentaje;
+                        }
+                    }
+                    
+                    // ===== SELECCIONAR EL MEJOR DESCUENTO =====
+                    if (precioTiempo !== null && precioPorcentaje !== null) {
+                        // Ambos activos: usar el más barato
+                        if (precioPorcentaje < precioTiempo) {
+                            precioEspecial = precioPorcentaje;
+                            fechaFin = fechaPorcentaje;
+                            tipoPromo = 'porcentaje';
+                            console.log('[PROMO] 🎯 AMBAS ACTIVAS - Usando PORCENTAJE (mejor descuento)');
+                        } else {
+                            precioEspecial = precioTiempo;
+                            fechaFin = fechaTiempo;
+                            tipoPromo = 'tiempo';
+                            console.log('[PROMO] 🎯 AMBAS ACTIVAS - Usando TIEMPO (mejor descuento)');
+                        }
+                        hayPromocionActiva = true;
+                    } else if (precioTiempo !== null) {
+                        precioEspecial = precioTiempo;
+                        fechaFin = fechaTiempo;
+                        tipoPromo = 'tiempo';
+                        hayPromocionActiva = true;
+                        console.log('[PROMO] 🎯 PROMOCIÓN POR TIEMPO ACTIVA');
+                    } else if (precioPorcentaje !== null) {
+                        precioEspecial = precioPorcentaje;
+                        fechaFin = fechaPorcentaje;
+                        tipoPromo = 'porcentaje';
+                        hayPromocionActiva = true;
+                        console.log('[PROMO] 🎯 DESCUENTO POR PORCENTAJE ACTIVO: ' + porcentajeDescuento + '%');
+                    }
+                    
+                    // ===== MOSTRAR PRECIO CON O SIN OFERTA =====
+                    if (hayPromocionActiva && precioCardCompra) {
+                        // Ocultar precio normal
+                        if (precioNormalCompra) precioNormalCompra.style.display = 'none';
+                        
+                        // Mostrar precio con oferta
+                        if (precioOfertaCompra) {
+                            precioOfertaCompra.style.display = 'flex';
+                            
+                            const precioNormalEl = document.getElementById('precioNormalOfertaCompra');
+                            const precioEspecialEl = document.getElementById('precioEspecialOfertaCompra');
+                            const badgeText = document.querySelector('.oferta-badge-text');
+                            
+                            if (precioNormalEl) precioNormalEl.textContent = `$${parseFloat(precioBoleto).toFixed(2)}`;
+                            if (precioEspecialEl) precioEspecialEl.textContent = `$${parseFloat(precioEspecial).toFixed(2)}`;
+                            
+                            // Mostrar porcentaje de descuento SOLO para descuentoPorcentaje, no para promoción
+                            if (badgeText && tipoPromo === 'porcentaje') {
+                                const porcentajeDescuentoReal = Math.round(((precioBoleto - precioEspecial) / precioBoleto) * 100);
+                                badgeText.textContent = `${porcentajeDescuentoReal}% OFF`;
+                            } else if (badgeText) {
+                                // Para promoción por tiempo, mostrar "OFERTA"
+                                badgeText.textContent = 'OFERTA';
+                            }
+                        }
+                        
+                        // Mostrar vigencia FUERA de la card
+                        if (ofertaVigenciaCompra && fechaFin) {
+                            ofertaVigenciaCompra.style.display = 'flex';
+                            
+                            const vigenciaEl = document.getElementById('vigenciaOfertaCompra');
+                            if (vigenciaEl) {
+                                const fechaFinal = new Date(fechaFin);
+                                const dia = String(fechaFinal.getDate()).padStart(2, '0');
+                                const mes = String(fechaFinal.getMonth() + 1).padStart(2, '0');
+                                const año = fechaFinal.getFullYear();
+                                
+                                // Formatear hora con AM/PM
+                                let hora = fechaFinal.getHours();
+                                const minuto = String(fechaFinal.getMinutes()).padStart(2, '0');
+                                const ampm = hora >= 12 ? 'PM' : 'AM';
+                                hora = hora % 12;
+                                hora = hora ? hora : 12; // Si es 0, mostrar como 12
+                                const horaFormato = String(hora).padStart(2, '0');
+                                
+                                vigenciaEl.textContent = `Vigencia hasta: ${dia}/${mes}/${año} a las ${horaFormato}:${minuto} ${ampm}`;
+                            }
+                        }
+                        
+                        precioDinamico.textContent = `$${parseFloat(precioEspecial).toFixed(2)}`;
+                        console.log('[PROMO] ✅ PRECIO EN OFERTA RENDERIZADO:', precioDinamico.textContent);
+                    } else {
+                        console.log('[PROMO] Modo precio normal (sin promoción)');
+                        
+                        if (precioNormalCompra) precioNormalCompra.style.display = 'flex';
+                        if (precioOfertaCompra) precioOfertaCompra.style.display = 'none';
+                        if (ofertaVigenciaCompra) ofertaVigenciaCompra.style.display = 'none';
+                        
+                        precioDinamico.textContent = `$${parseFloat(precioBoleto).toFixed(2)}`;
+                        console.log('[PROMO] ✅ PRECIO RENDERIZADO EN UI:', precioDinamico.textContent);
+                    }
+                } else {
+                    console.error('[PROMO] ❌ No se encontró elemento #precioDinamico');
                 }
 
                 // Cargar promociones dinámicamente
@@ -181,8 +454,31 @@
 
                 console.log('[PROMO] Elemento promosCards encontrado');
 
+                const aplicarLayoutPromos = (contenedor) => {
+                    if (!contenedor) return;
+
+                    contenedor.classList.remove(
+                        'cards-layout--1',
+                        'cards-layout--2',
+                        'cards-layout--3',
+                        'cards-layout--4',
+                        'cards-layout--many'
+                    );
+
+                    const totalCards = contenedor.children.length;
+
+                    if (totalCards <= 0) return;
+                    if (totalCards === 1) contenedor.classList.add('cards-layout--1');
+                    else if (totalCards === 2) contenedor.classList.add('cards-layout--2');
+                    else if (totalCards === 3) contenedor.classList.add('cards-layout--3');
+                    else if (totalCards === 4) contenedor.classList.add('cards-layout--4');
+                    else contenedor.classList.add('cards-layout--many');
+                };
+
                 // Limpiar contenedor
                 promosCards.innerHTML = '';
+                promosCards.style.display = 'grid';
+                let tarjetasPromoRenderizadas = 0;
 
                 // Usar descuentos si están habilitados
                 console.log('[PROMO] Descuentos config:', {
@@ -194,11 +490,19 @@
                 if (descuentosConfig && descuentosConfig.enabled && descuentosConfig.reglas && descuentosConfig.reglas.length > 0) {
                     console.log('[PROMO] Renderizando', descuentosConfig.reglas.length, 'descuentos');
                     descuentosConfig.reglas.forEach((regla, idx) => {
+                        const totalPaquete = Number(regla.total ?? regla.precio ?? 0);
+                        const precioUnitario = regla.cantidad > 0 ? (totalPaquete / regla.cantidad) : 0;
                         const promoCard = document.createElement('div');
-                        promoCard.className = 'promo-card';
-                        promoCard.innerHTML = `<p class="promo-simple">${regla.cantidad} boletos × $${regla.precio}</p><p class="promo-ahorro">Ahorra: $${regla.ahorro}</p>`;
+                        promoCard.className = 'promo-card promo-card--paquete';
+                        promoCard.innerHTML = `
+                            <span class="promo-tag">Promocion</span>
+                            <p class="promo-simple">${regla.cantidad} Boletos</p>
+                            <p class="promo-operator">Solo por:</p>
+                            <p class="promo-strong">$${totalPaquete}</p>
+                        `;
                         promosCards.appendChild(promoCard);
-                        console.log('[PROMO] Regla', idx, 'renderizada:', regla.cantidad, 'x $' + regla.precio);
+                        tarjetasPromoRenderizadas++;
+                        console.log('[PROMO] Regla', idx, 'renderizada:', regla.cantidad, 'x $' + totalPaquete);
                     });
                     console.log('[PROMO] Descuentos renderizados exitosamente');
                 } else {
@@ -212,78 +516,85 @@
                     ejemplosLength: promosOportunidadesConfig?.ejemplos?.length || 0
                 });
 
-                if (oportunidadesConfig && oportunidadesConfig.enabled && 
-                    promosOportunidadesConfig && promosOportunidadesConfig.enabled && 
-                    promosOportunidadesConfig.ejemplos && promosOportunidadesConfig.ejemplos.length > 0) {
+                if (oportunidadesPromosActivas) {
                     console.log('[PROMO] Renderizando', promosOportunidadesConfig.ejemplos.length, 'ejemplos de oportunidades');
                     promosOportunidadesConfig.ejemplos.forEach((ejemplo, idx) => {
                         const promoCard = document.createElement('div');
-                        promoCard.className = 'promo-card';
-                        promoCard.style.backgroundColor = '#f8fafc';
+                        promoCard.className = 'promo-card promo-card--oportunidad';
                         promoCard.innerHTML = `
-                            <p class="promo-simple">${ejemplo.boletos} boleto${ejemplo.boletos > 1 ? 's' : ''}</p>
-                            <p style="font-size: 0.9rem; color: #666; margin: 0.3rem 0;">=</p>
-                            <p class="promo-ahorro" style="color: var(--secondary);">${ejemplo.oportunidades} oportunidade${ejemplo.oportunidades > 1 ? 's' : ''}</p>
+                            <span class="promo-tag">Oportunidades</span>
+                            <p class="promo-simple">${ejemplo.boletos} Boleto${ejemplo.boletos > 1 ? 's' : ''}</p>
+                            <p class="promo-operator">=</p>
+                            <p class="promo-strong">${ejemplo.oportunidades} Oportunidade${ejemplo.oportunidades > 1 ? 's' : ''}</p>
+                            <span class="promo-desc">Mas oportunidades de ganar</span>
                         `;
                         promosCards.appendChild(promoCard);
+                        tarjetasPromoRenderizadas++;
                         console.log('[PROMO] Oportunidades', idx, 'renderizadas:', ejemplo.boletos, 'boletos →', ejemplo.oportunidades, 'oportunidades');
                     });
                     console.log('[PROMO] Oportunidades renderizadas exitosamente');
                 } else {
                     console.log('[PROMO] Oportunidades o sus promociones no están habilitadas');
                 }
-                
-                // ===== CARGAR BONIFICACIONES =====
-                console.log('[PROMO] Iniciando cargarBonificaciones');
-                const bonificacionesConfig = config.rifa?.bonificaciones;
-                const bonificacionesSection = document.getElementById('bonificacionesSection');
-                const bonificacionesCards = document.getElementById('bonificacionesCards');
-                
-                if (bonificacionesConfig && bonificacionesConfig.enabled && bonificacionesCards) {
-                    console.log('[PROMO] Bonificaciones habilitadas, renderizando', bonificacionesConfig.items?.length || 0, 'items');
-                    
-                    // Limpiar contenedor
-                    bonificacionesCards.innerHTML = '';
-                    
-                    // Renderizar cada bonificación
-                    bonificacionesConfig.items.forEach((item, idx) => {
-                        const bonificacionCard = document.createElement('div');
-                        bonificacionCard.className = 'promo-card';
-                        bonificacionCard.innerHTML = `
-                            <p class="promo-simple">${item.titulo}</p>
-                            <p style="font-size: 0.85rem; color: var(--text-light); margin: 0.25rem 0 0 0; display: block !important;">${item.condicion}</p>
-                        `;
-                        bonificacionesCards.appendChild(bonificacionCard);
-                    });
-                    
-                    // Mostrar sección
-                    if (bonificacionesSection) {
-                        bonificacionesSection.style.display = 'block';
-                    }
-                    console.log('[PROMO] Bonificaciones renderizadas exitosamente');
+
+                if (tarjetasPromoRenderizadas > 0) {
+                    if (promocionesHeader) promocionesHeader.style.display = '';
+                    promosCards.style.display = 'grid';
+                    aplicarLayoutPromos(promosCards);
                 } else {
-                    console.log('[PROMO] Bonificaciones no están habilitadas o no hay configuración');
+                    if (promocionesHeader) promocionesHeader.style.display = 'none';
+                    promosCards.style.display = 'none';
+                }
+                
+                // La promoción por tiempo se muestra únicamente en la card principal
+                // para evitar duplicarla también dentro de la lista de promociones.
+                
+                // ===== CARGAR BONOS DE PAGINA DE COMPRA =====
+                const bonosCompraConfig = config.rifa?.bonosCompra;
+                const bonosCompraSection = document.getElementById('bonosCompraSection');
+                const bonosCompraCards = document.getElementById('bonosCompraCards');
+
+                if (
+                    bonosCompraConfig &&
+                    bonosCompraConfig.enabled === true &&
+                    Array.isArray(bonosCompraConfig.items) &&
+                    bonosCompraConfig.items.length > 0 &&
+                    bonosCompraCards
+                ) {
+                    bonosCompraCards.innerHTML = '';
+
+                    bonosCompraConfig.items.forEach((item) => {
+                        const titulo = String(item?.titulo || '').trim();
+                        const descripcion = String(item?.descripcion || '').trim();
+                        const emoji = String(item?.emoji || '🎁').trim();
+
+                        if (!titulo || !descripcion) return;
+
+                        const bonoCard = document.createElement('article');
+                        bonoCard.className = 'bono-compra-card';
+                        bonoCard.innerHTML = `
+                            <h4 class="bono-compra-titulo">${titulo}</h4>
+                            <div class="bono-compra-emoji" aria-hidden="true">${emoji}</div>
+                            <p class="bono-compra-descripcion">${descripcion}</p>
+                        `;
+                        bonosCompraCards.appendChild(bonoCard);
+                    });
+
+                    if (bonosCompraCards.children.length > 0) {
+                        aplicarLayoutPromos(bonosCompraCards);
+                        if (bonosCompraSection) bonosCompraSection.style.display = 'block';
+                    } else if (bonosCompraSection) {
+                        bonosCompraSection.style.display = 'none';
+                    }
+                } else if (bonosCompraSection) {
+                    bonosCompraSection.style.display = 'none';
                 }
             }
             
-            // Ejecutar en múltiples puntos para garantizar que se ejecute
-            // 1. Si el documento ya está listo
-            if (document.readyState === 'complete' || document.readyState === 'interactive') {
-                console.log('[PROMO] Documento ya listo, ejecutando inmediatamente');
-                cargarPrecioYPromos();
-            }
+            // Variable para evitar ejecución múltiple
             
-            // 2. Cuando el DOM esté completamente cargado
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', function() {
-                    console.log('[PROMO] DOMContentLoaded disparado, ejecutando');
-                    cargarPrecioYPromos();
-                });
-            }
-            
-            // 3. Cuando la ventana haya cargado completamente
-            window.addEventListener('load', function() {
-                console.log('[PROMO] Window load disparado, ejecutando');
+            function ejecutarCargarPrecioYPromos() {
+                console.log('[PROMO] ✅ Ejecutando cargarPrecioYPromos()');
                 cargarPrecioYPromos();
                 
                 // Animar botón flotante solo los primeros 2 segundos
@@ -294,16 +605,44 @@
                         btnFlotante.classList.remove('bounce-animate');
                     }, 2000);
                 }
+            }
+            
+            // Ejecutar cuando esté SEGURO que el documento está listo
+            // Usar load en lugar de DOMContentLoaded para asegurar que config.js se haya cargado
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                // Si el documento ya está listo en el momento que se ejecuta este script
+                setTimeout(() => ejecutarCargarPrecioYPromos(), 100);
+            } else {
+                // Si el documento aún no está listo
+                window.addEventListener('load', ejecutarCargarPrecioYPromos);
+            }
+            
+            // IMPORTANTE: También ejecutar cuando la config se actualiza (casos como volver a cargar página)
+            if (typeof window.rifaplusConfig !== 'undefined' && typeof window.rifaplusConfig.escucharEvento === 'function') {
+                window.rifaplusConfig.escucharEvento('configuracionActualizada', function() {
+                    console.log('[PROMO] Configuración actualizada, recargando precios y promociones');
+                    ejecutarCargarPrecioYPromos();
+                });
+            }
+            
+            // ✅ Event listener para cambios en promociones desde admin
+            window.addEventListener('configActualizada', (event) => {
+                console.log('🔄 [Event] Configuración actualizada desde admin en compra.html:', event.detail);
+                if (event.detail.promocionesOportunidades) {
+                    console.log('📢 Rerendeando tarjetas de promociones en compra...');
+                    ejecutarCargarPrecioYPromos();
+                }
             });
+            
             </script>
         </div>
     </section>
 
-    <!-- SECCIÓN DE BONIFICACIONES -->
-    <section class="bonificaciones-section" id="bonificacionesSection" style="display: none;">
+    <!-- SECCIÓN DE BONOS DE COMPRA -->
+    <section class="bonificaciones-section bonos-compra-section" id="bonosCompraSection" style="display: none;">
         <div class="container">
-            <h3 class="bonificaciones-title">Accede a los bonos</h3>
-            <div class="bonificaciones-cards" id="bonificacionesCards">
+            <h3 class="bonificaciones-title">Bonos disponibles</h3>
+            <div class="bonificaciones-cards bonos-compra-cards" id="bonosCompraCards">
                 <!-- Se carga dinámicamente desde config.js -->
             </div>
         </div>
@@ -314,7 +653,7 @@
         <div class="container">
             <div class="maquina-card">
                 <div class="maquina-header">
-                    <h3>🎰 Máquina de la Suerte</h3>
+                    <h3>🎰 Máquina de la Suerte 🎰</h3>
                     <p class="maquina-sub">Te elegimos números al azar — selección automática</p>
                 </div>
 
@@ -326,6 +665,7 @@
                             <input type="number" id="cantidadNumeros" placeholder="0" min="0" max="500" step="1" inputmode="numeric" class="number-input">
                             <button type="button" class="number-btn" id="aumentarCantidad">+</button>
                         </div>
+                        <small id="maquinaLimiteHint" class="form-helper" style="display:block; margin-top:0.5rem;">Puedes generar hasta 500 boletos por intento.</small>
                     </div>
 
                     <div class="total-section">
@@ -337,6 +677,38 @@
                         GENERAR NÚMEROS
                     </button>
                     <div class="availability-note" id="availabilityNote" style="display:none;">Cargando disponibilidad...</div>
+                    
+                    <script>
+                        // 🔧 FALLBACK INMEDIATO: Actualizar disponibilidad desde config.js
+                        // Sin esperar a compra.js
+                        (function() {
+                            const updateAvailability = () => {
+                                const availNote = document.getElementById('availabilityNote');
+                                const config = window.rifaplusConfig;
+                                
+                                if (availNote && config && config.estado && config.estado.boletosDisponibles !== undefined) {
+                                    const disponibles = config.estado.boletosDisponibles;
+                                    availNote.textContent = `${disponibles} boletos disponibles`;
+                                    availNote.style.display = 'inline-block';
+                                    console.log('✅ [Compra] Disponibilidad actualizada desde config.js:', disponibles);
+                                }
+                            };
+                            
+                            // Intentar actualizar inmediatamente
+                            updateAvailability();
+                            
+                            // Si config aún no está lista, reintentar
+                            let attempts = 0;
+                            const interval = setInterval(() => {
+                                attempts++;
+                                if (window.rifaplusConfig && window.rifaplusConfig.estado && window.rifaplusConfig.estado.boletosDisponibles) {
+                                    updateAvailability();
+                                    clearInterval(interval);
+                                }
+                                if (attempts > 50) clearInterval(interval);
+                            }, 100);
+                        })();
+                    </script>
                     
                     <!-- DEBUG PANEL - Solo visible si está habilitado -->
                     <div id="debugPanel" style="display:none; margin-top:10px; padding:10px; background:#f0f0f0; border-radius:5px; font-size:11px; color:#333; max-height:150px; overflow-y:auto;">
@@ -367,21 +739,23 @@
             <!-- BARRA DE BÚSQUEDA DE BOLETOS -->
             <div class="busqueda-boletos-card">
                 <div class="busqueda-input-group">
-                    <label for="busquedaBoleto" class="busqueda-label">🔍 Buscar boleto por número:</label>
+                    <label for="busquedaBoleto" class="busqueda-label">Buscar boleto por número:</label>
                     <div class="busqueda-wrapper">
+                        <span class="busqueda-input-icon" aria-hidden="true"><i class="fas fa-search"></i></span>
                         <input 
                             type="number" 
                             id="busquedaBoleto" 
                             class="busqueda-input" 
-                            placeholder="Ej: 42" 
-                            min="1"
+                            placeholder="Ej. 42" 
+                            min="0"
                             aria-label="Buscar boleto por número"
                         >
                         <button type="button" id="btnBuscarBoleto" class="btn btn-search">
                             Buscar
                         </button>
                     </div>
-                    <p class="busqueda-rango">Rango de boletos: <span id="rangoInicio">1</span> - <span id="rangoTotal">500</span></p>
+                    <p class="busqueda-rango">Rango de boletos: <span id="rangoInicio">0</span> - <span id="rangoTotal">999</span></p>
+                    <p class="busqueda-feedback" id="busquedaFeedback" aria-live="polite"></p>
                 </div>
                 <div class="busqueda-resultados" id="busquedaResultados" style="display: none;">
                     <div class="resultados-header">
@@ -415,8 +789,11 @@
             <div class="filtro-boletos">
                 <label class="switch-filtro">
                     <input type="checkbox" id="filtroDisponibles" class="switch-input">
+                    <span class="switch-copy">
+                        <span class="switch-label">Solo disponibles</span>
+                        <span class="switch-help">Oculta boletos apartados y vendidos</span>
+                    </span>
                     <span class="switch-slider"></span>
-                    <span class="switch-label">Mostrar solo disponibles</span>
                 </label>
             </div>
 
@@ -427,15 +804,15 @@
             <div class="rango-boxes" id="rangoBoxes"></div>
 
             <!-- Sección scrolleable de boletos (⭐ OPTIMIZACIÓN: Contenedor con will-change y contain) -->
-            <div class="boletos-container-scrolleable" style="contain: layout style paint; position: relative;">
+            <div class="boletos-container-scrolleable">
                 <!-- Loading indicator inicial -->
-                <div id="loadingEstadoBoletos" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 100; text-align: center; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); display: flex; flex-direction: column; align-items: center; gap: 15px;">
-                    <div style="width: 50px; height: 50px; border: 4px solid #f0f0f0; border-top: 4px solid #7c3aed; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                    <h4 style="margin: 0; color: #333; font-size: 16px;">Cargando estado de los boletos...</h4>
-                    <p style="margin: 0; color: #666; font-size: 13px;">Por favor espera, esto puede tomar unos segundos</p>
+                <div id="loadingEstadoBoletos" class="boletos-loading-state">
+                    <div class="boletos-loading-spinner" aria-hidden="true"></div>
+                    <h4>Cargando estado de los boletos...</h4>
+                    <p>Por favor espera, esto puede tomar unos segundos</p>
                 </div>
-                <div class="numeros-grid" id="numerosGrid" style="will-change: contents; transform: translateZ(0); backface-visibility: hidden; opacity: 0.5; pointer-events: none;" data-loading="true"></div>
-                <div id="infiniteScrollSentinel" style="height: 50px; visibility: hidden;"></div>
+                <div class="numeros-grid" id="numerosGrid" data-loading="true"></div>
+                <div id="infiniteScrollSentinel"></div>
             </div>
             <style>
                 @keyframes spin {
@@ -449,26 +826,23 @@
     <!-- FOOTER REDISEÑADO -->
     <footer class="footer">
         <div class="container">
+            <!-- 📱 BOLETERA DIGITAL CTA - LÍNEA DISCRETA -->
+            <div class="footer-boletera-cta">
+                <div class="boletera-content">
+                    ¿Necesitas una boletera digital? <a href="https://wa.me/4341068932?text=Hola%2C%20me%20interesa%20conocer%20m%C3%A1s%20sobre%20las%20boleteras%20digitales" class="btn-boletera-whatsapp" target="_blank" rel="noopener noreferrer">Consulta aquí</a>
+                </div>
+            </div>
+
             <div class="footer-main">
                 <!-- Columna izquierda: Logo y nombre -->
                 <div class="footer-logo-section">
                     <div class="footer-logo-box">
-                        <img src="images/logo.png" alt="SORTEOS YEPE" class="footer-logo-img" width="200" height="100">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='34' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ESaDev%3C/text%3E%3C/svg%3E" alt="SORTEOS YEPE" class="footer-logo-img dynamic-logo" data-dynamic-logo="true" width="200" height="100">
                     </div>
-                    <h3 id="footerNombre" class="footer-client-name">SORTEOS YEPE</h3>
+                    <h3 id="footerNombre" class="footer-client-name">SORTEO</h3>
                     <p id="footerEslogan" class="footer-eslogan">Rifas 100% Transparentes y Seguras</p>
                 </div>
 
-                <!-- Columna central: Enlaces -->
-                <div class="footer-links-section">
-                    <h4 class="footer-links-title">Enlaces</h4>
-                    <ul class="footer-links-list">
-                        <li><a href="index.html">Inicio</a></li>
-                        <li><a href="compra.html">Comprar Boletos</a></li>
-                        <li><a href="ayuda.html">Ayuda</a></li>
-                        <li><a href="mis-boletos.html">Mis Boletos</a></li>
-                    </ul>
-                </div>
 
                 <!-- Columna derecha: Contacto y redes sociales -->
                 <div class="footer-contact-section">
@@ -488,16 +862,15 @@
 
             <!-- Copyright -->
             <div class="footer-bottom">
-                <p id="footerCopyright">&copy; 2025 <strong>SORTEOS YEPE</strong>. Todos los derechos reservados.</p>
+                <p id="footerCopyright">&copy; 2025 <strong>SORTEO</strong>. Todos los derechos reservados.</p>
             </div>
         </div>
     </footer>
 
     <script>
-        // Actualizar nombre en footer
-        const footerNombre = document.getElementById('footerNombre');
-        if (footerNombre) {
-            footerNombre.textContent = config.cliente.nombre;
+        // ✅ CENTRALIZADO: Usar función que se actualiza automáticamente
+        if (typeof window.rifaplusConfig !== 'undefined' && typeof window.rifaplusConfig.actualizarNombreClienteEnUI === 'function') {
+            window.rifaplusConfig.actualizarNombreClienteEnUI();
         }
 
         // Actualizar eslogan en footer
@@ -506,35 +879,8 @@
             footerEslogan.textContent = config.cliente.eslogan || 'Rifas 100% Transparentes y Seguras';
         }
 
-        // Actualizar redes sociales en footer
-        const footerSocial = document.getElementById('footerSocial');
-        if (footerSocial) {
-            footerSocial.innerHTML = '';
-            if (config.cliente.redesSociales.whatsapp) {
-                const whatsappLink = document.createElement('a');
-                whatsappLink.href = `https://wa.me/${config.cliente.redesSociales.whatsapp.replace(/[^0-9]/g, '')}`;
-                whatsappLink.target = '_blank';
-                whatsappLink.title = 'WhatsApp';
-                whatsappLink.innerHTML = '<i class="fab fa-whatsapp"></i>';
-                footerSocial.appendChild(whatsappLink);
-            }
-            if (config.cliente.redesSociales.facebook) {
-                const facebookLink = document.createElement('a');
-                facebookLink.href = config.cliente.redesSociales.facebook;
-                facebookLink.target = '_blank';
-                facebookLink.title = 'Facebook';
-                facebookLink.innerHTML = '<i class="fab fa-facebook-f"></i>';
-                footerSocial.appendChild(facebookLink);
-            }
-            if (config.cliente.redesSociales.instagram) {
-                const instagramLink = document.createElement('a');
-                instagramLink.href = config.cliente.redesSociales.instagram;
-                instagramLink.target = '_blank';
-                instagramLink.title = 'Instagram';
-                instagramLink.innerHTML = '<i class="fab fa-instagram"></i>';
-                footerSocial.appendChild(instagramLink);
-            }
-        }
+        // Renderizar redes sociales en footer (extraído en función para re-ejecutar cuando sincroniza)
+        renderizarFooterSocial();
 
         // Actualizar información de contacto
         const footerEmail = document.getElementById('footerEmail');
@@ -548,13 +894,71 @@
             footerTelefono.href = `tel:${config.cliente.telefono.replace(/[^0-9+]/g, '')}`;
             footerTelefono.textContent = config.cliente.telefono;
         }
-
-        // Actualizar copyright
-        const footerCopyright = document.getElementById('footerCopyright');
-        if (footerCopyright) {
-            const anio = config.cliente.anioActual || new Date().getFullYear();
-            footerCopyright.innerHTML = `&copy; ${anio} <strong>${config.cliente.nombre}</strong>. Todos los derechos reservados.`;
+        
+    // Función para actualizar redes sociales en footer
+    function renderizarFooterSocial() {
+        const footerSocial = document.getElementById('footerSocial');
+        const config = window.rifaplusConfig;
+        
+        if (!footerSocial || !config?.cliente?.redesSociales) return;
+        
+        const redes = config.cliente.redesSociales;
+        if (!redes || Object.values(redes).every(v => !v)) return;
+        
+        footerSocial.innerHTML = '';
+        
+        if (redes.whatsapp) {
+            const whatsappLink = document.createElement('a');
+            whatsappLink.href = `https://wa.me/${redes.whatsapp.replace(/[^0-9]/g, '')}`;
+            whatsappLink.target = '_blank';
+            whatsappLink.title = 'WhatsApp';
+            whatsappLink.innerHTML = '<i class="fab fa-whatsapp"></i>';
+            footerSocial.appendChild(whatsappLink);
         }
+        if (redes.facebook) {
+            const facebookLink = document.createElement('a');
+            facebookLink.href = redes.facebook;
+            facebookLink.target = '_blank';
+            facebookLink.title = 'Facebook';
+            facebookLink.innerHTML = '<i class="fab fa-facebook-f"></i>';
+            footerSocial.appendChild(facebookLink);
+        }
+        if (redes.instagram) {
+            const instagramLink = document.createElement('a');
+            instagramLink.href = redes.instagram;
+            instagramLink.target = '_blank';
+            instagramLink.title = 'Instagram';
+            instagramLink.innerHTML = '<i class="fab fa-instagram"></i>';
+            footerSocial.appendChild(instagramLink);
+        }
+    }
+    
+    // Re-ejecutar footer cuando config-sync actualice
+    if (typeof window.rifaplusConfig !== 'undefined' && typeof window.rifaplusConfig.escucharEvento === 'function') {
+        window.rifaplusConfig.escucharEvento('configuracionActualizada', function() {
+            // ✅ Actualizar eslogan
+            const footerEslogan = document.getElementById('footerEslogan');
+            if (footerEslogan) {
+                footerEslogan.textContent = window.rifaplusConfig.cliente.eslogan || 'Rifas 100% Transparentes y Seguras';
+            }
+            
+            // ✅ Actualizar email y teléfono
+            const footerEmail = document.getElementById('footerEmail');
+            if (footerEmail && window.rifaplusConfig.cliente.email) {
+                footerEmail.href = `mailto:${window.rifaplusConfig.cliente.email}`;
+                footerEmail.textContent = window.rifaplusConfig.cliente.email;
+            }
+            
+            const footerTelefono = document.getElementById('footerTelefono');
+            if (footerTelefono && window.rifaplusConfig.cliente.telefono) {
+                footerTelefono.href = `tel:${window.rifaplusConfig.cliente.telefono.replace(/[^0-9+]/g, '')}`;
+                footerTelefono.textContent = window.rifaplusConfig.cliente.telefono;
+            }
+            
+            // ✅ Actualizar redes sociales
+            renderizarFooterSocial();
+        });
+    }
     </script>
 
     <!-- MODALES -->
@@ -563,10 +967,17 @@
     <div class="modal modal-overlay" id="modalContacto">
         <div class="modal-content modal-contacto">
             <div class="modal-header modal-header-center">
-                <h2 style="text-align: center;">Completa tus datos</h2>
+                <div class="modal-contacto-heading">
+                    <h2>Completa tus datos</h2>
+                    <p class="modal-contacto-sub">Usaremos esta informacion para apartar y confirmar tus boletos.</p>
+                </div>
                 <button class="modal-close" id="closeContacto" aria-label="Cerrar">×</button>
             </div>
             <div class="modal-body">
+                <div class="modal-contacto-trust">
+                    <span class="modal-contacto-trust-icon" aria-hidden="true"><i class="fas fa-shield-alt"></i></span>
+                    <span>Proceso seguro y datos usados solo para tu compra.</span>
+                </div>
                 <form id="formularioContacto" novalidate>
                     <div class="form-group">
                         <label for="clienteNombre">Nombre *</label>
@@ -636,7 +1047,7 @@
             </div>
             <div class="modal-footer modal-footer-contacto">
                 <button class="btn btn-outline" id="btnCancelarContacto">Cancelar</button>
-                <button class="btn btn-continuar" id="btnContinuarContacto">Continuar</button>
+                <button class="btn btn-continuar" id="btnContinuarContacto">Continuar <span aria-hidden="true">→</span></button>
             </div>
         </div>
     </div>
@@ -645,14 +1056,16 @@
     <div class="modal-carrito-overlay" id="carritoModal">
         <div class="modal-carrito">
             <div class="modal-carrito-header">
-                <h2>Tu Carrito 🛒</h2>
+                <div class="modal-carrito-heading">
+                    <h2><span>Tu Carrito</span><span class="modal-carrito-title-icon" aria-hidden="true"><i class="fas fa-shopping-cart"></i></span></h2>
+                </div>
                 <button class="modal-carrito-close" id="closeCarrito" aria-label="Cerrar carrito">×</button>
             </div>
             
             <div class="modal-carrito-body">
                 <div class="carrito-vacio" id="carritoVacio">
                     <div class="carrito-vacio-content">
-                        <img src="images/logo.png" alt="Logo" class="carrito-logo">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='34' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ESaDev%3C/text%3E%3C/svg%3E" alt="Logo" class="carrito-logo dynamic-logo" data-dynamic-logo="true">
                         <p class="carrito-vacio-titulo">Tu carrito está vacío</p>
                         <p class="carrito-vacio-subtitulo">¡Comienza a seleccionar tus boletos favoritos!</p>
                         <button class="btn btn-primary btn-carrito-comprar" id="btnIrAComprar">
@@ -668,6 +1081,9 @@
 
             <div class="modal-carrito-footer" id="carritoFooter">
                 <div class="carrito-resumen" id="carritoResumen">
+                    <div class="carrito-resumen-header">
+                        <span class="carrito-resumen-title">Resumen de tu compra</span>
+                    </div>
                     <div class="carrito-resumen-row">
                         <div class="carrito-resumen-item">
                             <span>Cantidad de boletos:</span>
@@ -683,7 +1099,10 @@
                     </div>
                     <div class="carrito-resumen-item">
                         <span>Descuento:</span>
-                        <strong id="carritoResumenDescuento">$0</strong>
+                        <div class="descuento-promo-wrap">
+                            <strong id="carritoResumenDescuento">$0</strong>
+                            <span id="descuentoPromoLabel" class="descuento-promo-label" style="display: none;">PROMO</span>
+                        </div>
                     </div>
                     <div class="carrito-resumen-total">
                         <span>Total:</span>
@@ -693,7 +1112,7 @@
 
                 <div class="carrito-acciones carrito-acciones-bottom">
                     <button class="btn btn-outline" id="btnSeguirComprando">Seguir comprando</button>
-                    <button class="btn btn-primary btn-lg" id="btnProcederCarrito" disabled>Proceder al pago</button>
+                    <button class="btn btn-primary btn-lg" id="btnProcederCarrito" disabled>Proceder al pago <span aria-hidden="true">→</span></button>
                 </div>
             </div>
         </div>
@@ -703,21 +1122,24 @@
     <div class="modal-overlay" id="modalSeleccionCuenta">
         <div class="modal-seleccion-cuentas" role="dialog" aria-modal="true">
             <div class="modal-header modal-header-center">
-                <h2>Selecciona el método de pago de tu preferencia</h2>
+                <div class="modal-cuentas-heading">
+                    <h2>Elige tu forma de pago</h2>
+                    <p class="modal-cuentas-sub">Selecciona la cuenta o tienda donde realizarás tu pago para continuar.</p>
+                </div>
                 <button class="modal-close" id="closeModalSeleccionCuenta" aria-label="Cerrar">×</button>
             </div>
             <div class="modal-body-cuentas">
                 <!-- Sección Transferencias -->
                 <div class="payment-method-section">
-                    <h3 class="payment-section-title">Transferencias Bancarias 💳</h3>
-                    <p class="payment-method-subtitle">Elige la cuenta a la que desees transferir el pago</p>
+                    <h3 class="payment-section-title"><span class="payment-section-icon" aria-hidden="true"><i class="fas fa-building-columns"></i></span><span>Transferencia bancaria</span></h3>
+                    <p class="payment-method-subtitle">Desde tu app o banca en línea.</p>
                     <div id="transferenciasLista" class="cuentas-stack-list"></div>
                 </div>
 
                 <!-- Sección Efectivo -->
                 <div class="payment-method-section">
-                    <h3 class="payment-section-title">Depósito en Efectivo 💰</h3>
-                    <p class="payment-method-subtitle">Selecciona la tienda donde harás tu depósito en efectivo</p>
+                    <h3 class="payment-section-title"><span class="payment-section-icon" aria-hidden="true"><i class="fas fa-money-bill-wave"></i></span><span>Depósito en efectivo</span></h3>
+                    <p class="payment-method-subtitle">En tienda o ventanilla.</p>
                     <div id="efectivoLista" class="cuentas-stack-list"></div>
                 </div>
             </div>
@@ -727,7 +1149,7 @@
     <!-- MODAL LOADING -->
     <div id="modalLoadingOrden" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center; flex-direction: column;">
         <div style="background: white; padding: 40px; border-radius: 12px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
-            <div style="width: 60px; height: 60px; border: 4px solid #f0f0f0; border-top: 4px solid #7c3aed; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;" id="spinnerOrden"></div>
+            <div style="width: 60px; height: 60px; border: 4px solid #f0f0f0; border-top: 4px solid var(--secondary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;" id="spinnerOrden"></div>
             <h3 style="margin: 0 0 10px 0; color: #333; font-size: 18px;">⏳ Apartando tu orden...</h3>
             <p style="margin: 5px 0 15px 0; color: #666; font-size: 14px;">Por favor espera, esto puede tomar algunos segundos</p>
             <p id="tiempoTranscurrido" style="margin: 0; color: #999; font-size: 12px;">Tiempo: 0s</p>
@@ -745,8 +1167,8 @@
         <div class="orden-formal-container">
             <div class="orden-formal-header">
                 <h2>Orden de Pago</h2>
-                <p style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 8px;">A continuación se muestra el resumen de su orden de pago con los datos bancarios para realizar su compra. Puede descargar o tomar una captura de pantalla de esta orden para tener constancia de su transacción.</p>
-                <p>Haga click en "Apartar boletos" para confirmar y guardar su orden en el sistema.</p>
+                <p style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 8px;">Revise el resumen de su orden y los datos para realizar su pago.</p>
+                <p>Puede descargarla o capturarla antes de hacer clic en "Apartar boletos".</p>
             </div>
             <div class="orden-formal-content">
                 <div id="contenidoOrdenFormal"></div>
@@ -765,7 +1187,15 @@
     <!-- Scripts -->
     <script src="js/vendor/html2canvas.min.js"></script>
     <script src="js/vendor/jspdf.umd.min.js"></script>
-    <script defer src="js/compra.js?v=1766990666"></script>
+    <!-- ⚙️ Detectar entorno (debe ser PRIMERO, antes de socket-handler.js) -->
+    <script src="js/environment-config.js"></script>
+    <!-- 🔌 Socket.io para actualizaciones en tiempo real (carga dinámicamente desde el backend) -->
+    <script src="js/socket-handler.js"></script>
+    <script defer src="js/compra.js?v=20260332"></script>
+    <!-- ✅ Inicialización tardía (después de que todos los defer completen) -->
+    <script defer src="js/carrito-init.js"></script>
+
+
 
     <!-- Botón Flotante: Subir Comprobante -->
     <a href="mis-boletos.html" class="btn-flotante-comprobante" title="Subir comprobante de pago">

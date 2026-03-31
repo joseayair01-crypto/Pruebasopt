@@ -6,69 +6,156 @@
     <!-- METADATOS DINÁMICOS - Inyectados por js/meta-inyector.js desde config.js -->
     <title>Cuentas de Pago - Sorteos Torres</title>
     <link rel="stylesheet" href="css/styles.css?v=20251228.15">
-    <link rel="preload" as="image" href="images/logo.png" fetchpriority="high">
-    <link rel="icon" href="images/logo.png" sizes="32x32">
-    <link rel="apple-touch-icon" href="images/logo.png">
+    <script>
+        (function() {
+            const cachedLogo = localStorage.getItem('rifaplus_cached_logo') || 'images/placeholder-logo.svg';
+            window.__RIFAPLUS_CACHED_LOGO__ = cachedLogo;
+            document.write('<link rel="preload" as="image" href="' + cachedLogo + '" fetchpriority="high">');
+            document.write('<link rel="icon" href="' + cachedLogo + '" sizes="32x32">');
+            document.write('<link rel="apple-touch-icon" href="' + cachedLogo + '">');
+        })();
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css ">
     <link rel="stylesheet" href="css/modal-contacto.css">
     <link rel="stylesheet" href="css/orden-formal.css">
     <!-- ✅ PRIMERO: Inyector de metadatos (se ejecuta ANTES que todo) -->
     <script src="js/config.js"></script>
+    <script src="js/config-sync.js"></script>
     <script src="js/meta-inyector.js"></script>
     <style>
+        html,
+        body {
+            height: auto;
+            min-height: 100%;
+            overflow-x: hidden;
+            overflow-y: auto;
+            overscroll-behavior-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
         /* Centrar contenido - tarjetas con ancho suficiente para mostrar toda la información */
         main.container {
             max-width: 100%;
             padding: 2rem 1rem;
+            box-sizing: border-box;
+            overflow-x: hidden;
+            overflow-y: visible !important;
+            overscroll-behavior: auto;
+            -webkit-overflow-scrolling: auto;
+            touch-action: pan-y;
         }
         
+        .payment-page-header {
+            max-width: 760px;
+            margin: 0 auto 2.5rem;
+            text-align: center;
+        }
+
+        .payment-page-title {
+            margin: 0 0 0.75rem;
+            font-size: clamp(2rem, 3vw, 2.5rem);
+            line-height: 1.1;
+            color: var(--text-dark, #1f2937);
+            letter-spacing: -0.02em;
+        }
+
+        .payment-page-subtitle {
+            margin: 0;
+            font-size: 1rem;
+            line-height: 1.7;
+            color: #5b6472;
+        }
+
         .payment-instructions-warning {
-            margin-bottom: 2.5rem;
-            max-width: 800px;
-            margin-left: auto;
-            margin-right: auto;
+            margin: 1.5rem auto 0;
+            max-width: 760px;
+            padding: 1.15rem 1.35rem;
+            border: 1px solid rgba(208, 167, 84, 0.24);
+            border-radius: 16px;
+            background: linear-gradient(180deg, rgba(255, 249, 238, 0.96) 0%, rgba(255, 255, 255, 0.98) 100%);
+            box-shadow: 0 14px 30px rgba(36, 42, 54, 0.05);
         }
         
         .payment-instructions-main {
-            font-size: 1.15rem;
+            font-size: 0.82rem;
             font-weight: 700;
-            color: #d68500;
-            margin: 0 0 1rem 0;
-            line-height: 1.6;
-            text-align: center;
+            color: #9a6b13;
+            margin: 0 0 0.55rem 0;
+            line-height: 1.4;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            text-align: left;
         }
         
         .payment-instructions-important {
-            font-size: 1.05rem;
-            color: #333;
+            font-size: 1rem;
+            color: #2e3746;
             margin: 0;
             line-height: 1.7;
-            text-align: center;
+            text-align: left;
         }
         
         .payment-instructions-important strong {
-            color: #d68500;
+            color: #8a5c09;
             font-weight: 700;
+        }
+
+        .section-header {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        .section-title {
+            margin-bottom: 0.45rem;
+        }
+
+        .section-description {
+            margin: 0;
+            color: #697386;
+            font-size: 0.98rem;
+            line-height: 1.65;
         }
         
         @media (max-width: 768px) {
+            .payment-page-header {
+                margin-bottom: 2rem;
+            }
+
+            .payment-page-subtitle {
+                font-size: 0.98rem;
+            }
+
             .payment-instructions-warning {
                 margin-bottom: 2rem;
+                padding: 1rem 1.05rem;
             }
             
             .payment-instructions-main {
-                font-size: 1.05rem;
+                font-size: 0.78rem;
             }
             
             .payment-instructions-important {
                 font-size: 1rem;
+            }
+
+            .section-header {
+                padding: 0 0.5rem;
             }
         }
         
         .payment-section {
             margin: 0 auto;
             width: 100%;
+            height: auto;
+            min-height: 0;
+            max-height: none;
+            overflow-x: visible;
+            overflow-y: visible !important;
+            overscroll-behavior: auto;
+            -webkit-overflow-scrolling: auto;
+            touch-action: pan-y;
         }
         
         .cuentas-grid,
@@ -81,20 +168,80 @@
             width: 100%;
             padding: 0 1rem;
             box-sizing: border-box;
+            height: auto;
+            min-height: 0;
+            max-height: none;
+            overflow-x: visible;
+            overflow-y: visible !important;
+            overscroll-behavior: auto;
+            -webkit-overflow-scrolling: auto;
+            touch-action: pan-y;
+        }
+
+        .cuenta-card,
+        .efectivo-card {
+            overflow-x: visible;
+            overflow-y: visible !important;
+            overscroll-behavior: auto;
+            -webkit-overflow-scrolling: auto;
+            touch-action: pan-y;
+        }
+
+        .copy-icon,
+        .efectivo-copy-btn,
+        .cuenta-number-row,
+        .beneficiary-row,
+        .efectivo-info-value-group {
+            touch-action: pan-y;
+        }
+        
+        /* Tablet: 481px - 768px */
+        @media (min-width: 481px) and (max-width: 768px) {
+            .cuentas-grid,
+            .efectivo-grid {
+                gap: 1.5rem;
+                padding: 0 1rem;
+            }
+        }
+        
+        /* Mobile: max 480px */
+        @media (max-width: 480px) {
+            .cuentas-grid,
+            .efectivo-grid {
+                gap: 1.5rem;
+                padding: 0;
+            }
         }
         
         .cuenta-card {
-            flex: 0 1 auto;
+            flex: 0 1 350px;
             width: 350px;
             min-width: 0;
-            max-width: 350px;
+        }
+        
+        /* Tablet: 481px - 768px - mantener proporciones de desktop */
+        @media (min-width: 481px) and (max-width: 768px) {
+            .cuenta-card {
+                flex: 1 1 calc(50% - 1rem);
+                width: auto;
+                max-width: 100%;
+            }
+        }
+        
+        /* Mobile: max 480px */
+        @media (max-width: 480px) {
+            .cuenta-card {
+                flex: 0 0 auto;
+                width: 90vw;
+                max-width: 500px;
+                margin: 0 auto;
+            }
         }
         
         .efectivo-card {
-            flex: 0 1 auto;
+            flex: 0 1 320px;
             width: 320px;
             min-width: 0;
-            max-width: calc(100% - 2rem);
             background: white;
             border: 1px solid #e0e0e0;
             border-radius: 12px;
@@ -103,6 +250,25 @@
             transition: all 0.3s ease;
             position: relative;
             color: #1a1a1a;
+        }
+        
+        /* Tablet: 481px - 768px - mantener proporciones de desktop */
+        @media (min-width: 481px) and (max-width: 768px) {
+            .efectivo-card {
+                flex: 1 1 calc(50% - 1rem);
+                width: auto;
+                max-width: 100%;
+            }
+        }
+        
+        /* Mobile: max 480px */
+        @media (max-width: 480px) {
+            .efectivo-card {
+                flex: 0 0 auto;
+                width: 90vw;
+                max-width: 500px;
+                margin: 0 auto;
+            }
         }
         
         .efectivo-card:hover {
@@ -242,14 +408,7 @@
             padding: 0.25rem;
             font-size: 0.75rem;
         }
-        
-        @media (max-width: 1024px) {
-            .efectivo-card {
-                width: 100%;
-                max-width: 350px;
-            }
-        }
-        
+
         @media (max-width: 768px) {
             main.container {
                 padding: 2rem 0.5rem;
@@ -261,24 +420,20 @@
                 padding: 0 0.5rem;
             }
             
-            .cuenta-card {
-                width: 100%;
-                min-width: auto;
-                max-width: 350px;
-            }
-            
-            .efectivo-card {
-                width: 100%;
-                min-width: auto;
-                max-width: 100%;
-            }
-            
             .efectivo-card-header {
                 flex-direction: column;
             }
             
             .efectivo-card-titulo {
                 font-size: 1.1rem;
+            }
+
+            .cuenta-number {
+                flex: none;
+            }
+
+            .cuenta-number-row {
+                gap: 0.5rem;
             }
         }
     </style>
@@ -297,7 +452,10 @@
 
             <a href="index.html#top" class="logo" data-logo-src>
                 <div class="logo-circle">
-                    <img src="images/logo.png" alt="SORTEOS YEPE" class="logo-image" fetchpriority="high" width="320" height="137">
+                    <script>
+                        document.write('<img src="' + (window.__RIFAPLUS_CACHED_LOGO__ || "images/placeholder-logo.svg") + '" alt="SORTEOS YEPE" class="logo-image dynamic-logo" data-dynamic-logo="true" fetchpriority="high" width="320" height="137">');
+                    </script>
+                    <noscript><img src="images/placeholder-logo.svg" alt="SORTEOS YEPE" class="logo-image dynamic-logo" data-dynamic-logo="true" fetchpriority="high" width="320" height="137"></noscript>
                 </div>
             </a>
     
@@ -332,22 +490,30 @@
 
     <!-- CONTENT -->
     <main class="container">
-        <h1 style="margin-bottom:0.25rem; text-align:center;">Métodos de Pago</h1>
-        
-        <div class="payment-instructions-warning">
-            <p class="payment-instructions-main">⚠️ Selecciona el método de pago que mejor te convenga. Si una cuenta rechaza el pago, intenta con otra.</p>
-            <p class="payment-instructions-important">💡 <strong>Importante para procesar tu pago:</strong> En el concepto o referencia de la transferencia, debes escribir tu <strong>número de orden</strong> o <strong>nombre completo</strong>. Esto nos permitirá identificar tu pago y procesar tu compra correctamente.</p>
-        </div>
+        <section class="payment-page-header" aria-labelledby="paymentPageTitle">
+            <h1 id="paymentPageTitle" class="payment-page-title">Cuentas de pago</h1>
+            <p class="payment-page-subtitle">Elige la opción que prefieras para realizar tu pago y utiliza los datos exactamente como aparecen en cada cuenta.</p>
+            <div class="payment-instructions-warning">
+                <p class="payment-instructions-main">Identificación del pago</p>
+                <p class="payment-instructions-important">Al transferir o depositar, escribe en el <strong>concepto o referencia</strong> tu <strong>número de orden</strong> o tu <strong>nombre completo</strong>. Así podremos ubicar tu pago y confirmar tu compra con mayor rapidez.</p>
+            </div>
+        </section>
 
         <!-- SECCIÓN 1: TRANSFERENCIAS BANCARIAS -->
         <section class="payment-section">
-            <h2 class="section-title">Transferencias Bancarias</h2>
+            <div class="section-header">
+                <h2 class="section-title">Transferencias bancarias</h2>
+                <p class="section-description">Usa estos datos para transferencias o pagos desde banca móvil. Verifica el número de cuenta y el nombre del beneficiario antes de confirmar la operación.</p>
+            </div>
             <div id="transferenciasContainer" class="cuentas-grid"></div>
         </section>
 
         <!-- SECCIÓN 2: DEPÓSITOS EN EFECTIVO -->
         <section class="payment-section">
-            <h2 class="section-title">Depósitos en Efectivo</h2>
+            <div class="section-header">
+                <h2 class="section-title">Depósitos en efectivo</h2>
+                <p class="section-description">Si prefieres pagar en sucursal o tienda autorizada, utiliza esta información tal como se muestra y conserva tu comprobante para reportarlo después.</p>
+            </div>
             <div id="efectivoContainer" class="efectivo-grid"></div>
         </section>
 
@@ -418,26 +584,23 @@
     <!-- FOOTER REDISEÑADO -->
     <footer class="footer">
         <div class="container">
+            <!-- 📱 BOLETERA DIGITAL CTA - LÍNEA DISCRETA -->
+            <div class="footer-boletera-cta">
+                <div class="boletera-content">
+                    ¿Necesitas una boletera digital? <a href="https://wa.me/4341068932?text=Hola%2C%20me%20interesa%20conocer%20m%C3%A1s%20sobre%20las%20boleteras%20digitales" class="btn-boletera-whatsapp" target="_blank" rel="noopener noreferrer">Consulta aquí</a>
+                </div>
+            </div>
+
             <div class="footer-main">
                 <!-- Columna izquierda: Logo y nombre -->
                 <div class="footer-logo-section">
                     <div class="footer-logo-box">
-                        <img src="images/logo.png" alt="SORTEOS YEPE" class="footer-logo-img" width="200" height="100">
+                        <img src="images/placeholder-logo.svg" alt="SORTEOS YEPE" class="footer-logo-img dynamic-logo" data-dynamic-logo="true" width="200" height="100">
                     </div>
-                    <h3 id="footerNombre" class="footer-client-name">SORTEOS YEPE</h3>
+                    <h3 id="footerNombre" class="footer-client-name">SORTEO</h3>
                     <p id="footerEslogan" class="footer-eslogan">Rifas 100% Transparentes y Seguras</p>
                 </div>
 
-                <!-- Columna central: Enlaces -->
-                <div class="footer-links-section">
-                    <h4 class="footer-links-title">Enlaces</h4>
-                    <ul class="footer-links-list">
-                        <li><a href="index.html">Inicio</a></li>
-                        <li><a href="compra.html">Comprar Boletos</a></li>
-                        <li><a href="ayuda.html">Ayuda</a></li>
-                        <li><a href="mis-boletos.html">Mis Boletos</a></li>
-                    </ul>
-                </div>
 
                 <!-- Columna derecha: Contacto y redes sociales -->
                 <div class="footer-contact-section">
@@ -457,79 +620,99 @@
 
             <!-- Copyright -->
             <div class="footer-bottom">
-                <p id="footerCopyright">&copy; 2025 <strong>SORTEOS YEPE</strong>. Todos los derechos reservados.</p>
+                <p id="footerCopyright">&copy; 2025 <strong>SORTEO</strong>. Todos los derechos reservados.</p>
             </div>
         </div>
     </footer>
 
     <script>
     // Actualizar footer dinámicamente desde config.js
-    document.addEventListener('DOMContentLoaded', function() {
+    function actualizarFooterDatos() {
         const config = window.rifaplusConfig;
-        if (!config) return;
+        if (!config || !config.cliente) return;
 
-        // Actualizar nombre en footer
-        const footerNombre = document.getElementById('footerNombre');
-        if (footerNombre) {
-            footerNombre.textContent = config.cliente.nombre;
+        // Actualizar UI con función centralizada
+        if (typeof window.rifaplusConfig !== 'undefined' && typeof window.rifaplusConfig.actualizarNombreClienteEnUI === 'function') {
+            window.rifaplusConfig.actualizarNombreClienteEnUI();
         }
 
         // Actualizar eslogan en footer
         const footerEslogan = document.getElementById('footerEslogan');
-        if (footerEslogan) {
-            footerEslogan.textContent = config.cliente.eslogan || 'Rifas 100% Transparentes y Seguras';
+        if (footerEslogan && config.cliente.eslogan) {
+            footerEslogan.textContent = config.cliente.eslogan;
         }
 
         // Actualizar redes sociales en footer
-        const footerSocial = document.getElementById('footerSocial');
-        if (footerSocial) {
-            footerSocial.innerHTML = '';
-            if (config.cliente.redesSociales.whatsapp) {
-                const whatsappLink = document.createElement('a');
-                whatsappLink.href = `https://wa.me/${config.cliente.redesSociales.whatsapp.replace(/[^0-9]/g, '')}`;
-                whatsappLink.target = '_blank';
-                whatsappLink.title = 'WhatsApp';
-                whatsappLink.innerHTML = '<i class="fab fa-whatsapp"></i>';
-                footerSocial.appendChild(whatsappLink);
-            }
-            if (config.cliente.redesSociales.facebook) {
-                const facebookLink = document.createElement('a');
-                facebookLink.href = config.cliente.redesSociales.facebook;
-                facebookLink.target = '_blank';
-                facebookLink.title = 'Facebook';
-                facebookLink.innerHTML = '<i class="fab fa-facebook-f"></i>';
-                footerSocial.appendChild(facebookLink);
-            }
-            if (config.cliente.redesSociales.instagram) {
-                const instagramLink = document.createElement('a');
-                instagramLink.href = config.cliente.redesSociales.instagram;
-                instagramLink.target = '_blank';
-                instagramLink.title = 'Instagram';
-                instagramLink.innerHTML = '<i class="fab fa-instagram"></i>';
-                footerSocial.appendChild(instagramLink);
-            }
-        }
+        renderizarFooterSocial();
 
         // Actualizar información de contacto
         const footerEmail = document.getElementById('footerEmail');
-        if (footerEmail) {
+        if (footerEmail && config.cliente.email) {
             footerEmail.href = `mailto:${config.cliente.email}`;
             footerEmail.textContent = config.cliente.email;
         }
 
         const footerTelefono = document.getElementById('footerTelefono');
-        if (footerTelefono) {
+        if (footerTelefono && config.cliente.telefono) {
             footerTelefono.href = `tel:${config.cliente.telefono.replace(/[^0-9+]/g, '')}`;
             footerTelefono.textContent = config.cliente.telefono;
         }
-
-        // Actualizar copyright
-        const footerCopyright = document.getElementById('footerCopyright');
-        if (footerCopyright) {
-            const anio = config.cliente.anioActual || new Date().getFullYear();
-            footerCopyright.innerHTML = `&copy; ${anio} <strong>${config.cliente.nombre}</strong>. Todos los derechos reservados.`;
+    }
+    
+    // Ejecutar cuando DOM está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', actualizarFooterDatos);
+    } else {
+        actualizarFooterDatos();
+    }
+    
+    // Actualizar también cuando haya sincronización desde el backend
+    window.addEventListener('configuracionActualizada', actualizarFooterDatos);
+    
+    // Función para actualizar redes sociales en footer
+    function renderizarFooterSocial() {
+        const footerSocial = document.getElementById('footerSocial');
+        const config = window.rifaplusConfig;
+        
+        if (!footerSocial || !config?.cliente?.redesSociales) return;
+        
+        const redes = config.cliente.redesSociales;
+        if (!redes || Object.values(redes).every(v => !v)) return;
+        
+        footerSocial.innerHTML = '';
+        
+        if (redes.whatsapp) {
+            const whatsappLink = document.createElement('a');
+            whatsappLink.href = `https://wa.me/${redes.whatsapp.replace(/[^0-9]/g, '')}`;
+            whatsappLink.target = '_blank';
+            whatsappLink.title = 'WhatsApp';
+            whatsappLink.innerHTML = '<i class="fab fa-whatsapp"></i>';
+            footerSocial.appendChild(whatsappLink);
         }
-    });
+        if (redes.facebook) {
+            const facebookLink = document.createElement('a');
+            facebookLink.href = redes.facebook;
+            facebookLink.target = '_blank';
+            facebookLink.title = 'Facebook';
+            facebookLink.innerHTML = '<i class="fab fa-facebook-f"></i>';
+            footerSocial.appendChild(facebookLink);
+        }
+        if (redes.instagram) {
+            const instagramLink = document.createElement('a');
+            instagramLink.href = redes.instagram;
+            instagramLink.target = '_blank';
+            instagramLink.title = 'Instagram';
+            instagramLink.innerHTML = '<i class="fab fa-instagram"></i>';
+            footerSocial.appendChild(instagramLink);
+        }
+    }
+    
+    // Re-ejecutar footer cuando config-sync actualice
+    if (typeof window.rifaplusConfig !== 'undefined' && typeof window.rifaplusConfig.escucharEvento === 'function') {
+        window.rifaplusConfig.escucharEvento('configuracionActualizada', function() {
+            renderizarFooterSocial();
+        });
+    }
     </script>
 
     <script>
@@ -544,7 +727,7 @@
             transferContainer.innerHTML = '';
             efectivoContainer.innerHTML = '';
             
-            const cuentas = (window.rifaplusConfig && window.rifaplusConfig.bankAccounts) ? window.rifaplusConfig.bankAccounts : [];
+            const cuentas = (window.rifaplusConfig && window.rifaplusConfig.tecnica && window.rifaplusConfig.tecnica.bankAccounts) ? window.rifaplusConfig.tecnica.bankAccounts : [];
             if (!cuentas || cuentas.length === 0) {
                 transferContainer.innerHTML = '<p class="sin-seleccion">No hay cuentas de pago configuradas.</p>';
                 return;
@@ -591,75 +774,51 @@
             });
         }
 
-        // Si la configuración se carga asincrónicamente, escuchar evento
-        if (window.rifaplusConfig && typeof window.rifaplusConfig.escucharEvento === 'function') {
-            window.rifaplusConfig.escucharEvento('estadoActualizado', render);
+        async function loadCuentasAndRender() {
+            // Render inmediato con fallback local para evitar que la página
+            // arranque "corta" mientras llega la respuesta del servidor.
+            render();
+
+            // ✅ CARGAR CUENTAS DESDE EL SERVIDOR PRIMERO
+            try {
+                const apiBase = (window.rifaplusConfig && window.rifaplusConfig.backend && window.rifaplusConfig.backend.apiBase) 
+                    ? window.rifaplusConfig.backend.apiBase 
+                    : ((window.rifaplusConfig && typeof window.rifaplusConfig.obtenerApiBase === 'function')
+                        ? window.rifaplusConfig.obtenerApiBase()
+                        : window.location.origin);
+                    
+                const response = await fetch(`${apiBase}/api/public/config`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.data?.cuentas && Array.isArray(result.data.cuentas) && result.data.cuentas.length > 0) {
+                        // Actualizar config.js con cuentas del servidor
+                        if (window.rifaplusConfig && window.rifaplusConfig.tecnica) {
+                            window.rifaplusConfig.tecnica.bankAccounts = result.data.cuentas;
+                            console.log('✅ [Cuentas-Pago] Cuentas cargadas desde servidor:', result.data.cuentas.length);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.debug('ℹ️  [Cuentas-Pago] No se cargaron cuentas del servidor:', err.message);
+            }
+            
+            // Luego re-renderizar con los datos definitivos (servidor o fallback)
+            render();
         }
 
-        document.addEventListener('DOMContentLoaded', render);
-
-        // Delegated handler para el icono de copiar dentro de las tarjetas
-        document.addEventListener('click', function(e) {
-            const btn = e.target.closest('.btn-copy-account, .copy-icon, .efectivo-copy-btn');
-            if (!btn) return;
-            
-            let text = '';
-            let contentType = 'Contenido';
-            
-            // Para cuentas de transferencia
-            if (btn.closest('.cuenta-card')) {
-                const card = btn.closest('.cuenta-card');
-                const benefRow = btn.closest('.beneficiary-row');
-                const numRow = btn.closest('.cuenta-number-row');
-                
-                if (benefRow) {
-                    const benefEl = benefRow.querySelector('.cuenta-beneficiary');
-                    text = benefEl ? benefEl.textContent.trim() : '';
-                    contentType = 'Beneficiario';
-                } else if (numRow) {
-                    const numEl = numRow.querySelector('.cuenta-number');
-                    text = numEl ? numEl.textContent.trim() : '';
-                    contentType = 'Número';
-                }
-            }
-            
-            // Para cuentas de efectivo
-            if (btn.closest('.efectivo-card')) {
-                const card = btn.closest('.efectivo-card');
-                const infoGroup = btn.closest('.efectivo-info-value-group');
-                if (infoGroup) {
-                    const valueEl = infoGroup.querySelector('.efectivo-info-value');
-                    text = valueEl ? valueEl.textContent.trim() : '';
-                    
-                    // Detectar qué tipo de información es
-                    const parentRow = infoGroup.closest('.efectivo-info-row');
-                    const label = parentRow ? parentRow.querySelector('.efectivo-info-label').textContent : '';
-                    contentType = label || 'Contenido';
-                }
-            }
-            
-            if (!text) return;
-
-            navigator.clipboard.writeText(text).then(() => {
-                // Agregar clase copied para el feedback visual
-                btn.classList.add('copied');
-                
-                if (window.rifaplusUtils && window.rifaplusUtils.showFeedback) {
-                    rifaplusUtils.showFeedback(`${contentType} copiado ✓`, 'success');
-                }
-                
-                // Remover la clase después de la animación
-                setTimeout(() => {
-                    btn.classList.remove('copied');
-                }, 600);
-            }).catch(() => {
-                if (window.rifaplusUtils && window.rifaplusUtils.showFeedback) {
-                    rifaplusUtils.showFeedback('Error al copiar', 'error');
-                } else {
-                    alert('Error al copiar');
-                }
+        // Si la configuración se carga asincrónicamente, escuchar evento
+        if (window.rifaplusConfig && typeof window.rifaplusConfig.escucharEvento === 'function') {
+            window.rifaplusConfig.escucharEvento('estadoActualizado', () => {
+                // Recargar y re-renderizar cuando config se actualiza
+                loadCuentasAndRender();
             });
-        });
+        }
+
+        document.addEventListener('DOMContentLoaded', loadCuentasAndRender);
 
     })();
     </script>
@@ -676,7 +835,7 @@
                 <!-- Mensaje si está vacío -->
                 <div class="carrito-vacio" id="carritoVacio">
                     <div class="carrito-vacio-content">
-                        <img src="images/logo.png" alt="Logo" class="carrito-logo">
+                        <img src="images/placeholder-logo.svg" alt="Logo" class="carrito-logo dynamic-logo" data-dynamic-logo="true">
                         <p class="carrito-vacio-titulo">Tu carrito está vacío</p>
                         <p class="carrito-vacio-subtitulo">¡Comienza a seleccionar tus boletos favoritos!</p>
                         <button class="btn btn-primary btn-carrito-comprar" id="btnIrAComprar">
@@ -788,110 +947,113 @@
             ['rifaplus_fecha_sorteo','rifaplus_timestamp_sorteo','rifaplus_fecha_cierre'].forEach(k => localStorage.removeItem(k));
         })();
     </script>
-    <script defer src="js/config.js?v=1766990666"></script>
     <script defer src="js/theme-dynamic.js"></script>
     <script defer src="js/main.js"></script>
     <script defer src="js/calculo-precios.js?v=20251230.1"></script>
 
-    <script defer src="js/carrito-global.js?v=1766990666"></script>
-    <script defer src="js/flujo-compra.js"></script>
+    <script defer src="js/oportunidades-manager.js"></script>
+    <script defer src="js/carrito-global.js?v=20260218"></script>
+    <script defer src="js/carrito-oportunidades.js"></script>
+    <script defer src="js/flujo-compra.js?v=20260329.3"></script>
     <script defer src="js/orden-formal.js"></script>
-    <script defer src="js/modal-contacto.js"></script>
+    <script defer src="js/modal-contacto.js?v=20260329.2"></script>
+    <script defer src="js/btn-flotante-animator.js"></script>
 
     <!-- Script para mejorar funcionalidad de copiar en cuentas-pago -->
     <script defer>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Manejar botones de copiar
-            document.querySelectorAll('.copy-icon, .efectivo-copy-btn').forEach(btn => {
-                btn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    
-                    // Obtener el texto a copiar
-                    let textToCopy = '';
-                    if (this.classList.contains('copy-icon')) {
-                        const row = this.closest('.cuenta-number-row') || this.closest('.beneficiary-row');
-                        textToCopy = row.querySelector('div:first-child').textContent.trim();
-                    } else if (this.classList.contains('efectivo-copy-btn')) {
-                        textToCopy = this.parentElement.querySelector('.efectivo-info-value').textContent.trim();
-                    }
-                    
-                    if (!textToCopy) return;
-                    
-                    // Copiar al portapapeles
-                    navigator.clipboard.writeText(textToCopy).then(() => {
-                        // Cambiar icono a palomita
-                        const icon = this.querySelector('i');
-                        const originalClass = icon.className;
-                        icon.className = 'fas fa-check';
-                        this.style.background = '#10B981';
-                        this.style.borderColor = '#10B981';
-                        this.style.color = 'white';
-                        
-                        // Mostrar notificación
-                        showCopyNotification('¡Copiado!');
-                        
-                        // Restaurar icono después de 2 segundos
-                        setTimeout(() => {
-                            icon.className = originalClass;
-                            this.style.background = '';
-                            this.style.borderColor = '';
-                            this.style.color = '';
-                        }, 2000);
-                    });
-                });
+        // Event delegado para los botones de copiar (funciona con elementos dinámicos)
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.copy-icon, .efectivo-copy-btn');
+            if (!btn) return;
+            
+            e.preventDefault();
+            
+            // Obtener el texto a copiar
+            let textToCopy = '';
+            if (btn.classList.contains('copy-icon')) {
+                const row = btn.closest('.cuenta-number-row') || btn.closest('.beneficiary-row');
+                if (row) {
+                    textToCopy = row.querySelector('div:first-child').textContent.trim();
+                }
+            } else if (btn.classList.contains('efectivo-copy-btn')) {
+                const parent = btn.parentElement;
+                const valueEl = parent.querySelector('.efectivo-info-value');
+                if (valueEl) {
+                    textToCopy = valueEl.textContent.trim();
+                }
+            }
+            
+            if (!textToCopy) return;
+            
+            // Copiar al portapapeles
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                // Cambiar icono a palomita
+                const icon = btn.querySelector('i');
+                const originalClass = icon.className;
+                icon.className = 'fas fa-check';
+                btn.style.background = '#10B981';
+                btn.style.borderColor = '#10B981';
+                btn.style.color = 'white';
+                
+                // Mostrar notificación visual
+                showCopyNotification('¡Copiado!');
+                
+                // Mostrar alerta del navegador
+                alert('Número copiado');
+                
+                // Restaurar icono después de 2 segundos
+                setTimeout(() => {
+                    icon.className = originalClass;
+                    btn.style.background = '';
+                    btn.style.borderColor = '';
+                    btn.style.color = '';
+                }, 2000);
+            }).catch(err => {
+                alert('Error al copiar: ' + err);
             });
-            
-            // Función para mostrar notificación de copiado
-            function showCopyNotification(message) {
-                const notification = document.createElement('div');
-                notification.style.cssText = `
-                    position: fixed;
-                    top: 150px;
-                    right: 20px;
-                    background: #10B981;
-                    color: white;
-                    padding: 12px 20px;
-                    border-radius: 8px;
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                    z-index: 9999;
-                    font-weight: 600;
-                    animation: slideIn 0.3s ease;
-                `;
-                notification.textContent = message;
-                notification.innerHTML += ' <i class="fas fa-check" style="margin-left: 8px;"></i>';
-                
-                document.body.appendChild(notification);
-                
-                // Remover después de 2 segundos
-                setTimeout(() => {
-                    notification.style.animation = 'slideOut 0.3s ease';
-                    setTimeout(() => notification.remove(), 300);
-                }, 2000);
-            }
-            
-            // Agregar animaciones
-            const style = document.createElement('style');
-            style.textContent = `
-                @keyframes slideIn {
-                    from { transform: translateX(100%); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-                @keyframes slideOut {
-                    from { transform: translateX(0); opacity: 1; }
-                    to { transform: translateX(100%); opacity: 0; }
-                }
-            `;
-            document.head.appendChild(style);
-            
-            // Animar botón flotante solo los primeros 2 segundos
-            const btnFlotante = document.querySelector('.btn-flotante-comprobante');
-            if (btnFlotante) {
-                btnFlotante.classList.add('bounce-animate');
-                setTimeout(() => {
-                    btnFlotante.classList.remove('bounce-animate');
-                }, 2000);
-            }
         });
+        
+        // Función para mostrar notificación de copiado
+        function showCopyNotification(message) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 150px;
+                right: 20px;
+                background: #10B981;
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                z-index: 9999;
+                font-weight: 600;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.textContent = message;
+            notification.innerHTML += ' <i class="fas fa-check" style="margin-left: 8px;"></i>';
+            
+            document.body.appendChild(notification);
+            
+            // Remover después de 2 segundos
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 2000);
+        }
+        
+        // Agregar animaciones
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
     </script>
 
     <!-- Botón Flotante: Subir Comprobante -->

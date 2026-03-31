@@ -6,6 +6,7 @@ const { Client } = require('pg');
   const username = 'admin';
   const password = 'admin123';
   const email = 'admin@rifas.com';
+  const rol = 'administrador';  // ✅ Rol válido en el sistema
   
   // Hash password
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -20,13 +21,14 @@ const { Client } = require('pg');
     
     const { rows } = await client.query(
       'INSERT INTO admin_users (username, password_hash, email, rol, created_at) VALUES ($1, $2, $3, $4, NOW()) RETURNING id, username, email, rol',
-      [username, hashedPassword, email, 'admin']
+      [username, hashedPassword, email, rol]
     );
     
     console.log('✅ Admin user created:', rows[0]);
     console.log('📧 Email:', email);
     console.log('🔑 Username:', username);
     console.log('🔐 Password:', password);
+    console.log('👤 Rol:', rol);
     
     await client.end();
   } catch (err) {

@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:* http://localhost:* https://gorgeous-heliotrope-5a6b8e.netlify.app http://localhost:5001; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' http://127.0.0.1:* http://localhost:* https: http://localhost:5001 https://gorgeous-heliotrope-5a6b8e.netlify.app; img-src 'self' data: https: http://127.0.0.1:* http://localhost:* https://gorgeous-heliotrope-5a6b8e.netlify.app http://localhost:5001;">
     <title>Boletos - Panel Admin</title>
-    <link rel="icon" href="images/logo.png" sizes="32x32">
-    <link rel="preload" as="image" href="images/logo.png" fetchpriority="high">
+    <link rel="icon" href="images/placeholder-logo.svg" sizes="32x32">
+    <link rel="preload" as="image" href="images/placeholder-logo.svg" fetchpriority="high">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/admin-layout.css?v=20251221">
@@ -17,10 +17,12 @@
         })();
     </script>
     <script src="js/config.js?v=20251228.15"></script>
+    <script src="js/config-sync.js"></script>
     <script src="js/theme-dynamic.js"></script>
     <script src="js/ganadores.js?v=20251228.15"></script>
     <script src="js/boletos-loader.js"></script>
     <script src="js/admin-layout.js?v=20251228.15"></script>
+    <script src="js/admin-header-user.js"></script>
     <style>
         :root {
             --primary: #7C3AED;
@@ -147,6 +149,60 @@
             background: #c91230;
         }
 
+        /* ===== INFORMACIÓN DE USUARIO EN HEADER ===== */
+        /**
+         * Contenedor de info del usuario (avatar + nombre/rol)
+         */
+        .admin-user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 1rem;
+            background: rgba(124, 58, 237, 0.05);
+            border-radius: 0.5rem;
+            border: 1px solid rgba(124, 58, 237, 0.1);
+        }
+
+        /**
+         * Avatar circular con icono
+         */
+        .admin-user-avatar {
+            font-size: 1.5rem;
+            color: var(--primary);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /**
+         * Contenedor de nombre y rol del usuario
+         */
+        .admin-user-details {
+            display: flex;
+            flex-direction: column;
+            min-width: 120px;
+        }
+
+        /**
+         * Nombre del usuario
+         */
+        .admin-user-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-dark);
+        }
+
+        /**
+         * Rol del usuario
+         */
+        .admin-user-role {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            text-transform: capitalize;
+        }
+
         /* ===== MAIN CONTAINER ===== */
         .container {
             max-width: 1800px;
@@ -190,6 +246,32 @@
             background: var(--primary-dark);
         }
 
+        .search-feedback {
+            display: none;
+            margin-top: 0.85rem;
+            padding: 0.9rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            border: 1px solid transparent;
+        }
+
+        .search-feedback.show {
+            display: block;
+        }
+
+        .search-feedback.info {
+            background: #f5faff;
+            color: #0f4c81;
+            border-color: #bfdbfe;
+        }
+
+        .search-feedback.warning {
+            background: #fff7ed;
+            color: #9a3412;
+            border-color: #fdba74;
+        }
+
         /* ===== TICKET CARD ===== */
         .ticket-result {
             display: none;
@@ -198,6 +280,11 @@
         .ticket-result.active {
             display: block;
             margin-top: 2rem;
+            padding: 1rem;
+            width: fit-content;
+            max-width: 90vw;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         /* ===== VARIABLES DE TEMA ===== */
@@ -212,7 +299,7 @@
             --border-radius: 0.75rem;
             --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
             --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
-            --logo-max-height: 50px;
+            --logo-max-height: 80px;
             --image-max-height: 280px;
         }
 
@@ -230,12 +317,16 @@
 
         /* ===== HEADER SUPERIOR ===== */
         .orden-header-top {
-            background: white;
+            background: linear-gradient(
+                135deg,
+                var(--color-primario, var(--primary, #0F3A7D)) 0%,
+                var(--color-secundario, var(--primary-dark, #1B5FB8)) 100%
+            );
             padding: var(--spacing-md);
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            border-bottom: 2px solid var(--divider);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.12);
             gap: var(--spacing-md);
             flex-wrap: wrap;
             min-height: 60px;
@@ -251,7 +342,7 @@
 
         .orden-header-logo {
             max-height: var(--logo-max-height);
-            max-width: 120px;
+            max-width: 200px;
             width: auto;
             object-fit: contain;
             flex-shrink: 0;
@@ -305,7 +396,7 @@
         .orden-id-numero {
             font-size: 1rem;
             font-weight: 700;
-            color: var(--primary);
+            color: #ffffff;
             font-family: 'Courier New', monospace;
             margin-bottom: var(--spacing-xs);
             word-break: break-word;
@@ -314,7 +405,7 @@
 
         .orden-fecha-hora {
             font-size: 0.75rem;
-            color: var(--text-light);
+            color: rgba(255, 255, 255, 0.82);
             white-space: nowrap;
         }
 
@@ -470,8 +561,13 @@
                 --card-max-width: 95vw;
                 --spacing-md: 0.75rem;
                 --spacing-lg: 1.25rem;
-                --logo-max-height: 40px;
+                --logo-max-height: 65px;
                 --image-max-height: 200px;
+            }
+
+            .ticket-result.active {
+                padding: 0.75rem;
+                max-width: 95vw;
             }
 
             .ticket-card {
@@ -479,14 +575,16 @@
             }
 
             .orden-header-top {
-                padding: var(--spacing-sm);
+                padding: var(--spacing-md);
                 gap: var(--spacing-sm);
                 flex-direction: row;
                 align-items: flex-start;
+                justify-content: space-between;
+                min-height: auto;
             }
 
             .orden-header-top-left {
-                flex: 1;
+                flex: 0 1 auto;
                 min-width: auto;
             }
 
@@ -494,11 +592,11 @@
                 flex-shrink: 0;
                 min-width: auto;
                 text-align: right;
-                max-width: 140px;
+                max-width: 100%;
             }
 
             .orden-id-numero {
-                font-size: 0.85rem;
+                font-size: 0.9rem;
             }
 
             .orden-datos-grid {
@@ -506,46 +604,92 @@
                 gap: var(--spacing-sm);
             }
 
-            .orden-id-numero {
-                font-size: 1.1rem;
-            }
-
             .orden-fecha-hora {
                 font-size: 0.7rem;
+            }
+
+            .orden-seccion {
+                padding: var(--spacing-md);
+            }
+
+            .orden-seccion-titulo {
+                font-size: 0.7rem;
+                margin-bottom: var(--spacing-sm);
+            }
+
+            .orden-dato-label {
+                font-size: 0.65rem;
+            }
+
+            .orden-dato-valor {
+                font-size: 0.85rem;
             }
         }
 
         @media (max-width: 480px) {
             :root {
                 --spacing-md: 0.5rem;
-                --logo-max-height: 35px;
+                --logo-max-height: 55px;
                 --image-max-height: 150px;
+                --card-max-width: 100%;
+            }
+
+            .ticket-result.active {
+                padding: 0.5rem;
+                max-width: 100%;
             }
 
             .ticket-card {
-                min-width: 100%;
+                min-width: auto;
+                border-radius: 0.5rem;
             }
 
             .orden-header-logo {
-                max-width: 80px;
+                max-width: 140px;
             }
 
-            .orden-estado-badge {
-                padding: var(--spacing-xs) 0.25rem;
-                font-size: 0.6rem;
-                min-width: 60px;
+            .orden-header-top {
+                padding: var(--spacing-md);
+                gap: var(--spacing-sm);
+                justify-content: space-between;
+                align-items: flex-start;
+                min-height: auto;
+                flex-wrap: nowrap;
+            }
+
+            .orden-header-top-left {
+                flex: 0 1 auto;
+                gap: var(--spacing-xs);
+            }
+
+            .orden-header-top-right {
+                max-width: auto;
+                flex-shrink: 0;
             }
 
             .orden-id-numero {
-                font-size: 1rem;
+                font-size: 0.9rem;
+            }
+
+            .orden-fecha-hora {
+                font-size: 0.65rem;
             }
 
             .orden-seccion {
-                padding: var(--spacing-sm);
+                padding: var(--spacing-md);
+            }
+
+            .orden-datos-grid {
+                grid-template-columns: 1fr;
+                gap: var(--spacing-sm);
             }
 
             .orden-dato-label {
                 font-size: 0.65rem;
+            }
+
+            .orden-dato-valor {
+                font-size: 0.85rem;
             }
 
             .orden-dato-valor {
@@ -615,8 +759,8 @@
         }
 
         .orden-header-top-left img {
-            max-height: 50px;
-            max-width: 50px;
+            max-height: 80px;
+            max-width: 200px;
             object-fit: contain;
             border-radius: 4px;
         }
@@ -667,6 +811,7 @@
             margin-bottom: 1rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
+            text-align: center;
         }
 
         .orden-imagen-principal img {
@@ -728,6 +873,294 @@
             font-weight: 600;
             color: var(--text-dark);
             word-break: break-word;
+        }
+
+        /* ===== AJUSTES FINALES CARD DE BOLETO ===== */
+        .ticket-result.active {
+            width: min(100%, 720px);
+            padding: 0;
+            margin-top: 1.5rem;
+        }
+
+        .ticket-card {
+            width: 100%;
+            max-width: none;
+            min-width: 0;
+            position: relative;
+            border: 1px solid #d8cfba;
+            border-radius: 1.1rem;
+            background: linear-gradient(180deg, #fffef9 0%, #fffaf0 100%);
+            box-shadow: 0 22px 44px rgba(33, 35, 38, 0.12);
+            overflow: hidden;
+        }
+
+        .ticket-card::before,
+        .ticket-card::after {
+            content: '';
+            position: absolute;
+            top: 58%;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #f8f9fa;
+            border: 1px solid #d8cfba;
+            z-index: 2;
+        }
+
+        .ticket-card::before {
+            left: -11px;
+        }
+
+        .ticket-card::after {
+            right: -11px;
+        }
+
+        .orden-header-top {
+            background:
+                linear-gradient(135deg, rgba(9, 44, 88, 0.96) 0%, rgba(18, 67, 128, 0.96) 100%);
+            color: #ffffff;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .orden-header-top-left {
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .orden-header-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            flex-wrap: wrap;
+        }
+
+        .orden-tipo-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: #f9fafb;
+            background: rgba(255,255,255,0.14);
+            border: 1px solid rgba(255,255,255,0.18);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .orden-id-numero {
+            font-size: 1.35rem;
+            letter-spacing: 0.02em;
+            color: #ffffff;
+            text-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
+        }
+
+        .orden-fecha-hora {
+            font-size: 0.78rem;
+            color: rgba(255,255,255,0.8);
+        }
+
+        .orden-nombre-sorteo {
+            padding: 0.8rem 1.1rem 0.7rem;
+            font-size: 0.88rem;
+            font-weight: 700;
+            text-align: center;
+            color: #14315f;
+            background: linear-gradient(180deg, #fff7df 0%, #fffdf6 100%);
+            border-bottom: 1px solid #eadfbf;
+        }
+
+        .orden-imagen-principal {
+            padding: 1rem 1rem 0.85rem;
+            background: #fffdf7;
+            border-bottom: 1px solid #eee3c7;
+        }
+
+        .orden-imagen-principal img {
+            max-height: 210px;
+        }
+
+        .orden-imagen-fecha-sorteo {
+            padding: 0.7rem 1rem 0.9rem;
+            text-align: center;
+            border-bottom: 1px solid #eee3c7;
+            background: #fffdf7;
+        }
+
+        .orden-imagen-fecha-sorteo-label {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #6b7280;
+            margin-bottom: 0.25rem;
+        }
+
+        .orden-imagen-fecha-sorteo-valor {
+            display: block;
+            font-size: 0.98rem;
+            font-weight: 700;
+            color: #1f3c88;
+        }
+
+        .ticket-perforacion {
+            position: relative;
+            padding: 0.8rem 1.1rem;
+            background: linear-gradient(180deg, #fff8e6 0%, #fffdf7 100%);
+            text-align: center;
+        }
+
+        .ticket-perforacion::before {
+            content: '';
+            position: absolute;
+            inset: 50% 1.1rem auto 1.1rem;
+            border-top: 2px dashed #cfbf8e;
+            transform: translateY(-50%);
+        }
+
+        .ticket-perforacion-label {
+            position: relative;
+            z-index: 1;
+            display: inline-block;
+            padding: 0 0.7rem;
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #8a6d1d;
+            background: #fffdf7;
+        }
+
+        .orden-seccion {
+            margin-bottom: 0;
+            padding: 1rem 1.1rem;
+            border-bottom: 1px solid #eee3c7;
+        }
+
+        .orden-seccion:last-of-type {
+            border-bottom: none;
+        }
+
+        .orden-seccion-titulo {
+            margin-bottom: 0.8rem;
+        }
+
+        .orden-datos-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.8rem 1rem;
+        }
+
+        .orden-dato {
+            padding: 0.05rem 0;
+            border: none;
+            border-radius: 0;
+            background: transparent;
+            border-bottom: 1px dashed #d9ccb0;
+        }
+
+        .orden-dato-label {
+            margin-bottom: 0.15rem;
+        }
+
+        .orden-dato-valor {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: #162033;
+        }
+
+        .orden-dato-full {
+            padding-bottom: 0.35rem;
+        }
+
+        .orden-dato-valor-muted {
+            color: #5f6b80;
+            font-weight: 600;
+        }
+
+        .orden-estado-inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.28rem 0.58rem;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .orden-estado-inline.confirmada {
+            color: #166534;
+            background: #dcfce7;
+        }
+
+        .orden-estado-inline.comprobante_recibido {
+            color: #92400e;
+            background: #fef3c7;
+        }
+
+        .orden-estado-inline.pendiente {
+            color: #9a3412;
+            background: #ffedd5;
+        }
+
+        .orden-estado-inline.cancelada {
+            color: #991b1b;
+            background: #fee2e2;
+        }
+
+        .orden-disponible-message {
+            margin: 1rem 1.1rem 1.1rem;
+            border: 1px solid #bfdbfe;
+            background: #f5faff;
+            border-radius: 0.9rem;
+        }
+
+        .ticket-actions {
+            padding-top: 1rem;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.85rem;
+        }
+
+        .ticket-actions .btn {
+            width: 100%;
+            min-height: 48px;
+            border-radius: 0.8rem;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+        }
+
+        .btn-ganador {
+            background: linear-gradient(180deg, #1f6feb 0%, #1b63d2 100%);
+        }
+
+        .btn-ganador:hover {
+            background: linear-gradient(180deg, #1c68dd 0%, #1758b9 100%);
+        }
+
+        .btn-liberar {
+            background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .btn-liberar:hover {
+            background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%);
+        }
+
+        @media (max-width: 768px) {
+            .ticket-result.active {
+                width: 100%;
+            }
+
+            .orden-datos-grid {
+                grid-template-columns: 1fr;
+                gap: 0.7rem;
+            }
+
+            .ticket-actions {
+                grid-template-columns: 1fr;
+            }
         }
 
         .error-message {
@@ -1123,6 +1556,7 @@
             document.documentElement.setAttribute('data-boletos-sold-hidden', 'true');
         }
     </script>
+    <link rel="stylesheet" href="css/admin-theme.css?v=20260321.01">
 </head>
 <body>
     <!-- ADMIN HEADER -->
@@ -1130,11 +1564,11 @@
         <div class="admin-header-content">
             <div class="admin-header-left">
                 <div class="admin-logo-container">
-                    <img src="images/logo.png" alt="SORTEOS YEPE" class="admin-logo-img">
+                    <img src="images/placeholder-logo.svg" alt="SORTEOS YEPE" class="admin-logo-img">
                 </div>
                 <div class="admin-header-title">
                     <div class="admin-header-title-main">Panel Administrativo</div>
-                    <div class="admin-header-title-sub">SORTEOS YEPE</div>
+                    <div class="admin-header-title-sub">SORTEO</div>
                 </div>
             </div>
             <div class="admin-header-right">
@@ -1173,7 +1607,7 @@
                     <i class="fas fa-cog"></i>
                     <span>Configuración</span>
                 </a>
-                <a href="ayuda.html" class="admin-nav-btn">
+                <a href="admin-ayuda.html" class="admin-nav-btn">
                     <i class="fas fa-question-circle"></i>
                     <span>Ayuda</span>
                 </a>
@@ -1215,7 +1649,7 @@
             <div class="modal-overlay" onclick="if(event.target === this) window.cerrarModalSeleccionarGanador()"></div>
             <div class="modal-content modal-ganador">
                 <div class="modal-header modal-header-center">
-                    <h2>🏆 ¿Qué tipo de ganador es?</h2>
+                    <h2>🏆 Selecciona qué tipo de ganador será</h2>
                     <button class="modal-close" id="closeModalGanador" aria-label="Cerrar" onclick="window.cerrarModalSeleccionarGanador()">×</button>
                 </div>
                 
@@ -1279,6 +1713,9 @@
                     <i class="fas fa-search"></i> Buscar
                 </button>
             </div>
+            <div class="search-feedback info show" id="searchFeedback">
+                Escribe un numero de boleto u oportunidad dentro del rango disponible para consultarlo rapidamente.
+            </div>
         </div>
 
         <div class="ticket-result" id="ticketResult">
@@ -1294,11 +1731,13 @@
         // Obtener URL de API desde config si está disponible, sino usar default
         const API_BASE = (window.rifaplusConfig && window.rifaplusConfig.backend) 
             ? window.rifaplusConfig.backend.apiBase 
-            : 'http://127.0.0.1:5001';
+            : ((window.rifaplusConfig && typeof window.rifaplusConfig.obtenerApiBase === 'function')
+                ? window.rifaplusConfig.obtenerApiBase()
+                : window.location.origin);
         
         let allBoletos = [];
-        let allOrdenes = [];
         let currentBoleto = null;
+        let statsBoletos = null;
 
         // ===== AUTH =====
         function getToken() {
@@ -1338,10 +1777,20 @@
          */
         function obtenerRangoBoletos() {
             try {
+                const totalConfigSeguro = Number(
+                    window.rifaplusConfig?.obtenerTotalBoletos?.()
+                    || window.rifaplusConfig?.rifa?.totalBoletos
+                    || 1000
+                );
                 const config = window.rifaplusConfig?.rifa;
                 if (!config) {
                     console.warn('⚠️ Config no disponible, usando valores por defecto');
-                    return { inicio: 0, fin: 249999, total: 250000, tipo: 'default' };
+                    return {
+                        inicio: 0,
+                        fin: Math.max(0, totalConfigSeguro - 1),
+                        total: totalConfigSeguro,
+                        tipo: 'default'
+                    };
                 }
 
                 // Caso 1: Oportunidades habilitadas → usar rango_visible
@@ -1358,7 +1807,7 @@
                 }
 
                 // Caso 2: Sin oportunidades → usar totalBoletos
-                const totalBoletos = config.totalBoletos || 250000;
+                const totalBoletos = Number(config.totalBoletos) || totalConfigSeguro;
                 console.debug('[admin-boletos] Usando totalBoletos (sin oportunidades):', totalBoletos);
                 return {
                     inicio: 0,
@@ -1368,7 +1817,98 @@
                 };
             } catch (error) {
                 console.error('[admin-boletos] Error obteniendo rango:', error);
-                return { inicio: 0, fin: 249999, total: 250000, tipo: 'error' };
+                const totalSeguro = Number(
+                    window.rifaplusConfig?.obtenerTotalBoletos?.()
+                    || window.rifaplusConfig?.rifa?.totalBoletos
+                    || 1000
+                );
+                return {
+                    inicio: 0,
+                    fin: Math.max(0, totalSeguro - 1),
+                    total: totalSeguro,
+                    tipo: 'error'
+                };
+            }
+        }
+
+        /**
+         * Obtiene el rango máximo buscable en admin.
+         * Si hay oportunidades habilitadas, también permite buscar esas oportunidades
+         * aunque no formen parte del rango visible de boletos normales.
+         * @returns {Object} { inicio, fin, total, totalBoletosBase, totalOportunidades, tipo }
+         */
+        function obtenerRangoBusquedaNumeros() {
+            try {
+                const config = window.rifaplusConfig?.rifa;
+                const rangoVisible = obtenerRangoBoletos();
+
+                if (!config) {
+                    return {
+                        inicio: rangoVisible.inicio,
+                        fin: rangoVisible.fin,
+                        total: rangoVisible.total,
+                        totalBoletosBase: rangoVisible.total,
+                        totalOportunidades: 0,
+                        tipo: 'default'
+                    };
+                }
+
+                const totalBoletosBase = Number(config.totalBoletos)
+                    || Number(window.rifaplusConfig?.obtenerTotalBoletos?.())
+                    || rangoVisible.total
+                    || 1000;
+                const oportunidadesConfig = config.oportunidades || {};
+                const oportunidadesEnabled = oportunidadesConfig.enabled === true;
+                const multiplicador = Math.max(0, Number(oportunidadesConfig.multiplicador) || 0);
+
+                if (!oportunidadesEnabled) {
+                    return {
+                        inicio: 0,
+                        fin: Math.max(0, totalBoletosBase - 1),
+                        total: totalBoletosBase,
+                        totalBoletosBase,
+                        totalOportunidades: 0,
+                        tipo: 'normal'
+                    };
+                }
+
+                const rangoOculto = oportunidadesConfig.rango_oculto;
+                if (rangoOculto && Number.isFinite(Number(rangoOculto.inicio)) && Number.isFinite(Number(rangoOculto.fin))) {
+                    const inicio = Math.min(Number(rangoVisible.inicio) || 0, Number(rangoOculto.inicio));
+                    const fin = Math.max(Number(rangoVisible.fin) || 0, Number(rangoOculto.fin));
+
+                    return {
+                        inicio,
+                        fin,
+                        total: (fin - inicio) + 1,
+                        totalBoletosBase,
+                        totalOportunidades: Math.max(0, (Number(rangoOculto.fin) - Number(rangoOculto.inicio)) + 1),
+                        tipo: 'oportunidades-rango-oculto'
+                    };
+                }
+
+                const totalOportunidades = totalBoletosBase * multiplicador;
+                const finInferido = Math.max(0, (totalBoletosBase + totalOportunidades) - 1);
+
+                return {
+                    inicio: 0,
+                    fin: finInferido,
+                    total: totalBoletosBase + totalOportunidades,
+                    totalBoletosBase,
+                    totalOportunidades,
+                    tipo: 'oportunidades-inferidas'
+                };
+            } catch (error) {
+                console.error('[admin-boletos] Error obteniendo rango de búsqueda:', error);
+                const fallback = obtenerRangoBoletos();
+                return {
+                    inicio: fallback.inicio,
+                    fin: fallback.fin,
+                    total: fallback.total,
+                    totalBoletosBase: fallback.total,
+                    totalOportunidades: 0,
+                    tipo: 'error'
+                };
             }
         }
 
@@ -1378,7 +1918,7 @@
          */
         function inicializarSearchContainer() {
             try {
-                const rangoInfo = obtenerRangoBoletos();
+                const rangoBusqueda = obtenerRangoBusquedaNumeros();
                 const inputBoleto = document.getElementById('searchBoleto');
                 
                 if (!inputBoleto) {
@@ -1387,17 +1927,22 @@
                 }
 
                 // Actualizar atributos del input
-                inputBoleto.setAttribute('min', rangoInfo.inicio);
-                inputBoleto.setAttribute('max', rangoInfo.fin);
+                inputBoleto.setAttribute('min', rangoBusqueda.inicio);
+                inputBoleto.setAttribute('max', rangoBusqueda.fin);
                 
                 // Actualizar placeholder con rango dinámico
-                const placeholderText = `Buscar boleto (${rangoInfo.inicio.toLocaleString()} - ${rangoInfo.fin.toLocaleString()})`;
+                const placeholderText = `Buscar boleto u oportunidad (${rangoBusqueda.inicio.toLocaleString()} - ${rangoBusqueda.fin.toLocaleString()})`;
                 inputBoleto.setAttribute('placeholder', placeholderText);
+
+                const mensajeInicial = rangoBusqueda.totalOportunidades > 0
+                    ? `Puedes buscar boletos y oportunidades del ${rangoBusqueda.inicio.toLocaleString()} al ${rangoBusqueda.fin.toLocaleString()}.`
+                    : `Puedes buscar boletos del ${rangoBusqueda.inicio.toLocaleString()} al ${rangoBusqueda.fin.toLocaleString()}.`;
+                showSearchFeedback(mensajeInicial, 'info');
                 
                 console.debug('[admin-boletos] ✅ Search container inicializado:', {
-                    rango: `${rangoInfo.inicio} - ${rangoInfo.fin}`,
-                    total: rangoInfo.total,
-                    tipo: rangoInfo.tipo
+                    rango: `${rangoBusqueda.inicio} - ${rangoBusqueda.fin}`,
+                    total: rangoBusqueda.total,
+                    tipo: rangoBusqueda.tipo
                 });
             } catch (error) {
                 console.error('[admin-boletos] Error inicializando search container:', error);
@@ -1408,7 +1953,7 @@
         function initializeConfig() {
             try {
                 const config = window.rifaplusConfig || {};
-                const clienteLogo = config.cliente?.logo || 'images/logo.png';
+                const clienteLogo = config.cliente?.logo || 'images/placeholder-logo.svg';
                 
                 // Actualizar logo del header - con verificación de nulidad
                 const headerLogo = document.getElementById('headerLogo');
@@ -1452,20 +1997,18 @@
         // ===== LOAD ALL BOLETOS =====
         async function cargarBoletos() {
             try {
-                // Cargar órdenes para estadísticas y búsqueda
                 try {
-                    const resOrdenes = await fetchWithAuth(`${API_BASE}/api/ordenes?limit=1000`);
-                    if (resOrdenes && resOrdenes.ok) {
-                        const jsonOrdenes = await resOrdenes.json();
-                        allOrdenes = (jsonOrdenes.data || []);
-                        console.log(`✅ Órdenes cargadas: ${allOrdenes.length}`);
+                    const resStats = await fetchWithAuth(`${API_BASE}/api/public/boletos/stats`);
+                    if (resStats && resStats.ok) {
+                        const jsonStats = await resStats.json();
+                        statsBoletos = jsonStats.data || null;
                     } else {
-                        console.warn('Error al obtener respuesta de órdenes:', resOrdenes?.status);
-                        allOrdenes = [];
+                        console.warn('Error al obtener estadísticas de boletos:', resStats?.status);
+                        statsBoletos = null;
                     }
                 } catch (err) {
-                    console.error('❌ Error cargando órdenes:', err);
-                    allOrdenes = [];
+                    console.error('❌ Error cargando estadísticas de boletos:', err);
+                    statsBoletos = null;
                 }
                 
                 actualizarEstadisticas();
@@ -1478,8 +2021,10 @@
         // ===== ACTUALIZAR ESTADÍSTICAS =====
         function actualizarEstadisticas() {
             // Card 1: Nombre del sorteo desde config
-            if (window.rifaplusConfig?.rifa?.titulo) {
-                document.getElementById('statSorteoNombre').textContent = window.rifaplusConfig.rifa.titulo;
+            const statSorteoNombre = document.getElementById('statSorteoNombre');
+            const nombreSorteo = window.rifaplusConfig?.obtenerNombreSorteo?.() || window.rifaplusConfig?.rifa?.nombreSorteo;
+            if (statSorteoNombre && nombreSorteo) {
+                statSorteoNombre.textContent = nombreSorteo;
             }
 
             // Card 2: Total de boletos desde config
@@ -1488,16 +2033,51 @@
             }
 
             // Card 3: Boletos vendidos (confirmados) - contar desde las órdenes confirmadas
-            let boletosSold = 0;
-            allOrdenes.forEach(orden => {
-                if (orden.estado?.toLowerCase() === 'confirmada') {
-                    // Contar la cantidad de boletos en esta orden
-                    if (orden.cantidad_boletos) {
-                        boletosSold += orden.cantidad_boletos;
-                    }
-                }
-            });
+            const boletosSold = Number(statsBoletos?.vendidos) || 0;
             document.getElementById('statBoletosSold').textContent = boletosSold;
+        }
+
+        function sincronizarNombreSorteoConReintento(intentosRestantes = 12) {
+            const statSorteoNombre = document.getElementById('statSorteoNombre');
+            if (!statSorteoNombre) return;
+
+            const nombreSorteo = window.rifaplusConfig?.obtenerNombreSorteo?.() || window.rifaplusConfig?.rifa?.nombreSorteo;
+            if (nombreSorteo) {
+                statSorteoNombre.textContent = nombreSorteo;
+                return;
+            }
+
+            if (intentosRestantes > 0) {
+                setTimeout(() => sincronizarNombreSorteoConReintento(intentosRestantes - 1), 250);
+            }
+        }
+
+        function setSearchLoading(isLoading) {
+            const button = document.querySelector('.search-input-group button');
+            const input = document.getElementById('searchBoleto');
+            if (!button || !input) return;
+
+            if (isLoading) {
+                button.disabled = true;
+                input.disabled = true;
+                button.dataset.originalHtml = button.dataset.originalHtml || button.innerHTML;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando';
+            } else {
+                button.disabled = false;
+                input.disabled = false;
+                if (button.dataset.originalHtml) {
+                    button.innerHTML = button.dataset.originalHtml;
+                }
+            }
+        }
+
+        function showSearchFeedback(msg, type = 'info') {
+            const el = document.getElementById('searchFeedback');
+            if (!el) return;
+
+            el.textContent = msg;
+            el.classList.remove('info', 'warning');
+            el.classList.add(type === 'warning' ? 'warning' : 'info', 'show');
         }
 
         // ===== BUSCAR BOLETO =====
@@ -1505,6 +2085,7 @@
             const input = document.getElementById('searchBoleto').value.trim();
             
             if (!input) {
+                showSearchFeedback('Escribe un numero antes de buscar. Puedes consultar boletos normales y, si aplica, tambien oportunidades.', 'warning');
                 showError('Ingresa un número de boleto u oportunidad');
                 return;
             }
@@ -1512,17 +2093,32 @@
             // Validar que sea un número válido
             const num = Number(input);
             if (isNaN(num) || num < 0) {
+                showSearchFeedback('Ingresa un numero valido mayor o igual a 0 para hacer la busqueda.', 'warning');
                 showError('Ingresa un número válido');
                 return;
             }
 
+            const rangoBusqueda = obtenerRangoBusquedaNumeros();
+            if (num < rangoBusqueda.inicio || num > rangoBusqueda.fin) {
+                const mensaje = rangoBusqueda.totalOportunidades > 0
+                    ? `Ese número está fuera del rango permitido. Puedes buscar boletos y oportunidades del ${rangoBusqueda.inicio.toLocaleString()} al ${rangoBusqueda.fin.toLocaleString()}.`
+                    : `Ese número está fuera del rango permitido. Puedes buscar del ${rangoBusqueda.inicio.toLocaleString()} al ${rangoBusqueda.fin.toLocaleString()}.`;
+                showSearchFeedback(mensaje, 'warning');
+                showError(mensaje);
+                document.getElementById('ticketResult').classList.remove('active');
+                return;
+            }
+
             hideMessages();
+            showSearchFeedback(`Buscando el numero #${num.toLocaleString()}...`, 'info');
+            setSearchLoading(true);
 
             // Usar endpoint INTELIGENTE que busca boletos Y oportunidades
             try {
                 const resBoleto = await fetchWithAuth(`${API_BASE}/api/admin/numero-inteligente/${num}`);
                 
                 if (!resBoleto || !resBoleto.ok) {
+                    showSearchFeedback(`El numero #${num.toLocaleString()} no fue encontrado en el sistema. Verifica el rango e intenta de nuevo.`, 'warning');
                     showError(`Número #${num} no encontrado`);
                     document.getElementById('ticketResult').classList.remove('active');
                     return;
@@ -1531,6 +2127,7 @@
                 const dataBoleto = await resBoleto.json();
                 
                 if (!dataBoleto.success || !dataBoleto.data) {
+                    showSearchFeedback(`El numero #${num.toLocaleString()} no fue encontrado en el sistema. Verifica el rango e intenta de nuevo.`, 'warning');
                     showError(`Número #${num} no encontrado`);
                     document.getElementById('ticketResult').classList.remove('active');
                     return;
@@ -1545,9 +2142,18 @@
                 currentBoleto = boleto;
                 renderTicket(boleto);
                 document.getElementById('ticketResult').classList.add('active');
+                showSearchFeedback(
+                    esOportunidad
+                        ? `Se encontro la oportunidad #${num.toLocaleString()} correctamente.`
+                        : `Se encontro el boleto #${num.toLocaleString()} correctamente.`,
+                    'info'
+                );
             } catch (err) {
                 console.error('Error buscando número:', err);
+                showSearchFeedback('Ocurrio un error al buscar el numero. Intenta nuevamente en un momento.', 'warning');
                 showError('Error al buscar número');
+            } finally {
+                setSearchLoading(false);
             }
         }
 
@@ -1594,7 +2200,8 @@
                 
                 // Datos del cliente
                 const nombreCliente = sanitizeText(boleto.nombre_cliente || 'Sin especificar');
-                const apellidoCliente = sanitizeText(boleto.apellido_cliente || 'Sin especificar');
+                const apellidoCliente = sanitizeText(boleto.apellido_cliente || '');
+                const nombreCompleto = `${nombreCliente} ${apellidoCliente !== 'N/A' ? apellidoCliente : ''}`.trim();
                 const estadoCliente = sanitizeText(boleto.estado_cliente || 'N/A');
                 const ciudadCliente = sanitizeText(boleto.ciudad_cliente || 'N/A');
                 
@@ -1610,17 +2217,23 @@
                 // Procesar fechas de forma segura
                 const fechaCreacion = formatearFecha(boleto.created_at) || '-----';
                 const horaCreacion = formatearHora(boleto.created_at) || '-----';
-                // Mostrar la fecha/hora de subida del comprobante.
-                // Fallbacks: comprobante_fecha -> comprobante_pagado_at -> updated_at -> created_at
-                const comprobanteTimestamp = boleto.comprobante_fecha || boleto.comprobante_pagado_at || boleto.updated_at || boleto.created_at;
-                const fechaComprobante = formatearFecha(comprobanteTimestamp) || '-----';
-                const horaComprobante = formatearHora(comprobanteTimestamp) || '-----';
+                // Mostrar la fecha y hora reales del comprobante si existen
+                const comprobanteTimestamp = boleto.comprobante_path
+                    ? (boleto.comprobante_fecha || boleto.comprobante_pagado_at || null)
+                    : null;
+                const fechaComprobanteExacta = formatearFechaHoraExacta(comprobanteTimestamp);
+                const estadoOrdenTexto = formatearEstadoOrden(estadoOrden);
+                const estadoOrdenClase = normalizarClaseEstadoOrden(estadoOrden);
+                const totalPagoTexto = formatearMoneda(totalPago);
                 
                 // Obtener configuración con fallbacks
                 const config = window.rifaplusConfig || {};
-                const logoOrganizador = config.cliente?.logo || 'images/logo.png';
-                const nombreSorteo = sanitizeText(config.rifa?.titulo || 'Sorteo');
-                const imagenPrincipal = config.rifa?.premios?.[0]?.imagenes?.[0] || 'images/ImagenPrincipal.jpg';
+                const logoOrganizador = config.cliente?.logo || 'images/placeholder-logo.svg';
+                const nombreSorteo = sanitizeText(config.rifa?.nombreSorteo || 'Sorteo');
+                const fechaSorteo = window.rifaplusConfig?.obtenerFechaSorteoFormato?.() || sanitizeText(config.rifa?.fechaSorteoFormato || '');
+                
+                // ✅ USAR IMAGEN PRINCIPAL (la nueva que se configura en admin-configuracion)
+                const imagenPrincipal = config.cliente?.imagenPrincipal || config.rifa?.galeria?.imagenes?.[0]?.url || 'images/placeholder-cover.svg';
                 
                 // Determinar estado badge
                 const { estadoBadgeClass, estadoBadgeText } = getEstadoInfo(estadoBoleto);
@@ -1631,13 +2244,24 @@
                 // Generar HTML
                 let html = construirHeaderBoleto(logoOrganizador, numeroFormato, fechaCreacion, horaCreacion, estadoBadgeClass, estadoBadgeText, esOportunidad);
                 html += construirNombreSorteo(nombreSorteo);
-                html += construirImagenPrincipal(imagenPrincipal);
+                html += construirImagenPrincipal(imagenPrincipal, fechaSorteo);
                 
                 if (!esDisponible) {
-                    html += construirDatosCliente(nombreCliente, apellidoCliente, estadoCliente, ciudadCliente, telefonoCliente);
-                    html += construirDatosOrden(numeroOrdenDisplay, cantidadBoletos, fechaComprobante, horaComprobante);
+                    html += construirPerforacion('Datos del participante');
+                    html += construirDatosCliente(nombreCompleto, estadoCliente, ciudadCliente, telefonoCliente);
+                    html += construirPerforacion('Talon de control');
+                    html += construirDatosOrden(
+                        numeroOrdenDisplay,
+                        estadoOrdenTexto,
+                        estadoOrdenClase,
+                        cantidadBoletos,
+                        totalPagoTexto,
+                        fechaCreacion,
+                        horaCreacion,
+                        fechaComprobanteExacta
+                    );
                 } else {
-                    html += construirMensajeDisponible();
+                    html += construirMensajeDisponible(esOportunidad);
                 }
                 
                 // Renderizar
@@ -1651,7 +2275,11 @@
                 }
                 
                 // Agregar botones de acción
-                agregarBotonesAccion(boleto.numero, esVendido || esApartado);
+                agregarBotonesAccion(boleto.numero, {
+                    esVendido,
+                    esApartado,
+                    esDisponible
+                });
                 
             } catch (error) {
                 console.error('❌ Error en renderTicket:', error);
@@ -1709,29 +2337,68 @@
             };
         }
 
+        function formatearEstadoOrden(estado) {
+            const mapa = {
+                pendiente: 'Pendiente de pago',
+                comprobante_recibido: 'Comprobante recibido',
+                confirmada: 'Confirmada',
+                completada: 'Confirmada',
+                cancelada: 'Cancelada',
+                disponible: 'Disponible'
+            };
+            return mapa[estado] || 'Sin estado';
+        }
+
+        function normalizarClaseEstadoOrden(estado) {
+            if (!estado) return 'pendiente';
+            if (estado === 'completada') return 'confirmada';
+            return estado;
+        }
+
+        function formatearMoneda(valor) {
+            return new Intl.NumberFormat('es-MX', {
+                style: 'currency',
+                currency: 'MXN',
+                minimumFractionDigits: 2
+            }).format(Number(valor) || 0);
+        }
+
+        function formatearFechaHoraExacta(dateString) {
+            try {
+                if (!dateString) return '';
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) return '';
+                return date.toLocaleString('es-MX', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+            } catch (error) {
+                return '';
+            }
+        }
+
         // FUNCIONES CONSTRUCTORAS - HTML
         function construirHeaderBoleto(logo, numero, fecha, hora, estadoClase, estadoTexto, esOportunidad = false) {
-            // Si es oportunidad, mostrar badge especial
-            const badgeOportunidad = esOportunidad ? `
-                <div class="orden-estado-badge oportunidad-badge">
-                    ⭐ OPORTUNIDAD
-                </div>
-            ` : '';
-            
             return `
                 <div class="orden-header-top">
                     <div class="orden-header-top-left">
                         <img 
                             src="${encodeURI(logo)}" 
                             alt="Logo Organizador" 
-                            onerror="this.src='images/logo.png'"
+                            onerror="this.src='images/placeholder-logo.svg'"
                             class="orden-header-logo"
                             loading="lazy"
                         >
-                        <div class="orden-estado-badge ${estadoClase}">
-                            ${estadoTexto}
+                        <div class="orden-header-meta">
+                            <div class="orden-estado-badge ${estadoClase}">
+                                ${estadoTexto}
+                            </div>
+                            ${esOportunidad ? '<div class="orden-tipo-chip"><i class="fas fa-bolt"></i> Oportunidad</div>' : '<div class="orden-tipo-chip"><i class="fas fa-ticket-alt"></i> Boleto</div>'}
                         </div>
-                        ${badgeOportunidad}
                     </div>
                     <div class="orden-header-top-right">
                         <div class="orden-id-numero">#${numero}</div>
@@ -1747,20 +2414,32 @@
             `;
         }
 
-        function construirImagenPrincipal(imagen) {
+        function construirImagenPrincipal(imagen, fechaSorteo = '') {
             return `
                 <div class="orden-imagen-principal">
                     <img 
                         src="${encodeURI(imagen)}" 
                         alt="Producto Principal"
-                        onerror="this.src='images/ImagenPrincipal.jpg'"
+                        onerror="this.src='images/placeholder-cover.svg'"
                         loading="lazy"
                     >
+                </div>
+                <div class="orden-imagen-fecha-sorteo">
+                    <span class="orden-imagen-fecha-sorteo-label">Fecha del sorteo</span>
+                    <span class="orden-imagen-fecha-sorteo-valor">${fechaSorteo || 'Por definir'}</span>
                 </div>
             `;
         }
 
-        function construirDatosCliente(nombre, apellido, estado, ciudad, telefono) {
+        function construirPerforacion(texto) {
+            return `
+                <div class="ticket-perforacion">
+                    <span class="ticket-perforacion-label">${texto}</span>
+                </div>
+            `;
+        }
+
+        function construirDatosCliente(nombreCompleto, estado, ciudad, telefono) {
             // Generar ID único para este toggle
             const toggleId = 'whatsapp-toggle-' + Date.now() + Math.random();
             
@@ -1792,15 +2471,15 @@
                     <div class="orden-seccion-titulo">👤 Cliente</div>
                     <div class="orden-datos-grid">
                         <div class="orden-dato">
-                            <span class="orden-dato-label">Nombre:</span>
-                            <span class="orden-dato-valor">${nombre}</span>
+                            <span class="orden-dato-label">Nombre completo</span>
+                            <span class="orden-dato-valor">${nombreCompleto}</span>
                         </div>
                         <div class="orden-dato">
-                            <span class="orden-dato-label">Estado:</span>
+                            <span class="orden-dato-label">Estado</span>
                             <span class="orden-dato-valor">${estado}</span>
                         </div>
                         <div class="orden-dato">
-                            <span class="orden-dato-label">Ciudad:</span>
+                            <span class="orden-dato-label">Ciudad</span>
                             <span class="orden-dato-valor">${ciudad}</span>
                         </div>
                         <div class="orden-dato orden-dato-full">
@@ -1819,45 +2498,119 @@
             `;
         }
 
-        function construirDatosOrden(id, cantidad, fecha, hora) {
-            const fechaComprobante = fecha === '-----' ? '-----' : `${fecha} ${hora}`;
+        function construirDatosOrden(id, estadoTexto, estadoClase, cantidad, total, fechaOrden, horaOrden, fechaComprobanteExacta) {
+            const fechaOrdenCompleta = fechaOrden === '-----' ? '-----' : `${fechaOrden} ${horaOrden}`;
             return `
                 <div class="orden-seccion">
                     <div class="orden-seccion-titulo">📋 Orden</div>
                     <div class="orden-datos-grid">
                         <div class="orden-dato">
-                            <span class="orden-dato-label">ID Orden:</span>
+                            <span class="orden-dato-label">Número de orden</span>
                             <span class="orden-dato-valor">${id}</span>
                         </div>
+                        <div class="orden-dato">
+                            <span class="orden-dato-label">Estado de la orden</span>
+                            <span class="orden-dato-valor"><span class="orden-estado-inline ${estadoClase}">${estadoTexto}</span></span>
+                        </div>
+                        <div class="orden-dato">
+                            <span class="orden-dato-label">Boletos en la orden</span>
+                            <span class="orden-dato-valor">${cantidad}</span>
+                        </div>
+                        <div class="orden-dato">
+                            <span class="orden-dato-label">Total de la orden</span>
+                            <span class="orden-dato-valor">${total}</span>
+                        </div>
+                        <div class="orden-dato">
+                            <span class="orden-dato-label">Creada</span>
+                            <span class="orden-dato-valor orden-dato-valor-muted">${fechaOrdenCompleta}</span>
+                        </div>
                         <div class="orden-dato orden-dato-full">
-                            <span class="orden-dato-label">Comprobante Recibido:</span>
-                            <span class="orden-dato-valor">${fechaComprobante}</span>
+                            <span class="orden-dato-label">Comprobante subido</span>
+                            <span class="orden-dato-valor orden-dato-valor-muted">${fechaComprobanteExacta}</span>
                         </div>
                     </div>
                 </div>
             `;
         }
 
-        function construirMensajeDisponible() {
+        function construirMensajeDisponible(esOportunidad = false) {
             return `
                 <div class="orden-disponible-message">
-                    <p>✓ Este boleto está DISPONIBLE</p>
+                    <p>✓ Esta ${esOportunidad ? 'oportunidad' : 'boleto'} está DISPONIBLE</p>
                 </div>
             `;
         }
 
-        function agregarBotonesAccion(numero, mostrar) {
+        async function obtenerGanadorActual(numero) {
+            if (!window.GanadoresManager?.obtenerGanadorActual) return null;
+            return await window.GanadoresManager.obtenerGanadorActual(String(numero), { preferServer: true, syncLocal: true });
+        }
+
+        window.declararGanadorBackend = window.declararGanadorBackend || async function(numero, tipoGanador, lugarGanado) {
+            const apiBase = window.GanadoresManager?.getApiBase?.()
+                || (window.rifaplusConfig?.backend?.apiBase)
+                || window.rifaplusConfig?.obtenerApiBase?.()
+                || window.location.origin;
+            const token = localStorage.getItem('rifaplus_admin_token') || localStorage.getItem('admin_token') || '';
+
+            const response = await fetch(`${apiBase}/api/admin/declarar-ganador`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    numero: Number(numero),
+                    tipo_ganador: tipoGanador,
+                    posicion: Number(lugarGanado)
+                })
+            });
+
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || payload.message || `Error ${response.status}`);
+            }
+
+            return payload;
+        };
+
+        window.eliminarGanadorBackend = window.eliminarGanadorBackend || async function(numero) {
+            const apiBase = window.GanadoresManager?.getApiBase?.()
+                || (window.rifaplusConfig?.backend?.apiBase)
+                || window.rifaplusConfig?.obtenerApiBase?.()
+                || window.location.origin;
+            const token = localStorage.getItem('rifaplus_admin_token') || localStorage.getItem('admin_token') || '';
+
+            const response = await fetch(`${apiBase}/api/admin/ganadores/${encodeURIComponent(numero)}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || payload.message || `Error ${response.status}`);
+            }
+
+            return payload;
+        };
+
+        async function agregarBotonesAccion(numero, estadoActual) {
             const btnContainer = document.querySelector('.ticket-actions');
             if (!btnContainer) {
                 console.warn('⚠️ Contenedor de botones no encontrado');
                 return;
             }
             
-            // Mostrar botones SIEMPRE para boletos vendidos/apartados
-            // (no mostrar para boletos disponibles)
-            if (mostrar && typeof numero !== 'undefined') {
-                // Verificar si el boleto ya es ganador
-                const ganador = window.GanadoresManager?.verificarGanador(String(numero));
+            if (!estadoActual || estadoActual.esDisponible || typeof numero === 'undefined') {
+                btnContainer.innerHTML = '';
+                return;
+            }
+
+            if (estadoActual && typeof numero !== 'undefined') {
+                // Verificar si el boleto ya es ganador usando fuente real + fallback local
+                const ganador = await obtenerGanadorActual(numero);
                 
                 if (ganador) {
                     // Si es ganador, mostrar botón de desmarcar
@@ -1865,6 +2618,12 @@
                         <button class="btn btn-ganador" style="background-color: #10b981;" onclick="try{window.unmarkAsWinner(${numero})}catch(e){alert('Error: ' + e.message)}" type="button">
                             ✅ Desmarcar Ganador (${ganador.tipo})
                         </button>
+                        <button class="btn btn-liberar" onclick="try{window.releaseTicket(${numero})}catch(e){alert('Error: ' + e.message)}" type="button">
+                            🔓 Liberar Boleto
+                        </button>
+                    `;
+                } else if (estadoActual.esApartado) {
+                    btnContainer.innerHTML = `
                         <button class="btn btn-liberar" onclick="try{window.releaseTicket(${numero})}catch(e){alert('Error: ' + e.message)}" type="button">
                             🔓 Liberar Boleto
                         </button>
@@ -1931,29 +2690,35 @@
         // ===== LIBERAR BOLETO =====
         async function liberarBoleto() {
             if (!currentBoleto) return;
+            await liberarBoletoNumero(currentBoleto.numero);
+        }
 
-            const confirmar = confirm(`¿Liberar boleto #${currentBoleto.numero}?`);
+        async function liberarBoletoNumero(numero) {
+            const confirmar = confirm(`¿Liberar boleto #${numero}?`);
             if (!confirmar) return;
 
             try {
-                const res = await fetchWithAuth(`${API_BASE}/api/admin/boletos/${currentBoleto.numero}/liberar`, {
+                const res = await fetchWithAuth(`${API_BASE}/api/admin/boletos/${numero}/liberar`, {
                     method: 'PATCH'
                 });
 
-                if (!res || !res.ok) throw new Error('Error al liberar boleto');
+                if (!res || !res.ok) {
+                    const errorJson = res ? await res.json().catch(() => null) : null;
+                    throw new Error(errorJson?.message || 'Error al liberar boleto');
+                }
 
-                const json = await res.json();
-                showSuccess(`¡Boleto #${currentBoleto.numero} liberado correctamente!`);
-                
-                // Recargar boletos y limpiar búsqueda
+                showSuccess(`¡Boleto #${numero} liberado correctamente!`);
                 await cargarBoletos();
+
+                const input = document.getElementById('searchBoleto');
+                if (input) input.value = numero;
+
                 setTimeout(() => {
-                    document.getElementById('searchBoleto').value = '';
-                    document.getElementById('ticketResult').classList.remove('active');
-                }, 1500);
+                    buscarBoleto();
+                }, 250);
             } catch (err) {
                 console.error('Error:', err);
-                showError('Error al liberar boleto');
+                showError(err.message || 'Error al liberar boleto');
             }
         }
 
@@ -2018,12 +2783,9 @@
             if (numero.length !== 10) return;
             
             const estadoLower = (String(estado || '').trim().toLowerCase());
-            const estadosUSA = ['california', 'texas', 'florida', 'new york', 'pennsylvania', 
-                               'illinois', 'ohio', 'georgia', 'north carolina', 'arizona',
-                               'ca', 'tx', 'fl', 'ny', 'pa', 'il', 'oh', 'ga', 'nc', 'az',
-                               'usa', 'united states', 'estados unidos de america'];
             
-            const prefijo = estadosUSA.some(e => estadoLower.includes(e)) ? '+1' : '+52';
+            // Solo usar +1 si el estado es EXACTAMENTE "Estados Unidos"
+            const prefijo = estadoLower === 'estados unidos' ? '+1' : '+52';
             const url = `https://wa.me/${prefijo}${numero}`;
             window.open(url, '_blank');
         }
@@ -2076,9 +2838,18 @@
         // ===== INIT =====
         document.addEventListener('DOMContentLoaded', async () => {
             try {
+                if (window.GanadoresManager?.refrescarDesdeServidor) {
+                    try {
+                        await window.GanadoresManager.refrescarDesdeServidor();
+                    } catch (error) {
+                        console.warn('[admin-boletos] No se pudieron refrescar ganadores desde servidor:', error);
+                    }
+                }
+
                 // Inicializar configuración - debe ser lo primero
                 try {
                     initializeConfig();
+                    sincronizarNombreSorteoConReintento();
                 } catch (error) {
                     console.warn('⚠️ Error al inicializar configuración:', error);
                     // Continuar aunque falle la configuración
@@ -2131,9 +2902,20 @@
                     errorDiv.classList.add('show');
                 }
             }
-        } catch (error) {
-            console.error('❌ Error fatal durante inicialización:', error);
-        }
+            } catch (error) {
+                console.error('❌ Error fatal durante inicialización:', error);
+            }
+
+            window.addEventListener('configSyncCompleto', () => {
+                try {
+                    initializeConfig();
+                    actualizarEstadisticas();
+                    inicializarSearchContainer();
+                    sincronizarNombreSorteoConReintento(2);
+                } catch (error) {
+                    console.warn('[admin-boletos] Error reaccionando a configSyncCompleto:', error);
+                }
+            }, { once: true });
 
         // ===== FUNCIONES PARA GANADORES =====
         /**
@@ -2162,7 +2944,7 @@
                 datosCliente = {
                     nombre: currentBoleto.nombre_cliente || '',
                     apellido: currentBoleto.apellido_cliente || '',
-                    ciudad: currentBoleto.ciudad || '',
+                    ciudad: currentBoleto.ciudad_cliente || currentBoleto.ciudad || '',
                     estado_cliente: currentBoleto.estado_cliente || ''
                 };
                 console.log('📋 Datos del cliente obtenidos:', datosCliente);
@@ -2171,7 +2953,6 @@
             // Abrir modal para seleccionar tipo de ganador
             window.abrirModalSeleccionarGanador(numero, datosCliente, function(numeroGanador, tipoGanador, exito) {
                 if (exito) {
-                    console.log(`✅ ${numeroGanador} marcado como ${tipoGanador}`);
                     // Opcionalmente, refrescar búsqueda
                     setTimeout(() => {
                         buscarBoleto();
@@ -2184,7 +2965,7 @@
          * Liberar boleto (remover de venta)
          * @param {Number} numero - Número del boleto
          */
-        window.unmarkAsWinner = function(numero) {
+        window.unmarkAsWinner = async function(numero) {
             console.log('🔴 unmarkAsWinner llamado con número:', numero);
             
             if (!window.GanadoresManager) {
@@ -2201,7 +2982,10 @@
             }
 
             // Verificar si es ganador
-            const ganador = window.GanadoresManager.verificarGanador(numero);
+            let ganador = window.GanadoresManager.verificarGanador(numero);
+            if (!ganador) {
+                ganador = await obtenerGanadorActual(numero);
+            }
             if (!ganador) {
                 alert('⚠️  Este boleto no está marcado como ganador');
                 return;
@@ -2212,12 +2996,28 @@
                 return;
             }
 
-            // Eliminar ganador
+            let eliminadoEnBackend = true;
+            try {
+                const apiBase = window.GanadoresManager?.getApiBase?.()
+                    || (window.rifaplusConfig?.backend?.apiBase)
+                    || window.rifaplusConfig?.obtenerApiBase?.()
+                    || window.location.origin;
+                const token = localStorage.getItem('rifaplus_admin_token') || localStorage.getItem('admin_token') || '';
+                const response = await fetch(`${apiBase}/api/admin/ganadores/${encodeURIComponent(numero)}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                eliminadoEnBackend = response.ok;
+            } catch (e) {
+                eliminadoEnBackend = false;
+            }
+
             const resultado = window.GanadoresManager.eliminarGanador(numero, ganador.tipo);
 
-            if (resultado) {
+            if (resultado || eliminadoEnBackend) {
                 alert(`✅ Boleto #${numero} desmarcado como ganador`);
-                console.log(`✅ ${numero} desmarcado de ${ganador.tipo}`);
                 
                 // Refrescar búsqueda para actualizar botones
                 setTimeout(() => {
@@ -2234,12 +3034,7 @@
          * @param {Number} numero - Número del boleto
          */
         window.releaseTicket = function(numero) {
-            if (!confirm(`¿Liberar boleto #${numero}?`)) {
-                return;
-            }
-
-            console.log(`Liberando boleto #${numero}`);
-            alert('Función de liberar boleto en desarrollo');
+            liberarBoletoNumero(numero);
         };
         });
     </script>
@@ -2342,7 +3137,7 @@
          * @param {Object} datosCliente - Datos del cliente {nombre, apellido, ciudad, estado_cliente}
          * @param {Function} callback - Función a ejecutar cuando se selecciona tipo
          */
-        window.abrirModalSeleccionarGanador = function(numero, datosCliente = {}, callback = null) {
+        window.abrirModalSeleccionarGanador = async function(numero, datosCliente = {}, callback = null) {
             console.log('🔴 abrirModalSeleccionarGanador llamado con:', numero);
             
             // Si el segundo parámetro es función, es el callback (backwards compatibility)
@@ -2372,7 +3167,7 @@
             window.ganadesoresModalDatosCliente = datosCliente || {};
 
             // Verificar si el número ya es ganador
-            const ganadorExistente = window.GanadoresManager.verificarGanador(numero);
+            let ganadorExistente = await obtenerGanadorActual(numero);
             if (ganadorExistente) {
                 alert(`⚠️  El número ${numero} ya es ganador de tipo "${ganadorExistente.tipo}"`);
                 return;
@@ -2393,7 +3188,6 @@
             const modal = document.getElementById('modalSeleccionarGanador');
             if (modal) {
                 modal.classList.add('active');
-                console.log('✅ Modal abierto');
             } else {
                 console.error('❌ Modal no encontrado');
                 alert('❌ Modal no encontrado en la página');
@@ -2426,26 +3220,33 @@
             const ganadores = window.GanadoresManager.cargarGanadores();
             console.log('Ganadores actuales:', ganadores);
             
-            const tipos = ['sorteo', 'presorteo', 'ruletazos'];
+            const tipos = window.GanadoresManager.getTiposHabilitados();
+
+            if (!tipos.length) {
+                contenedor.innerHTML = `
+                    <div style="grid-column: 1 / -1; padding: 1rem; border: 1px solid #dbe4f0; border-radius: 12px; background: #f8fbff; color: #475569; text-align: center;">
+                        No hay tipos de ganador habilitados en la configuración del sorteo.
+                    </div>
+                `;
+                return;
+            }
 
             tipos.forEach(tipo => {
                 const cantidad = config[tipo];
                 if (cantidad <= 0) {
-                    console.log(`⏭️  Saltando tipo ${tipo} (cantidad: ${cantidad})`);
                     return; // Saltar tipos deshabilitados
                 }
                 
                 const registrados = ganadores[tipo] ? ganadores[tipo].length : 0;
                 const completo = registrados >= cantidad;
 
-                console.log(`📊 Tipo: ${tipo}, Registrados: ${registrados}, Máximo: ${cantidad}, Completo: ${completo}`);
 
                 const card = document.createElement('div');
                 card.className = `tipo-ganador-card ${completo ? 'disabled' : ''}`;
                 card.innerHTML = `
                     <span class="tipo-ganador-icono">${window.GanadoresManager.getIconoTipo(tipo)}</span>
-                    <div class="tipo-ganador-nombre">${window.GanadoresManager.getEtiquetaTipo(tipo).split(' ')[1] || 'Ganador'}</div>
-                    <div class="tipo-ganador-contador"><span>${registrados}</span>/${cantidad}</div>
+                    <div class="tipo-ganador-nombre">${window.GanadoresManager.getEtiquetaTipo(tipo)}</div>
+                    <div class="tipo-ganador-contador"><span>${registrados}</span> de ${cantidad} configurados</div>
                 `;
 
                 if (!completo) {
@@ -2458,7 +3259,6 @@
                 contenedor.appendChild(card);
             });
             
-            console.log('✅ Opciones generadas');
         }
 
         /**
@@ -2466,7 +3266,6 @@
          * @param {String} tipo - Tipo seleccionado
          */
         function seleccionarTipo(tipo) {
-            console.log('🎯 Seleccionando tipo:', tipo);
             
             if (!ganadesoresModalNumero || !tipo) {
                 console.error('❌ Datos inválidos');
@@ -2488,7 +3287,6 @@
             const modalLugar = document.getElementById('modalSeleccionarLugar');
             if (modalLugar) {
                 modalLugar.classList.add('active');
-                console.log('✅ Modal de lugar abierto');
             }
         }
 
@@ -2534,7 +3332,6 @@
             const ganadores = window.GanadoresManager.cargarGanadores();
             const lugaresOcupados = (ganadores[tipo] || []).map(g => g.lugarGanado).filter(Boolean);
 
-            console.log(`📊 Tipo: ${tipo}, Max lugares: ${maxLugares}, Lugares ocupados:`, lugaresOcupados);
 
             // Generar botones para cada lugar
             for (let lugar = 1; lugar <= maxLugares; lugar++) {
@@ -2564,7 +3361,6 @@
                 contenedor.appendChild(btn);
             }
 
-            console.log('✅ Opciones de lugares generadas');
         }
 
         /**
@@ -2595,8 +3391,7 @@
          * Procesar selección de lugar
          * @param {Number} lugar - Lugar seleccionado
          */
-        function seleccionarLugar(lugar) {
-            console.log('🎯 Seleccionando lugar:', lugar);
+        async function seleccionarLugar(lugar) {
 
             if (!lugarModalNumero || !lugarModalTipo || isNaN(lugar)) {
                 console.error('❌ Datos inválidos');
@@ -2604,30 +3399,37 @@
                 return;
             }
 
-            // Agregar ganador con lugar
-            const resultado = window.GanadoresManager.agregarGanador(
-                lugarModalNumero,
-                lugarModalTipo,
-                lugarModalDatosCliente,
-                lugar
-            );
+            try {
+                if (typeof window.declararGanadorBackend !== 'function') {
+                    throw new Error('No se encontró la función de guardado en backend');
+                }
 
-            if (resultado.exito) {
-                console.log('✅', resultado.mensaje);
+                await window.declararGanadorBackend(
+                    lugarModalNumero,
+                    lugarModalTipo,
+                    lugar
+                );
 
-                // Ejecutar callback si existe
+                if (window.GanadoresManager?.refrescarDesdeServidor) {
+                    await window.GanadoresManager.refrescarDesdeServidor();
+                } else {
+                    window.GanadoresManager.agregarGanador(
+                        lugarModalNumero,
+                        lugarModalTipo,
+                        lugarModalDatosCliente,
+                        lugar
+                    );
+                }
+
                 if (typeof lugarModalCallback === 'function') {
                     lugarModalCallback(lugarModalNumero, lugarModalTipo, true);
                 }
 
-                // Mostrar feedback
-                alert('✅ ' + resultado.mensaje);
-
-                // Cerrar modal
+                alert('✅ Ganador registrado correctamente');
                 window.cerrarModalSeleccionarLugar();
-            } else {
-                console.error('❌', resultado.mensaje);
-                alert('❌ ' + resultado.mensaje);
+            } catch (error) {
+                console.error('❌', error);
+                alert('❌ ' + (error.message || 'No se pudo registrar el ganador'));
             }
         }
 
@@ -2648,7 +3450,6 @@
 
         // Event listeners del modal
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('✅ DOMContentLoaded - Configurando event listeners...');
             
             const closeBtn = document.getElementById('closeModalGanador');
             const cancelBtn = document.getElementById('btnCancelarGanador');
@@ -2656,12 +3457,10 @@
 
             if (closeBtn) {
                 closeBtn.addEventListener('click', window.cerrarModalSeleccionarGanador);
-                console.log('✅ closeBtn listener agregado');
             }
 
             if (cancelBtn) {
                 cancelBtn.addEventListener('click', window.cerrarModalSeleccionarGanador);
-                console.log('✅ cancelBtn listener agregado');
             }
 
             if (modal) {
@@ -2670,7 +3469,6 @@
                         cerrarModalSeleccionarGanador();
                     }
                 });
-                console.log('✅ modal click listener agregado');
             }
 
             // Event listeners del modal de lugar
@@ -2680,12 +3478,10 @@
 
             if (closeLugarBtn) {
                 closeLugarBtn.addEventListener('click', window.cerrarModalSeleccionarLugar);
-                console.log('✅ closeLugarBtn listener agregado');
             }
 
             if (cancelLugarBtn) {
                 cancelLugarBtn.addEventListener('click', window.cerrarModalSeleccionarLugar);
-                console.log('✅ cancelLugarBtn listener agregado');
             }
 
             if (modalLugar) {
@@ -2694,7 +3490,6 @@
                         window.cerrarModalSeleccionarLugar();
                     }
                 });
-                console.log('✅ modalLugar click listener agregado');
             }
 
             // Cerrar con ESC
@@ -2710,7 +3505,6 @@
             });
         });
 
-        console.log('✅ Sistema de ganadores inicializado');
     </script>
 
 </body>
