@@ -184,6 +184,10 @@ function iniciarFlujoPago() {
     // Definir callback que se ejecuta cuando el usuario confirma el formulario
     window.onContactoConfirmado = function() {
         console.log('[Flujo] 🎯 onContactoConfirmado ejecutado');
+
+        if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+        }
         
         // El cliente ya está guardado en localStorage por modal-contacto.js
         // Cargar datos
@@ -199,6 +203,9 @@ function iniciarFlujoPago() {
         // Paso 2: Abrir selector de cuenta de pago
         console.log('[Flujo] ⏳ Esperando 300ms para abrir selector de cuentas');
         setTimeout(() => {
+            if (document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur();
+            }
             console.log('[Flujo] 🏦 Llamando abrirModalSeleccionCuenta()');
             abrirModalSeleccionCuenta();
         }, 300);
