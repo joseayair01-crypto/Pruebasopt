@@ -38,6 +38,7 @@
     </script>
     <script src="js/theme-dynamic.js"></script>
     <script src="js/boletos-loader.js"></script>
+    <script src="js/modal-scroll-lock.js"></script>
     <!-- ⚡ PERFORMANCE OPTIMIZATION: Rendering optimizer for 50+ cards -->
     <script src="js/performance-rendering-optimizer.js"></script>
     <!-- 🎯 OPORTUNIDADES MANAGER: Debe cargarse ANTES de carrito-global para funcionar cross-page -->
@@ -3151,13 +3152,16 @@
 
                 // Datos de la compra
                 const cantidadProductos = orden.cantidad_boletos || cantidadBoletos || 0;
-                const subtotalGuardado = Number(orden.subtotal || 0);
-                const descuentoGuardado = Number(orden.descuento || 0);
-                const totalGuardadoBase = Number(orden.total || 0);
+                const subtotalSource = orden.subtotal;
+                const descuentoSource = orden.descuento;
+                const totalSource = orden.total;
+                const subtotalGuardado = Number(subtotalSource ?? 0);
+                const descuentoGuardado = Number(descuentoSource ?? 0);
+                const totalGuardadoBase = Number(totalSource ?? 0);
                 const descuentoHistorico = descuentoGuardado > 0
                     ? descuentoGuardado
                     : Math.max(0, subtotalGuardado - totalGuardadoBase);
-                const totalHistorico = totalGuardadoBase > 0
+                const totalHistorico = totalSource !== null && totalSource !== undefined
                     ? totalGuardadoBase
                     : Math.max(0, subtotalGuardado - descuentoHistorico);
 
@@ -3175,7 +3179,8 @@
                 let descuentoDinamico = descuentoHistorico;
                 let totalDinamico = totalHistorico;
 
-                if (!(totalDinamico > 0) && typeof calcularTotalConPromociones === 'function') {
+                const faltanTotalesHistoricos = totalSource === null || totalSource === undefined;
+                if (faltanTotalesHistoricos && typeof calcularTotalConPromociones === 'function') {
                     const calculoFallback = calcularTotalConPromociones(cantidadProductos, null);
                     subtotalDinamico = calculoFallback.subtotal || subtotalDinamico;
                     descuentoDinamico = calculoFallback.descuentoMonto || descuentoDinamico;

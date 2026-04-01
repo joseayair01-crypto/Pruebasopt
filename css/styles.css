@@ -4980,6 +4980,7 @@ footer {
     z-index: 3000;
     align-items: center;
     justify-content: center;
+    overscroll-behavior: contain;
 }
 
 .modal-content {
@@ -4989,6 +4990,17 @@ footer {
     width: 90%;
     max-height: 90vh;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+body.modal-scroll-locked {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: none;
 }
 
 .modal-header {
@@ -6375,6 +6387,7 @@ footer {
     z-index: 1000;
     animation: fadeIn var(--transition-fast) ease;
     backdrop-filter: blur(4px);
+    overscroll-behavior: contain;
 }
 
 .modal-carrito-overlay.active {
@@ -6392,6 +6405,8 @@ footer {
     box-shadow: -8px 0 32px rgba(0, 0, 0, 0.2);
     animation: slideInRight var(--transition-normal) ease;
     overflow: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
 }
 
 @media (max-width: 640px) {
@@ -6488,6 +6503,9 @@ footer {
     overflow-y: auto;
     padding: 1rem;
     background: linear-gradient(135deg, var(--surface-base) 0%, var(--surface-card-warm-strong) 100%);
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
 }
 
 .carrito-vacio {
@@ -7166,6 +7184,9 @@ footer {
 .modal-carrito-body {
     padding: 0.95rem;
     background: linear-gradient(180deg, var(--surface-base), var(--surface-soft));
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
 }
 
 .carrito-vacio {

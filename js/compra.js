@@ -2448,6 +2448,7 @@ function animarAgregarAlCarrito(botonElemento = null, numeroDelBoleto = 0, conAn
     try {
         const colorSeleccionado = obtenerColorSeleccionado();
         configurarColoresAnimacionCarrito(colorSeleccionado);
+        const isMobile = window.matchMedia('(max-width: 768px)').matches;
         
         // 1️⃣ ANIMACIÓN DEL BOTÓN (opcional): Mostrar confirmación visual
         if (botonElemento && conAnimacionBoton) {
@@ -2471,13 +2472,13 @@ function animarAgregarAlCarrito(botonElemento = null, numeroDelBoleto = 0, conAn
             carritoNav.classList.add('cart-pulse');
             const originalColor = carritoNav.style.color;
             carritoNav.style.color = colorSeleccionado;
-            carritoNav.style.transform = 'scale(1.3)';
+            carritoNav.style.transform = isMobile ? 'scale(1.14)' : 'scale(1.3)';
             
             setTimeout(() => {
                 carritoNav.classList.remove('cart-pulse');
                 carritoNav.style.color = originalColor;
                 carritoNav.style.transform = '';
-            }, 600);
+            }, isMobile ? 420 : 600);
             
             // 3️⃣ EFECTO VOLADO: Animar boleto volando al carrito
             crearAnimacionVolado(botonElemento, numeroDelBoleto);
@@ -2628,12 +2629,14 @@ function crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, origen = '
     try {
         const carritoNav = document.getElementById('carritoNav');
         if (!carritoNav) {
-            console.warn('⚠️ Carrito no encontrado, animación cancelada');
             return;
         }
         
         const colorSeleccionado = obtenerColorSeleccionado();
         const colorSeleccionadoClaro = mezclarColorCss(colorSeleccionado, 'rgb(255, 255, 255)', 0.28);
+        const isMobile = window.matchMedia('(max-width: 768px)').matches;
+        const isTouch = window.matchMedia('(pointer: coarse)').matches;
+        const lowPowerMode = isMobile || isTouch;
         
         // 📍 Obtener posiciones correctas (ROBUSTO)
         let origenRect = null;
@@ -2662,7 +2665,6 @@ function crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, origen = '
                 try {
                     origenRect = numsSuerte.getBoundingClientRect();
                     origenValido = true;
-                    console.log('📱 Usando máquina de suerte como origen');
                 } catch (e) {
                     console.warn('Error obteniendo rect máquina:', e);
                 }
@@ -2672,7 +2674,6 @@ function crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, origen = '
                 try {
                     origenRect = numsGrid.getBoundingClientRect();
                     origenValido = true;
-                    console.log('📱 Usando grid como origen');
                 } catch (e) {
                     console.warn('Error obteniendo rect grid:', e);
                 }
@@ -2689,7 +2690,6 @@ function crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, origen = '
                 bottom: window.innerHeight / 2,
                 right: window.innerWidth / 2
             };
-            console.log('📱 Usando viewport center como fallback');
         }
         
         // Obtener posición del carrito
@@ -2718,7 +2718,6 @@ function crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, origen = '
                                 startX < -200 || startX > window.innerWidth + 200;
             
             if (isOutOfView) {
-                console.log(`📍 Origen fuera de viewport (${startX}, ${startY}). Ajustando...`);
                 startY = Math.max(50, Math.min(startY, window.innerHeight - 50));
                 startX = Math.max(50, Math.min(startX, window.innerWidth - 50));
             }
@@ -2731,12 +2730,14 @@ function crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, origen = '
             position: fixed;
             left: ${startX}px;
             top: ${startY}px;
-            width: 50px;
-            height: 50px;
+            width: ${lowPowerMode ? 42 : 50}px;
+            height: ${lowPowerMode ? 42 : 50}px;
             z-index: 9998;
             pointer-events: none;
             will-change: transform, opacity;
             opacity: 1;
+            contain: layout style paint;
+            transform: translateZ(0);
         `;
         
         // 🎫 Icono del boleto con efecto de destello (MEJORADO)
@@ -2749,39 +2750,39 @@ function crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, origen = '
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 28px;
+            font-size: ${lowPowerMode ? 22 : 28}px;
             font-weight: bold;
-            box-shadow: 0 0 30px ${colorConAlpha(colorSeleccionado, 0.9)}, 
-                        inset 0 2px 0 rgba(255,255,255,0.5),
-                        0 0 0 2px ${colorSeleccionado};
+            box-shadow: ${lowPowerMode
+                ? `0 0 14px ${colorConAlpha(colorSeleccionado, 0.45)}, inset 0 1px 0 rgba(255,255,255,0.35)`
+                : `0 0 30px ${colorConAlpha(colorSeleccionado, 0.9)}, inset 0 2px 0 rgba(255,255,255,0.5), 0 0 0 2px ${colorSeleccionado}`};
             transform: rotate(-15deg);
-            filter: brightness(1.2);
+            transition: transform linear;
         `;
         ticketIcon.textContent = '🎫';
         mainTicket.appendChild(ticketIcon);
         
-        // ✨ Crear partículas de luz más visibles (MEJORADO)
-        const particleCount = Math.min(16, Math.max(8, Math.floor(window.innerWidth / 100)));
+        // En móvil reducimos partículas para mejorar fps sin perder el efecto
+        const particleCount = lowPowerMode ? 4 : Math.min(12, Math.max(6, Math.floor(window.innerWidth / 140)));
         for (let i = 0; i < particleCount; i++) {
             const particle = document.createElement('div');
             const angle = (i / particleCount) * Math.PI * 2;
-            const distance = 45;
+            const distance = lowPowerMode ? 28 : 45;
             const offsetX = Math.cos(angle) * distance;
             const offsetY = Math.sin(angle) * distance;
             
             particle.style.cssText = `
                 position: absolute;
-                width: 12px;
-                height: 12px;
+                width: ${lowPowerMode ? 8 : 12}px;
+                height: ${lowPowerMode ? 8 : 12}px;
                 background: ${colorSeleccionado};
                 border-radius: 50%;
                 left: 50%;
                 top: 50%;
                 transform: translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px));
-                opacity: 1;
-                box-shadow: 0 0 15px ${colorConAlpha(colorSeleccionado, 1)},
-                            0 0 30px ${colorConAlpha(colorSeleccionado, 0.6)};
-                filter: brightness(1.3);
+                opacity: ${lowPowerMode ? 0.75 : 1};
+                box-shadow: ${lowPowerMode
+                    ? `0 0 8px ${colorConAlpha(colorSeleccionado, 0.55)}`
+                    : `0 0 15px ${colorConAlpha(colorSeleccionado, 1)}, 0 0 30px ${colorConAlpha(colorSeleccionado, 0.6)}`};
             `;
             mainTicket.appendChild(particle);
         }
@@ -2795,28 +2796,29 @@ function crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, origen = '
         const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
         
         // Duración adaptiva pero SIEMPRE VISIBLE
-        let baseDuration = 800;
-        if (origen === 'suerte') baseDuration = 1100;
-        if (origen === 'fallback') baseDuration = 950;
+        let baseDuration = lowPowerMode ? 380 : 800;
+        if (origen === 'suerte') baseDuration = lowPowerMode ? 440 : 1100;
+        if (origen === 'fallback') baseDuration = lowPowerMode ? 420 : 950;
         
-        // Mínimo 900ms para toda animación, máximo 2000ms
-        const duration = Math.max(900, Math.min(2000, baseDuration + distance * 0.25));
-        
-        console.log(`🎬 Animación: origen=(${startX.toFixed(0)}, ${startY.toFixed(0)}) → carrito=(${carritoRect.left.toFixed(0)}, ${carritoRect.top.toFixed(0)}), dist=${distance.toFixed(0)}px, dur=${duration}ms, src=${origen}`);
+        const duration = lowPowerMode
+            ? Math.max(320, Math.min(560, baseDuration + distance * 0.08))
+            : Math.max(720, Math.min(1400, baseDuration + distance * 0.18));
         
         // ✨ Crear animación suave y CONFIABLE
         requestAnimationFrame(() => {
-            mainTicket.style.transition = `all ${duration}ms cubic-bezier(0.16, 1, 0.3, 1)`;
-            mainTicket.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(0.1) rotate(720deg)`;
+            mainTicket.style.transition = `transform ${duration}ms cubic-bezier(0.16, 1, 0.3, 1), opacity ${duration}ms ease-out`;
+            mainTicket.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(${lowPowerMode ? 0.18 : 0.1}) rotate(${lowPowerMode ? 300 : 720}deg)`;
             mainTicket.style.opacity = '0';
             
-            // Animar partículas con más dramatismo
+            // Animar partículas de forma más ligera
             const particles = mainTicket.querySelectorAll('div:not(:first-child)');
             particles.forEach((p, i) => {
-                p.style.transition = `all ${duration}ms ease-out`;
+                p.style.transition = `transform ${duration}ms ease-out, opacity ${duration}ms ease-out`;
                 p.style.opacity = '0';
                 const angle = (i / particles.length) * Math.PI * 2;
-                const finalDistance = Math.random() * 300 + 150;
+                const finalDistance = lowPowerMode
+                    ? (Math.random() * 55 + 55)
+                    : (Math.random() * 180 + 120);
                 p.style.transform = `translate(calc(-50% + ${Math.cos(angle) * finalDistance}px), calc(-50% + ${Math.sin(angle) * finalDistance}px)) scale(0)`;
             });
         });

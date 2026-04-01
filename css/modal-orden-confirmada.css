@@ -14,6 +14,7 @@
     justify-content: center;
     z-index: 10000;
     animation: fadeIn 0.3s ease;
+    overscroll-behavior: contain;
 }
 
 .modal-contenido-orden-confirmada {
@@ -29,6 +30,8 @@
     flex-direction: column;
     overflow: hidden;
     border: 1px solid rgba(23, 26, 32, 0.08);
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
 }
 
 .modal-header-confirmada {
@@ -88,9 +91,11 @@
 
 .modal-body-confirmada {
     flex: 1;
-    overflow: visible;
+    overflow-y: auto;
     max-height: none;
     text-align: left;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
 }
 
 .resumen-hero-confirmada {

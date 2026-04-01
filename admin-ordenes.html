@@ -20,6 +20,7 @@
     <script src="js/config-sync.js"></script>
     <script src="js/theme-dynamic.js"></script>
     <script src="js/admin-layout.js?v=20251228.15"></script>
+    <script src="js/modal-scroll-lock.js"></script>
     <style>
         :root {
             --primary: #7C3AED;
@@ -2701,31 +2702,18 @@ ${window.location.origin}/mis-boletos.html
         }
 
         function normalizarTotalesOrdenAdmin(orden) {
-            const subtotalBase = Number(
-                orden?.subtotal
-                ?? orden?.totales?.subtotal
-                ?? 0
-            );
-            const totalBase = Number(
-                orden?.total
-                ?? orden?.totalFinal
-                ?? orden?.totales?.totalFinal
-                ?? orden?.totales?.total
-                ?? 0
-            );
-            const descuentoBase = Number(
-                orden?.descuento
-                ?? orden?.descuentoMonto
-                ?? orden?.totales?.descuento
-                ?? orden?.totales?.descuentoMonto
-                ?? 0
-            );
+            const subtotalSource = orden?.subtotal ?? orden?.totales?.subtotal;
+            const totalSource = orden?.total ?? orden?.totalFinal ?? orden?.totales?.totalFinal ?? orden?.totales?.total;
+            const descuentoSource = orden?.descuento ?? orden?.descuentoMonto ?? orden?.totales?.descuento ?? orden?.totales?.descuentoMonto;
+            const subtotalBase = Number(subtotalSource ?? 0);
+            const totalBase = Number(totalSource ?? 0);
+            const descuentoBase = Number(descuentoSource ?? 0);
 
             const subtotal = subtotalBase > 0 ? subtotalBase : 0;
             const descuento = descuentoBase > 0
                 ? descuentoBase
                 : (subtotal > 0 && totalBase >= 0 ? Math.max(0, subtotal - totalBase) : 0);
-            const total = totalBase > 0
+            const total = totalSource !== null && totalSource !== undefined
                 ? totalBase
                 : Math.max(0, subtotal - descuento);
             const tieneDescuento = descuento > 0;

@@ -399,11 +399,14 @@ function renderizarOrdenFormal(orden) {
     const oportunidadesHtml = boletosOcultosHtml;
     
     // Totales normalizados para que siempre reflejen el cálculo real
-    const subtotal = Number(orden.totales?.subtotal || 0);
-    const totalBase = Number(orden.totales?.totalFinal ?? orden.totales?.total ?? 0);
-    const descuentoBase = Number(orden.totales?.descuento ?? orden.totales?.descuentoMonto ?? 0);
+    const subtotalSource = orden.totales?.subtotal;
+    const totalSource = orden.totales?.totalFinal ?? orden.totales?.total;
+    const descuentoSource = orden.totales?.descuento ?? orden.totales?.descuentoMonto;
+    const subtotal = Number(subtotalSource ?? 0);
+    const totalBase = Number(totalSource ?? 0);
+    const descuentoBase = Number(descuentoSource ?? 0);
     const descuento = descuentoBase > 0 ? descuentoBase : Math.max(0, subtotal - totalBase);
-    const total = totalBase > 0 ? totalBase : Math.max(0, subtotal - descuento);
+    const total = totalSource !== null && totalSource !== undefined ? totalBase : Math.max(0, subtotal - descuento);
 
     const html = `
         <div class="orden-documento" id="documentoPDF">
@@ -806,8 +809,10 @@ async function guardarOrden() {
         }
 
         // VALIDACIÓN 5: Datos monetarios
-        const subtotal = parseFloat(ordenActual.totales?.subtotal) || parseFloat(ordenActual.totales?.total) || 0;
-        const totalFinal = parseFloat(ordenActual.totales?.totalFinal) || parseFloat(ordenActual.totales?.total) || 0;
+        const subtotalSource = ordenActual.totales?.subtotal ?? ordenActual.totales?.total;
+        const totalFinalSource = ordenActual.totales?.totalFinal ?? ordenActual.totales?.total;
+        const subtotal = Number(subtotalSource ?? 0);
+        const totalFinal = Number(totalFinalSource ?? 0);
 
         if (subtotal <= 0) {
             throw new Error('El subtotal debe ser mayor a 0');

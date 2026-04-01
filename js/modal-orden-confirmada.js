@@ -37,21 +37,16 @@ function mostrarModalOrdenConfirmada(datosOrden) {
         const whatsapp = safe(datosOrden.cliente?.whatsapp);
         const boletos = safe(datosOrden.cantidad_boletos, '0');
         const oportunidades = safe(datosOrden.oportunidades, '0');
-        const subtotalRaw = Number(datosOrden.totales?.subtotal || 0);
-        const totalRawBase = Number(
-            datosOrden.totales?.totalFinal
-            ?? datosOrden.totales?.total
-            ?? 0
-        );
-        const descuentoRawBase = Number(
-            datosOrden.totales?.descuento
-            ?? datosOrden.totales?.descuentoMonto
-            ?? 0
-        );
+        const subtotalSource = datosOrden.totales?.subtotal;
+        const totalSource = datosOrden.totales?.totalFinal ?? datosOrden.totales?.total;
+        const descuentoSource = datosOrden.totales?.descuento ?? datosOrden.totales?.descuentoMonto;
+        const subtotalRaw = Number(subtotalSource ?? 0);
+        const totalRawBase = Number(totalSource ?? 0);
+        const descuentoRawBase = Number(descuentoSource ?? 0);
         const descuentoRaw = descuentoRawBase > 0
             ? descuentoRawBase
             : Math.max(0, subtotalRaw - totalRawBase);
-        const totalRaw = totalRawBase > 0
+        const totalRaw = totalSource !== null && totalSource !== undefined
             ? totalRawBase
             : Math.max(0, subtotalRaw - descuentoRaw);
 

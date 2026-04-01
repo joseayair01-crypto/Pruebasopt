@@ -13,6 +13,7 @@
     z-index: 2000;
     padding: 1rem;
     backdrop-filter: blur(4px);
+    overscroll-behavior: contain;
 }
 
 .modal-overlay.show {
@@ -42,6 +43,8 @@
     max-height: 90vh;
     overflow-y: auto;
     border: 1px solid rgba(15, 23, 42, 0.08);
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
 }
 
 @keyframes slideUp {
