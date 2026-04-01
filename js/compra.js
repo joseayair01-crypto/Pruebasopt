@@ -17,17 +17,21 @@
 function obtenerPrecioDinamico() {
     const cfg = window.rifaplusConfig || {};
     const ahora = new Date();
+    const estaActiva = typeof window.rifaplusConfig?.esFechaPromocionActiva === 'function'
+        ? window.rifaplusConfig.esFechaPromocionActiva
+        : ((inicio, fin, ahoraActual) => {
+            const inicioFecha = new Date(inicio);
+            const finFecha = new Date(fin);
+            return ahoraActual >= inicioFecha && ahoraActual <= finFecha;
+        });
     
     // Verificar si hay promoción por tiempo activa
     const promo = cfg.rifa?.promocionPorTiempo;
-    if (promo && promo.enabled && promo.precioProvisional) {
-        const inicio = new Date(promo.fechaInicio);
-        const fin = new Date(promo.fechaFin);
-        
-        // Si estamos dentro del rango de permitidas, usar precio provisional
-        if (ahora >= inicio && ahora <= fin) {
+    if (promo && promo.enabled && promo.precioProvisional !== null && promo.precioProvisional !== undefined) {
+        // Si estamos dentro del rango permitido, usar precio provisional
+        if (estaActiva(promo.fechaInicio, promo.fechaFin, ahora)) {
             const precioProvisional = Number(promo.precioProvisional);
-            if (!Number.isNaN(precioProvisional) && isFinite(precioProvisional) && precioProvisional > 0) {
+            if (!Number.isNaN(precioProvisional) && isFinite(precioProvisional) && precioProvisional >= 0) {
                 console.log(`💰 [Promoción Activa] Usando precio provisional: $${precioProvisional.toFixed(2)}`);
                 return precioProvisional;
             }

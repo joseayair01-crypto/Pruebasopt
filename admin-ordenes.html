@@ -2669,8 +2669,12 @@ ${window.location.origin}/mis-boletos.html
             if (promoTiempo && promoTiempo.enabled && orden.created_at) {
                 try {
                     const ordenTime = new Date(orden.created_at).getTime();
-                    const inicioTime = new Date(promoTiempo.fechaInicio).getTime();
-                    const finTime = new Date(promoTiempo.fechaFin).getTime();
+                    const inicioTime = window.rifaplusConfig?.parseFechaPromocion
+                        ? window.rifaplusConfig.parseFechaPromocion(promoTiempo.fechaInicio)?.getTime()
+                        : new Date(promoTiempo.fechaInicio).getTime();
+                    const finTime = window.rifaplusConfig?.parseFechaPromocion
+                        ? window.rifaplusConfig.parseFechaPromocion(promoTiempo.fechaFin)?.getTime()
+                        : new Date(promoTiempo.fechaFin).getTime();
                     
                     // Si la orden se creó dentro del rango de promoción
                     if (ordenTime >= inicioTime && ordenTime <= finTime) {
@@ -2686,8 +2690,12 @@ ${window.location.origin}/mis-boletos.html
             if (descuentoPorcentaje && descuentoPorcentaje.enabled && orden.created_at) {
                 try {
                     const ordenTime = new Date(orden.created_at).getTime();
-                    const inicioTime = new Date(descuentoPorcentaje.fechaInicio).getTime();
-                    const finTime = new Date(descuentoPorcentaje.fechaFin).getTime();
+                    const inicioTime = window.rifaplusConfig?.parseFechaPromocion
+                        ? window.rifaplusConfig.parseFechaPromocion(descuentoPorcentaje.fechaInicio)?.getTime()
+                        : new Date(descuentoPorcentaje.fechaInicio).getTime();
+                    const finTime = window.rifaplusConfig?.parseFechaPromocion
+                        ? window.rifaplusConfig.parseFechaPromocion(descuentoPorcentaje.fechaFin)?.getTime()
+                        : new Date(descuentoPorcentaje.fechaFin).getTime();
                     
                     // Si la orden se creó dentro del rango de descuento
                     if (ordenTime >= inicioTime && ordenTime <= finTime) {

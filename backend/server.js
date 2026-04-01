@@ -109,14 +109,14 @@ function obtenerPrecioDinamico() {
             
             // Verificar si hay promoción por tiempo activa
             const promo = config.rifa?.promocionPorTiempo;
-            if (promo && promo.enabled && promo.precioProvisional && promo.precioProvisional > 0) {
-                const inicio = new Date(promo.fechaInicio);
-                const fin = new Date(promo.fechaFin);
+            if (promo && promo.enabled && promo.precioProvisional !== null && promo.precioProvisional !== undefined) {
+                const inicio = promo.fechaInicio ? new Date(/(?:Z|[+-]\d{2}:\d{2})$/i.test(String(promo.fechaInicio)) ? promo.fechaInicio : `${promo.fechaInicio}-06:00`) : null;
+                const fin = promo.fechaFin ? new Date(/(?:Z|[+-]\d{2}:\d{2})$/i.test(String(promo.fechaFin)) ? promo.fechaFin : `${promo.fechaFin}-06:00`) : null;
                 
                 // Si estamos dentro del rango de promoción, usar precio provisional
-                if (ahora >= inicio && ahora <= fin) {
+                if (inicio && fin && ahora >= inicio && ahora <= fin) {
                     const precioProvisional = Number(promo.precioProvisional);
-                    if (precioProvisional > 0 && Number.isFinite(precioProvisional)) {
+                    if (precioProvisional >= 0 && Number.isFinite(precioProvisional)) {
                         console.log(`💰 [Promoción Activa] Usando precio provisional: $${precioProvisional.toFixed(2)}`);
                         return precioProvisional;
                     }
@@ -3302,10 +3302,10 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                     numero_orden: resultado.ordenExistente.numero_orden,
                     cantidad_boletos: resultado.ordenExistente.cantidad_boletos,
                     totales: {
-                        precioUnitario: parseFloat(resultado.ordenExistente.precio_unitario) || 0,
-                        subtotal: parseFloat(resultado.ordenExistente.subtotal) || 0,
-                        descuento: parseFloat(resultado.ordenExistente.descuento) || 0,
-                        totalFinal: parseFloat(resultado.ordenExistente.total) || 0
+                        precioUnitario: Number(resultado.ordenExistente.precio_unitario ?? 0),
+                        subtotal: Number(resultado.ordenExistente.subtotal ?? 0),
+                        descuento: Number(resultado.ordenExistente.descuento ?? 0),
+                        totalFinal: Number(resultado.ordenExistente.total ?? 0)
                     },
                     estado: resultado.ordenExistente.estado
                 }
@@ -4020,12 +4020,12 @@ app.get('/api/public/ordenes-cliente', async (req, res) => {
                 whatsapp: orden.telefono_cliente || '',
                 telefono_cliente: orden.telefono_cliente || '',
                 cantidad_boletos: orden.cantidad_boletos || 0,
-                precio_unitario: parseFloat(orden.precio_unitario) || 0,
-                subtotal: parseFloat(orden.subtotal) || 0,
-                descuento: parseFloat(orden.descuento) || 0,
+                precio_unitario: Number(orden.precio_unitario ?? 0),
+                subtotal: Number(orden.subtotal ?? 0),
+                descuento: Number(orden.descuento ?? 0),
                 boletos: boletosParsados,
                 oportunidades: oportunidades,
-                total: parseFloat(orden.total) || 0,
+                total: Number(orden.total ?? 0),
                 tipo_pago: orden.metodo_pago || 'No especificado',
                 metodo_pago: orden.metodo_pago || 'No especificado',
                 estado: orden.estado || 'pendiente',

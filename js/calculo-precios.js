@@ -17,14 +17,18 @@ function obtenerPrecioBoleto() {
     let precioFinal = precioNormal;
     let mejorDescuento = 0;
     let tipoDescuento = null;
+    const estaActiva = typeof window.rifaplusConfig?.esFechaPromocionActiva === 'function'
+        ? window.rifaplusConfig.esFechaPromocionActiva
+        : ((inicio, fin, ahoraActual) => {
+            const inicioFecha = new Date(inicio);
+            const finFecha = new Date(fin);
+            return ahoraActual >= inicioFecha && ahoraActual <= finFecha;
+        });
     
     // Verificar descuento por porcentaje
     const descPorcentaje = window.rifaplusConfig?.rifa?.descuentoPorcentaje;
     if (descPorcentaje && descPorcentaje.enabled && descPorcentaje.porcentaje) {
-        const inicio = new Date(descPorcentaje.fechaInicio);
-        const fin = new Date(descPorcentaje.fechaFin);
-        
-        if (ahora >= inicio && ahora <= fin) {
+        if (estaActiva(descPorcentaje.fechaInicio, descPorcentaje.fechaFin, ahora)) {
             const porcentaje = Number(descPorcentaje.porcentaje);
             if (!Number.isNaN(porcentaje) && isFinite(porcentaje) && porcentaje > 0) {
                 const descuento = (precioNormal * porcentaje) / 100;
@@ -39,13 +43,10 @@ function obtenerPrecioBoleto() {
     
     // Verificar si hay promoción por tiempo activa
     const promo = window.rifaplusConfig?.rifa?.promocionPorTiempo;
-    if (promo && promo.enabled && promo.precioProvisional) {
-        const inicio = new Date(promo.fechaInicio);
-        const fin = new Date(promo.fechaFin);
-        
-        if (ahora >= inicio && ahora <= fin) {
+    if (promo && promo.enabled && promo.precioProvisional !== null && promo.precioProvisional !== undefined) {
+        if (estaActiva(promo.fechaInicio, promo.fechaFin, ahora)) {
             const precioProvisional = Number(promo.precioProvisional);
-            if (!Number.isNaN(precioProvisional) && isFinite(precioProvisional) && precioProvisional > 0) {
+            if (!Number.isNaN(precioProvisional) && isFinite(precioProvisional) && precioProvisional >= 0) {
                 const descuento = precioNormal - precioProvisional;
                 if (descuento > mejorDescuento) {
                     mejorDescuento = descuento;
@@ -95,14 +96,18 @@ function calcularTotalConPromociones(cantidad, precioBoleto = null) {
     let precioUnitarioFinal = precioNormal;
     let tipoDescuento = null;
     let mejorDescuento = 0;
+    const estaActiva = typeof window.rifaplusConfig?.esFechaPromocionActiva === 'function'
+        ? window.rifaplusConfig.esFechaPromocionActiva
+        : ((inicio, fin, ahoraActual) => {
+            const inicioFecha = new Date(inicio);
+            const finFecha = new Date(fin);
+            return ahoraActual >= inicioFecha && ahoraActual <= finFecha;
+        });
     
     // Verificar descuento por porcentaje
     const descPorcentaje = window.rifaplusConfig?.rifa?.descuentoPorcentaje;
     if (descPorcentaje && descPorcentaje.enabled && descPorcentaje.porcentaje) {
-        const inicio = new Date(descPorcentaje.fechaInicio);
-        const fin = new Date(descPorcentaje.fechaFin);
-        
-        if (ahora >= inicio && ahora <= fin) {
+        if (estaActiva(descPorcentaje.fechaInicio, descPorcentaje.fechaFin, ahora)) {
             const porcentaje = Number(descPorcentaje.porcentaje);
             if (!Number.isNaN(porcentaje) && isFinite(porcentaje) && porcentaje > 0) {
                 const descuento = (precioNormal * porcentaje) / 100;
@@ -119,13 +124,10 @@ function calcularTotalConPromociones(cantidad, precioBoleto = null) {
     
     // Verificar si hay promoción por tiempo activa
     const promo = window.rifaplusConfig?.rifa?.promocionPorTiempo;
-    if (promo && promo.enabled && promo.precioProvisional) {
-        const inicio = new Date(promo.fechaInicio);
-        const fin = new Date(promo.fechaFin);
-        
-        if (ahora >= inicio && ahora <= fin) {
+    if (promo && promo.enabled && promo.precioProvisional !== null && promo.precioProvisional !== undefined) {
+        if (estaActiva(promo.fechaInicio, promo.fechaFin, ahora)) {
             const precioProvisional = Number(promo.precioProvisional);
-            if (!Number.isNaN(precioProvisional) && isFinite(precioProvisional) && precioProvisional > 0) {
+            if (!Number.isNaN(precioProvisional) && isFinite(precioProvisional) && precioProvisional >= 0) {
                 const descuento = precioNormal - precioProvisional;
                 if (descuento > mejorDescuento) {
                     mejorDescuento = descuento;

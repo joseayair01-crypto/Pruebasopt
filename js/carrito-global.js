@@ -293,19 +293,23 @@ function obtenerPrecioDinamicoCarrito() {
     const cfg = window.rifaplusConfig || {};
     const ahora = new Date();
     const precioBase = Number(cfg?.rifa?.precioBoleto);
+    const estaActiva = typeof window.rifaplusConfig?.esFechaPromocionActiva === 'function'
+        ? window.rifaplusConfig.esFechaPromocionActiva
+        : ((inicio, fin, ahoraActual) => {
+            const inicioFecha = new Date(inicio);
+            const finFecha = new Date(fin);
+            return ahoraActual >= inicioFecha && ahoraActual <= finFecha;
+        });
 
     const promo = cfg?.rifa?.promocionPorTiempo;
-    if (promo && promo.enabled && promo.precioProvisional) {
-        const inicio = new Date(promo.fechaInicio);
-        const fin = new Date(promo.fechaFin);
+    if (promo && promo.enabled && promo.precioProvisional !== null && promo.precioProvisional !== undefined) {
         const precioPromo = Number(promo.precioProvisional);
 
         if (
-            ahora >= inicio &&
-            ahora <= fin &&
+            estaActiva(promo.fechaInicio, promo.fechaFin, ahora) &&
             !Number.isNaN(precioPromo) &&
             Number.isFinite(precioPromo) &&
-            precioPromo > 0
+            precioPromo >= 0
         ) {
             return precioPromo;
         }

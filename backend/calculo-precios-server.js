@@ -11,13 +11,68 @@ function redondearMoneda(valor) {
     return Math.round((Number(valor) || 0) * 100) / 100;
 }
 
+const RIFAPLUS_PROMO_TIMEZONE = 'America/Mexico_City';
+
+function obtenerOffsetMinutosEnZona(fecha, timeZone = RIFAPLUS_PROMO_TIMEZONE) {
+    try {
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone,
+            timeZoneName: 'shortOffset',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        const offsetPart = formatter.formatToParts(fecha).find((part) => part.type === 'timeZoneName')?.value || 'GMT-6';
+        const match = offsetPart.match(/GMT([+-])(\d{1,2})(?::?(\d{2}))?/i);
+        if (!match) return -360;
+
+        const sign = match[1] === '-' ? -1 : 1;
+        const hours = Number(match[2] || 0);
+        const minutes = Number(match[3] || 0);
+        return sign * ((hours * 60) + minutes);
+    } catch (error) {
+        return -360;
+    }
+}
+
+function parseFechaPromocion(valor, timeZone = RIFAPLUS_PROMO_TIMEZONE) {
+    if (!valor) return null;
+    if (valor instanceof Date) return Number.isNaN(valor.getTime()) ? null : valor;
+
+    const texto = String(valor).trim();
+    if (!texto) return null;
+
+    if (/(?:Z|[+-]\d{2}:\d{2})$/i.test(texto)) {
+        const fechaConZona = new Date(texto);
+        return Number.isNaN(fechaConZona.getTime()) ? null : fechaConZona;
+    }
+
+    const match = texto.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
+    if (!match) {
+        const fecha = new Date(texto);
+        return Number.isNaN(fecha.getTime()) ? null : fecha;
+    }
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const hour = Number(match[4]);
+    const minute = Number(match[5]);
+    const second = Number(match[6] || 0);
+
+    const utcTentativo = Date.UTC(year, month - 1, day, hour, minute, second);
+    const offsetMinutos = obtenerOffsetMinutosEnZona(new Date(utcTentativo), timeZone);
+    const fecha = new Date(utcTentativo - (offsetMinutos * 60 * 1000));
+
+    return Number.isNaN(fecha.getTime()) ? null : fecha;
+}
+
 function esFechaActiva(fechaInicio, fechaFin, ahora = new Date()) {
     if (!fechaInicio || !fechaFin) return false;
 
-    const inicio = new Date(fechaInicio);
-    const fin = new Date(fechaFin);
+    const inicio = parseFechaPromocion(fechaInicio);
+    const fin = parseFechaPromocion(fechaFin);
 
-    if (Number.isNaN(inicio.getTime()) || Number.isNaN(fin.getTime())) {
+    if (!inicio || !fin || Number.isNaN(inicio.getTime()) || Number.isNaN(fin.getTime())) {
         return false;
     }
 
@@ -58,11 +113,12 @@ function obtenerPrecioUnitarioVigente(config = {}, ahora = new Date()) {
     const promoTiempo = rifa.promocionPorTiempo;
     if (
         promoTiempo?.enabled &&
-        promoTiempo?.precioProvisional &&
+        promoTiempo?.precioProvisional !== null &&
+        promoTiempo?.precioProvisional !== undefined &&
         esFechaActiva(promoTiempo.fechaInicio, promoTiempo.fechaFin, ahora)
     ) {
         const precioPromo = Number(promoTiempo.precioProvisional);
-        if (!Number.isNaN(precioPromo) && Number.isFinite(precioPromo) && precioPromo > 0) {
+        if (!Number.isNaN(precioPromo) && Number.isFinite(precioPromo) && precioPromo >= 0) {
             const descuento = precioNormal - precioPromo;
             if (descuento > mejorDescuento) {
                 mejorDescuento = descuento;
