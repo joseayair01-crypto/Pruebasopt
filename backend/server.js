@@ -858,7 +858,159 @@ function obtenerUrlBasePublica(req, fallbackUrlBase = '') {
         return `${protocol}://${host}`.replace(/\/+$/, '');
     }
 
-    return 'https://rifas-web.vercel.app';
+    const envPublicBase = String(
+        process.env.PUBLIC_BASE_URL
+        || process.env.FRONTEND_URL
+        || String(process.env.CORS_ORIGINS || '').split(',')[0]
+        || ''
+    ).trim();
+
+    if (/^https?:\/\//i.test(envPublicBase)) {
+        return envPublicBase.replace(/\/+$/, '');
+    }
+
+    return 'http://localhost:5001';
+}
+
+function normalizarRutaPublicaSeo(valor = '') {
+    const crudo = String(valor || '').trim();
+    if (!crudo) return '/';
+
+    try {
+        const soloPath = crudo.startsWith('http://') || crudo.startsWith('https://')
+            ? new URL(crudo).pathname
+            : crudo;
+        const base = soloPath.startsWith('/') ? soloPath : `/${soloPath}`;
+        return base.replace(/\/{2,}/g, '/');
+    } catch (error) {
+        const base = crudo.startsWith('/') ? crudo : `/${crudo}`;
+        return base.replace(/\/{2,}/g, '/');
+    }
+}
+
+function resolverAliasRutaSeo(ruta = '/') {
+    const limpia = normalizarRutaPublicaSeo(ruta).toLowerCase();
+
+    if (limpia === '/' || limpia === '/index.html') return 'inicio';
+    if (limpia === '/compra' || limpia === '/compra.html') return 'compra';
+    if (limpia === '/mis-boletos' || limpia === '/mis-boletos.html') return 'mis-boletos';
+    if (limpia === '/mis-boletos-restringido' || limpia === '/mis-boletos-restringido.html') return 'mis-boletos';
+    if (limpia === '/ayuda' || limpia === '/ayuda.html') return 'ayuda';
+    if (limpia === '/cuentas-pago' || limpia === '/cuentas-pago.html') return 'cuentas-pago';
+    if (limpia === '/admin-dashboard' || limpia === '/admin-dashboard.html') return 'admin-dashboard';
+    if (limpia === '/admin-configuracion' || limpia === '/admin-configuracion.html') return 'admin-configuracion';
+    if (limpia === '/admin-ordenes' || limpia === '/admin-ordenes.html') return 'admin-ordenes';
+    if (limpia === '/admin-boletos' || limpia === '/admin-boletos.html') return 'admin-boletos';
+
+    return '';
+}
+
+function construirUrlCanonica(baseUrl, ruta = '/') {
+    const baseNormalizada = String(baseUrl || '').replace(/\/+$/, '');
+    const rutaNormalizada = normalizarRutaPublicaSeo(ruta);
+    if (!baseNormalizada) return rutaNormalizada;
+    if (rutaNormalizada === '/' || rutaNormalizada === '/index.html') return baseNormalizada;
+    return `${baseNormalizada}${rutaNormalizada}`;
+}
+
+function formatearPrecioSeo(precio) {
+    const numero = Number(precio);
+    if (!Number.isFinite(numero)) return '';
+
+    try {
+        return new Intl.NumberFormat('es-MX', {
+            style: 'currency',
+            currency: 'MXN',
+            maximumFractionDigits: numero % 1 === 0 ? 0 : 2
+        }).format(numero);
+    } catch (error) {
+        return `$${numero}`;
+    }
+}
+
+function obtenerSeoPaginaConfig(seo = {}, alias = '') {
+    if (!alias || !seo || typeof seo !== 'object') return {};
+    const paginas = seo.paginas || seo.pages || {};
+    const pagina = paginas[alias];
+    return pagina && typeof pagina === 'object' ? pagina : {};
+}
+
+function construirSeoPorRuta(config = {}, ruta = '/', baseUrl = '') {
+    const cliente = config.cliente || {};
+    const rifa = config.rifa || {};
+    const seo = normalizarSeoConfigParaPersistencia(config.seo || {}, config);
+    const alias = resolverAliasRutaSeo(ruta);
+    const paginaSeo = obtenerSeoPaginaConfig(seo, alias);
+    const precioFormateado = formatearPrecioSeo(rifa.precioBoleto);
+    const nombreSorteo = String(rifa.nombreSorteo || '').trim();
+    const nombreCliente = String(cliente.nombre || '').trim();
+    const descripcionRifa = String(rifa.descripcion || '').replace(/\s+/g, ' ').trim();
+    const tituloBase = seo.title || seo.titulo || nombreSorteo || nombreCliente || 'Sorteos';
+    const descripcionBase = seo.description || seo.descripcion || descripcionRifa || `Participa en ${nombreSorteo || 'nuestro sorteo'}.`;
+    const tituloCliente = [nombreSorteo, nombreCliente].filter(Boolean).join(' | ') || tituloBase;
+    const canonical = construirUrlCanonica(baseUrl, ruta);
+
+    const definiciones = {
+        inicio: {
+            title: tituloBase,
+            description: descripcionBase
+        },
+        compra: {
+            title: nombreSorteo
+                ? `Compra tus boletos para ${nombreSorteo}${nombreCliente ? ` | ${nombreCliente}` : ''}`
+                : `Compra tus boletos${nombreCliente ? ` | ${nombreCliente}` : ''}`,
+            description: [
+                nombreSorteo ? `Elige tus boletos para ${nombreSorteo}.` : 'Elige tus boletos para el sorteo activo.',
+                precioFormateado ? `Precio por boleto: ${precioFormateado}.` : '',
+                descripcionRifa
+            ].filter(Boolean).join(' ')
+        },
+        'mis-boletos': {
+            title: `Consulta tus boletos${nombreCliente ? ` | ${nombreCliente}` : ''}`,
+            description: nombreSorteo
+                ? `Revisa el estado de tus boletos para ${nombreSorteo}, tu orden y el avance de validacion de pago.`
+                : 'Revisa el estado de tus boletos, tu orden y el avance de validacion de pago.'
+        },
+        ayuda: {
+            title: `Ayuda y preguntas frecuentes${nombreCliente ? ` | ${nombreCliente}` : ''}`,
+            description: nombreSorteo
+                ? `Resuelve dudas sobre ${nombreSorteo}, pagos, validaciones y dinamica del sorteo.`
+                : 'Resuelve dudas sobre pagos, validaciones y dinamica del sorteo.'
+        },
+        'cuentas-pago': {
+            title: `Cuentas y medios de pago${nombreCliente ? ` | ${nombreCliente}` : ''}`,
+            description: nombreSorteo
+                ? `Consulta las cuentas oficiales y medios de pago para participar en ${nombreSorteo}.`
+                : 'Consulta las cuentas oficiales y medios de pago del sorteo activo.'
+        },
+        'admin-dashboard': {
+            title: `Panel administrativo${nombreCliente ? ` | ${nombreCliente}` : ''}`,
+            description: `Panel de control del sorteo${nombreSorteo ? ` ${nombreSorteo}` : ''}.`
+        },
+        'admin-configuracion': {
+            title: `Configuracion administrativa${nombreCliente ? ` | ${nombreCliente}` : ''}`,
+            description: `Configuracion general del sorteo${nombreSorteo ? ` ${nombreSorteo}` : ''}.`
+        },
+        'admin-ordenes': {
+            title: `Ordenes y comprobantes${nombreCliente ? ` | ${nombreCliente}` : ''}`,
+            description: `Gestion administrativa de ordenes${nombreSorteo ? ` para ${nombreSorteo}` : ''}.`
+        },
+        'admin-boletos': {
+            title: `Control de boletos${nombreCliente ? ` | ${nombreCliente}` : ''}`,
+            description: `Gestion administrativa de boletos${nombreSorteo ? ` para ${nombreSorteo}` : ''}.`
+        }
+    };
+
+    const pagina = definiciones[alias] || {
+        title: tituloCliente,
+        description: descripcionBase
+    };
+
+    return {
+        title: paginaSeo.title || paginaSeo.titulo || pagina.title,
+        description: paginaSeo.description || paginaSeo.descripcion || pagina.description,
+        canonical
+    };
 }
 
 function resolverUrlPublica(valor, baseUrl) {
@@ -1097,17 +1249,25 @@ function normalizarSeoConfigParaPersistencia(seo = {}, configActual = {}) {
     };
 }
 
-function construirMetadatosSeo(config = {}, req) {
+function construirMetadatosSeo(config = {}, req, routePath = '', publicBase = '') {
     const cliente = config.cliente || {};
     const rifa = config.rifa || {};
     const seo = normalizarSeoConfigParaPersistencia(config.seo || {}, config);
     const tema = normalizarTemaConfig(config.tema || {});
-    const urlBase = obtenerUrlBasePublica(req, seo.urlBase);
-    const titulo = seo.title || seo.titulo;
-    const descripcion = seo.description || seo.descripcion;
-    const og = seo.openGraph || {};
-    const twitter = seo.twitter || {};
-    const imagen = resolverUrlPublica(seo.image || seo.imagen, urlBase);
+    const urlBase = obtenerUrlBasePublica(req, publicBase || seo.urlBase);
+    const rutaObjetivo = routePath || req?.query?.path || req?.path || '/';
+    const aliasRuta = resolverAliasRutaSeo(rutaObjetivo);
+    const seoPaginaConfig = obtenerSeoPaginaConfig(seo, aliasRuta);
+    const seoPagina = construirSeoPorRuta(config, rutaObjetivo, urlBase);
+    const titulo = seoPagina.title || seo.title || seo.titulo;
+    const descripcion = seoPagina.description || seo.description || seo.descripcion;
+    const ogGlobal = seo.openGraph || {};
+    const twitterGlobal = seo.twitter || {};
+    const ogPagina = seoPaginaConfig.openGraph || seoPaginaConfig.og || {};
+    const twitterPagina = seoPaginaConfig.twitter || {};
+    const usarOverrideGlobalParaRutaBase = !aliasRuta || aliasRuta === 'inicio';
+    const imagenBase = seoPaginaConfig.image || seoPaginaConfig.imagen || seo.image || seo.imagen;
+    const imagen = resolverUrlPublica(imagenBase, urlBase);
 
     return {
         title: titulo,
@@ -1115,22 +1275,22 @@ function construirMetadatosSeo(config = {}, req) {
         keywords: seo.keywords || seo.palabrasLlave || `sorteo, rifa, ${rifa.nombreSorteo || ''}, ${cliente.nombre || 'Sorteos'}`,
         author: seo.author || seo.autor || cliente.nombre || 'Sorteos',
         og: {
-            title: og.titulo || titulo,
-            description: og.descripcion || descripcion,
-            image: resolverUrlPublica(og.imagen || imagen, urlBase),
-            url: urlBase,
-            type: og.tipo || 'website',
-            locale: og.locale || 'es_MX',
+            title: ogPagina.titulo || (usarOverrideGlobalParaRutaBase ? ogGlobal.titulo : '') || titulo,
+            description: ogPagina.descripcion || (usarOverrideGlobalParaRutaBase ? ogGlobal.descripcion : '') || descripcion,
+            image: resolverUrlPublica(ogPagina.imagen || (usarOverrideGlobalParaRutaBase ? ogGlobal.imagen : '') || imagen, urlBase),
+            url: seoPagina.canonical || urlBase,
+            type: ogPagina.tipo || ogGlobal.tipo || 'website',
+            locale: ogPagina.locale || ogGlobal.locale || 'es_MX',
             site_name: cliente.nombre || 'Sorteos'
         },
         twitter: {
-            card: twitter.card || 'summary_large_image',
-            title: twitter.titulo || titulo,
-            description: twitter.descripcion || descripcion,
-            image: resolverUrlPublica(twitter.imagen || imagen, urlBase),
-            creator: twitter.creador || cliente.redesSociales?.twitter || ''
+            card: twitterPagina.card || twitterGlobal.card || 'summary_large_image',
+            title: twitterPagina.titulo || (usarOverrideGlobalParaRutaBase ? twitterGlobal.titulo : '') || titulo,
+            description: twitterPagina.descripcion || (usarOverrideGlobalParaRutaBase ? twitterGlobal.descripcion : '') || descripcion,
+            image: resolverUrlPublica(twitterPagina.imagen || (usarOverrideGlobalParaRutaBase ? twitterGlobal.imagen : '') || imagen, urlBase),
+            creator: twitterPagina.creador || twitterGlobal.creador || cliente.redesSociales?.twitter || ''
         },
-        canonical: urlBase,
+        canonical: seoPagina.canonical || urlBase,
         robots: 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
         themeColor: tema.colorPrimario || tema.colores?.colorPrimario || '#1877F2'
     };
@@ -1149,7 +1309,7 @@ function escaparHtmlAttr(valor) {
 app.get('/og', (req, res) => {
     try {
         const config = obtenerConfigActual();
-        const metadatos = construirMetadatosSeo(config, req);
+        const metadatos = construirMetadatosSeo(config, req, req.query.path, req.query.publicBase);
 
         const metaTags = `
 <meta property="og:title" content="${escaparHtmlAttr(metadatos.og.title)}" />
@@ -1918,7 +2078,7 @@ app.get('/api/og-metadata', (req, res) => {
             });
         }
 
-        const metadatosConstruidos = construirMetadatosSeo(config, req);
+        const metadatosConstruidos = construirMetadatosSeo(config, req, req.query.path, req.query.publicBase);
 
         const metadatos = {
             success: true,

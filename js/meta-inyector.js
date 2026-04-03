@@ -22,11 +22,6 @@
 (function InyectorMetadat() {
     'use strict';
 
-    function esClienteHumano() {
-        const userAgent = navigator.userAgent.toLowerCase();
-        return !/facebookexternalhit|twitterbot|whatsapp|linkedinbot|slurp|googlebot|slackbot|discordbot/i.test(userAgent);
-    }
-
     function resolverBaseUrl(config) {
         const desdeConfig = config?.seo?.urlBase || config?.backend?.apiBase || window.location.origin;
         return String(desdeConfig || window.location.origin).replace(/\/api\/?$/, '').replace(/\/+$/, '');
@@ -170,9 +165,13 @@
         for (const apiBase of basesUnicas) {
             try {
                 const url = `${String(apiBase).replace(/\/+$/, '')}/api/og-metadata`;
-                console.debug(`🔗 [Meta-Inyector] Intentando cargar desde: ${url}`);
+                const params = new URLSearchParams({
+                    path: window.location.pathname || '/',
+                    publicBase: window.location.origin
+                });
+                console.debug(`🔗 [Meta-Inyector] Intentando cargar desde: ${url}?${params.toString()}`);
 
-                const response = await fetch(url, {
+                const response = await fetch(`${url}?${params.toString()}`, {
                     method: 'GET',
                     cache: 'no-store'
                 });
@@ -270,12 +269,7 @@
         try {
             console.log('🔄 [Meta-Inyector] Iniciando inyección de metadatos...');
             
-            let metadatosBackend = null;
-            if (!esClienteHumano()) {
-                metadatosBackend = await cargarMetadatosDelBackend();
-            } else {
-                console.log('ℹ️ [Meta-Inyector] Navegador normal detectado: se omite fetch de /api/og-metadata y se usa config sincronizable.');
-            }
+            const metadatosBackend = await cargarMetadatosDelBackend();
             
             // PASO 2: Si falla backend, usar config.js como fallback
             let metadatos;
@@ -283,7 +277,7 @@
                 metadatos = metadatosBackend;
                 console.log('📊 Fuente: BACKEND (/api/og-metadata)');
             } else {
-                console.log('📊 Fuente: CONFIG.JS (fallback)');
+                console.log('📊 Fuente: CONFIG.JS (fallback tras fallo de backend)');
                 const config = await esperarConfig();
                 metadatos = construirMetadatosDesdeConfig(config);
             }
