@@ -90,10 +90,11 @@
             socketScriptUrl: SOCKET_CDN_URL
         },
         production: {
-            // Edita estos valores cuando vuelvas a desplegar.
-            // Si los dejas vacios, el frontend intentara usar su mismo origin.
-            apiBase: '',
-            publicBase: '',
+            // Produccion actual:
+            // Backend: Railway
+            // Frontend: Cloudflare Pages
+            apiBase: 'https://aleahot1-production.up.railway.app',
+            publicBase: 'https://aleahot1.pages.dev',
             socketScriptUrl: SOCKET_CDN_URL
         }
     };
