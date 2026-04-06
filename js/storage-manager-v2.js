@@ -19,6 +19,13 @@
  */
 
 window.StorageMemoryFallback = window.StorageMemoryFallback || {};
+const STORAGE_DEBUG = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+function storageDebug(...args) {
+    if (STORAGE_DEBUG) {
+        console.log(...args);
+    }
+}
 
 /**
  * Datos NO críticos que se pueden limpiar (en orden de prioridad)
@@ -56,7 +63,7 @@ window.safeTrySetItem = function(key, value) {
     // ===== INTENTO 1: Guardar directamente en localStorage =====
     try {
         localStorage.setItem(key, value);
-        console.log(`✅ [Storage] Guardado directo: ${key} (${sizeKB}KB)`);
+        storageDebug(`✅ [Storage] Guardado directo: ${key} (${sizeKB}KB)`);
         return {
             persisted: true,
             location: 'localStorage',
@@ -79,7 +86,7 @@ window.safeTrySetItem = function(key, value) {
                 if (datoExistente) {
                     bytesLiberados += datoExistente.length;
                     localStorage.removeItem(claveABorrar);
-                    console.log(`🗑️  [Storage] Limpiado: ${claveABorrar} (${(datoExistente.length / 1024).toFixed(2)}KB)`);
+                    storageDebug(`🗑️  [Storage] Limpiado: ${claveABorrar} (${(datoExistente.length / 1024).toFixed(2)}KB)`);
                     
                     // Si liberamos suficiente, retentar
                     if (bytesLiberados > value.length * 1.5) {
@@ -94,7 +101,7 @@ window.safeTrySetItem = function(key, value) {
         // Retentar guardar después de limpiar
         try {
             localStorage.setItem(key, value);
-            console.log(`✅ [Storage] Guardado después de limpieza: ${key} (${sizeKB}KB, liberó ${(bytesLiberados / 1024).toFixed(2)}KB)`);
+            storageDebug(`✅ [Storage] Guardado después de limpieza: ${key} (${sizeKB}KB, liberó ${(bytesLiberados / 1024).toFixed(2)}KB)`);
             return {
                 persisted: true,
                 location: 'localStorage',
@@ -233,8 +240,8 @@ window.storageGetStatus = function() {
  * ============================================================
  */
 (function initStorageManager() {
-    console.log(`✅ [Storage] StorageManager v2 inicializado (limpieza progresiva intelligente)`);
-    console.log(`   - Datos críticos protegidos: ${DATOS_CRITICOS.length}`);
-    console.log(`   - Datos limpiables: ${DATOS_LIMPRIABLES.length}`);
-    console.log(`   - Dispone 'window.storageGetStatus()' para diagnóstico`);
+    storageDebug(`✅ [Storage] StorageManager v2 inicializado (limpieza progresiva intelligente)`);
+    storageDebug(`   - Datos críticos protegidos: ${DATOS_CRITICOS.length}`);
+    storageDebug(`   - Datos limpiables: ${DATOS_LIMPRIABLES.length}`);
+    storageDebug(`   - Dispone 'window.storageGetStatus()' para diagnóstico`);
 })();

@@ -116,6 +116,7 @@ const ModalConflictoBoletos = {
             modal.innerHTML = contenido;
             overlay.appendChild(modal);
             document.body.appendChild(overlay);
+            window.rifaplusModalScrollLock?.sync?.();
 
             // Event listeners
             const btns = modal.querySelectorAll('.btn-conflicto');
@@ -124,6 +125,7 @@ const ModalConflictoBoletos = {
                 modal.classList.add('modal-conflicto--closing');
                 setTimeout(() => {
                     overlay.remove();
+                    window.rifaplusModalScrollLock?.sync?.();
                 }, 220);
                 resolve(payload);
             };

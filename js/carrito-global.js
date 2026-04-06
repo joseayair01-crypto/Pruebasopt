@@ -240,6 +240,7 @@ function inicializarCarritoGlobal() {
         }
         
         carritoModal.classList.add('active');
+        window.rifaplusModalScrollLock?.sync?.();
         isCarritoModalOpen = true;
         
         // 🎯 FIX SENIOR: Asegurar que OportunidadesManager esté cargado ANTES de renderizar
@@ -319,6 +320,7 @@ function cerrarCarritoGlobal() {
     const carritoModal = document.getElementById('carritoModal');
     if (carritoModal) {
         carritoModal.classList.remove('active');
+        window.rifaplusModalScrollLock?.sync?.();
         isCarritoModalOpen = false;
     }
 }

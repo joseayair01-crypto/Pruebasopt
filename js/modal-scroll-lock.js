@@ -2,8 +2,32 @@
     let scrollTop = 0;
     let isLocked = false;
 
-    const scrollableSelector = '.modal-content, .modal-contacto, .modal-contenido-orden-confirmada, .orden-modal-content, .modal-carrito, .modal-carrito-body';
-    const modalSelector = '.modal, .modal-overlay, .modal-carrito-overlay, #modalOrdenConfirmada, #modalLoadingOrden';
+    const scrollableSelector = [
+        '.modal-content',
+        '.modal-contacto',
+        '.modal-contenido-orden-confirmada',
+        '.modal-body-confirmada',
+        '.orden-modal-content',
+        '.orden-formal-container',
+        '.orden-formal-content',
+        '.modal-carrito',
+        '.modal-carrito-body',
+        '.modal-seleccion-cuentas',
+        '.modal-body-cuentas',
+        '.modal-conflicto',
+        '.modal-sorteo-finalizado'
+    ].join(', ');
+    const modalSelector = [
+        '.modal',
+        '.modal-overlay',
+        '.modal-carrito-overlay',
+        '.modal-overlay-conflicto',
+        '.modal-orden-formal',
+        '#modalSeleccionCuenta',
+        '#modalOrdenConfirmada',
+        '#modalLoadingOrden',
+        '#modalSorteoFinalizadoOverlay'
+    ].join(', ');
 
     function isVisibleModal(element) {
         if (!(element instanceof HTMLElement)) return false;

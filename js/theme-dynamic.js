@@ -89,40 +89,78 @@ function resolverLogoPreferido(logoPath) {
     return logoNormalizado;
 }
 
-(function initDynamicTheme() {
-    // Esperar a que config esté cargado
-    const waitForConfig = setInterval(() => {
-        if (window.rifaplusConfig && window.rifaplusConfig.cliente) {
-            clearInterval(waitForConfig);
-            // Esperar a que el DOM esté listo antes de modificar elementos
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', applyDynamicTheme);
-            } else {
-                applyDynamicTheme();
-            }
-        }
-    }, 50);
+const THEME_DYNAMIC_DEBUG = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+let themeDynamicApplyQueued = false;
+let themeDynamicLastSignature = '';
 
-    // Timeout de seguridad (5 segundos)
-    setTimeout(() => clearInterval(waitForConfig), 5000);
+function themeDynamicLog(...args) {
+    if (THEME_DYNAMIC_DEBUG) {
+        console.log(...args);
+    }
+}
+
+function construirFirmaTema(config = {}) {
+    const cliente = config.cliente || {};
+    const rifa = config.rifa || {};
+    const tema = config.tema || {};
+
+    return JSON.stringify({
+        logo: resolverLogoPreferido(cliente.logo || cliente.logotipo),
+        clienteNombre: cliente.nombre || '',
+        eslogan: cliente.eslogan || '',
+        sorteoNombre: rifa.nombreSorteo || '',
+        temaPersonalizado: tema.personalizado === true,
+        colores: tema.colores || {}
+    });
+}
+
+function solicitarAplicacionTemaDinamico(force = false) {
+    if (themeDynamicApplyQueued) {
+        return;
+    }
+
+    themeDynamicApplyQueued = true;
+    requestAnimationFrame(() => {
+        themeDynamicApplyQueued = false;
+        applyDynamicTheme(force);
+    });
+}
+
+(function initDynamicTheme() {
+    const inicializar = () => solicitarAplicacionTemaDinamico(true);
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', inicializar, { once: true });
+    } else {
+        inicializar();
+    }
+
+    window.addEventListener('configSyncCompleto', () => solicitarAplicacionTemaDinamico(true));
+    window.addEventListener('configuracionActualizada', () => solicitarAplicacionTemaDinamico(true));
 })();
 
 /**
  * Aplicar tema dinámico: logo, colores, etc.
  */
-function applyDynamicTheme() {
-    if (!window.rifaplusConfig) {
-        console.warn('⚠️  Config no disponible para tema dinámico');
+function applyDynamicTheme(force = false) {
+    if (!window.rifaplusConfig || !window.rifaplusConfig.cliente) {
         return;
     }
 
     const config = window.rifaplusConfig;
+    const signature = construirFirmaTema(config);
+
+    if (!force && signature === themeDynamicLastSignature) {
+        return;
+    }
+
+    themeDynamicLastSignature = signature;
     const cliente = config.cliente;
     const temaConfig = config.tema || {};
     const tema = construirTemaNormalizado(temaConfig);
     const temaPersonalizadoActivo = temaConfig.personalizado === true;
 
-    console.log('🎨 Aplicando tema dinámico desde config...');
+    themeDynamicLog('🎨 Aplicando tema dinámico desde config...');
 
     const logoCliente = resolverLogoPreferido(cliente.logo || cliente.logotipo);
 
@@ -142,7 +180,7 @@ function applyDynamicTheme() {
         updateCSSVariables(tema);
     } else {
         limpiarCSSVariablesTemaPublico();
-        console.log('🎨 [Theme-Dynamic] Tema personalizado inactivo; se conserva la apariencia pública base');
+        themeDynamicLog('🎨 [Theme-Dynamic] Tema personalizado inactivo; se conserva la apariencia pública base');
     }
 
     // 4. Actualizar título de página
@@ -151,23 +189,7 @@ function applyDynamicTheme() {
     // 5. Actualizar contenido de la página (hero, subtítulos, footer)
     updatePageContent(cliente, config.rifa);
 
-    console.log('✅ Tema dinámico aplicado correctamente');
-}
-
-/**
- * ✅ Listener para actualizar UI cuando ocurre sincronización de backend
- * Escucha cambios en cliente.nombre y actualiza TODOS los elementos
- */
-if (typeof window.rifaplusConfig !== 'undefined') {
-    if (typeof window.rifaplusConfig.escucharEvento === 'function') {
-        window.rifaplusConfig.escucharEvento('configuracionActualizada', function(datos) {
-            console.log('🔄 [Theme-Dynamic] Evento configuracionActualizada detectado, reaplicando tema dinámico...');
-            if (typeof window.rifaplusConfig.actualizarNombreClienteEnUI === 'function') {
-                window.rifaplusConfig.actualizarNombreClienteEnUI();
-            }
-            applyDynamicTheme();
-        });
-    }
+    themeDynamicLog('✅ Tema dinámico aplicado correctamente');
 }
 
 /**
@@ -199,7 +221,7 @@ function updateFavicon(logoPath) {
     }
     appleTouchIcon.href = logoResuelto;
 
-    console.log(`📱 Favicon actualizado: ${logoResuelto}`);
+    themeDynamicLog(`📱 Favicon actualizado: ${logoResuelto}`);
 }
 
 /**
@@ -215,7 +237,9 @@ function updateAllLogos(logoPath) {
         localStorage.setItem('rifaplus_cached_logo', logoResuelto);
         window.__RIFAPLUS_CACHED_LOGO__ = logoResuelto;
     } catch (error) {
-        console.warn('⚠️ No se pudo guardar el logo en caché local:', error?.message || error);
+        if (THEME_DYNAMIC_DEBUG) {
+            console.warn('⚠️ No se pudo guardar el logo en caché local:', error?.message || error);
+        }
     }
 
     // Actualizar imágenes con clase "dynamic-logo"
@@ -223,7 +247,7 @@ function updateAllLogos(logoPath) {
     dynamicLogos.forEach(img => {
         const oldSrc = img.src;
         img.src = logoResuelto;
-        console.log(`🖼️  Logo actualizado: ${oldSrc} → ${logoResuelto}`);
+        themeDynamicLog(`🖼️  Logo actualizado: ${oldSrc} → ${logoResuelto}`);
     });
 
     // Fallback: si hay imágenes con src hardcodeado a logos antiguos, reemplazarlas
@@ -239,7 +263,7 @@ function updateAllLogos(logoPath) {
             if (img.getAttribute('data-dynamic-logo') !== 'false') { // Excluir si está marcado como estático
                 img.src = logoResuelto;
                 img.setAttribute('data-dynamic-logo', 'true');
-                console.log(`🖼️  Logo fallback actualizado: ${oldLogo} → ${logoResuelto}`);
+                themeDynamicLog(`🖼️  Logo fallback actualizado: ${oldLogo} → ${logoResuelto}`);
             }
         });
     });

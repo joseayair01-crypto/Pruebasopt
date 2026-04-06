@@ -285,7 +285,7 @@ function abrirOrdenFormal(cuenta) {
     const modal = document.getElementById('modalOrdenFormal');
     if (modal) {
         modal.classList.add('show');
-        document.body.style.overflow = 'hidden';
+        window.rifaplusModalScrollLock?.sync?.();
 
         const contenedor = modal.querySelector('.orden-formal-container');
         const contenido = modal.querySelector('.orden-formal-content');
@@ -303,7 +303,7 @@ function cerrarOrdenFormal() {
     const modal = document.getElementById('modalOrdenFormal');
     if (modal) {
         modal.classList.remove('show');
-        document.body.style.overflow = 'auto';
+        window.rifaplusModalScrollLock?.sync?.();
     }
 }
 

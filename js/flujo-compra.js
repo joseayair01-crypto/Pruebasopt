@@ -248,7 +248,32 @@ async function abrirModalSeleccionCuenta() {
     }
 
     console.log('[AbrirModal] ✅ Contenedores encontrados');
-    
+
+    transferenciasContainer.innerHTML = '<p class="payment-empty-state">Cargando cuentas de transferencia...</p>';
+    efectivoContainer.innerHTML = '<p class="payment-empty-state">Cargando opciones de pago...</p>';
+    modal.classList.add('show');
+    window.rifaplusModalScrollLock?.sync?.();
+    modal.scrollTop = 0;
+
+    const closeBtn = document.getElementById('closeModalSeleccionCuenta');
+    if (closeBtn) {
+        closeBtn.onclick = cerrarModalSeleccionCuenta;
+    }
+
+    const modalBody = modal.querySelector('.modal-body-cuentas');
+    if (modalBody) {
+        modalBody.scrollTop = 0;
+    }
+
+    const modalCard = modal.querySelector('.modal-seleccion-cuentas');
+    if (modalCard) {
+        modalCard.scrollTop = 0;
+    }
+
+    const obtenerAccountIdSeguro = (cuenta, idx) => String(
+        cuenta?.id ?? cuenta?.accountNumber ?? `${cuenta?.nombreBanco || 'cuenta'}_${idx}`
+    );
+
     // ✅ CARGAR CUENTAS DESDE EL SERVIDOR (backend tiene los datos actualizados)
     let cuentas = [];
     try {
@@ -261,6 +286,7 @@ async function abrirModalSeleccionCuenta() {
             console.log('[AbrirModal] ✅ Cuentas cargadas desde configuración compartida:', cuentas.length);
             // Actualizar también en config.js para otros usos
             window.rifaplusConfig.tecnica.bankAccounts = cuentas;
+            window.rifaplusConfig.bankAccounts = cuentas;
         }
     } catch (err) {
         console.debug('[AbrirModal] No se cargaron cuentas del servidor:', err.message);
@@ -277,6 +303,7 @@ async function abrirModalSeleccionCuenta() {
     
     if (cuentas.length === 0) {
         transferenciasContainer.innerHTML = '<p style="color: var(--danger);">No hay cuentas de pago disponibles</p>';
+        efectivoContainer.innerHTML = '<p class="payment-empty-state">No hay opciones de pago disponibles.</p>';
         return;
     }
     
@@ -289,8 +316,7 @@ async function abrirModalSeleccionCuenta() {
     transferencias.forEach((cuenta, idx) => {
         const id = `cuenta_${idx}`;
         const banco = cuenta.nombreBanco || 'Banco';
-        // ✅ FIX: Use unique account ID instead of filtered array index
-        const accountId = cuenta.id || cuenta.accountNumber || `${cuenta.nombreBanco}_${idx}`;
+        const accountId = obtenerAccountIdSeguro(cuenta, idx);
         
         htmlTransferencias += `
             <div class="stack-item">
@@ -311,8 +337,7 @@ async function abrirModalSeleccionCuenta() {
     efectivo.forEach((cuenta, idx) => {
         const id = `cuenta_efe_${idx}`;
         const banco = cuenta.nombreBanco || 'Tienda';
-        // ✅ FIX: Use unique account ID instead of filtered array index
-        const accountId = cuenta.id || cuenta.accountNumber || `${cuenta.nombreBanco}_${idx}`;
+        const accountId = obtenerAccountIdSeguro(cuenta, idx);
         
         htmlEfectivo += `
             <div class="stack-item">
@@ -339,14 +364,10 @@ async function abrirModalSeleccionCuenta() {
     
     radios.forEach(radio => {
         radio.addEventListener('change', function() {
-            // ✅ FIX: Use account ID for lookup instead of filtered array index
-            const accountId = parseInt(this.value);
-            const cuentas = (window.rifaplusConfig && window.rifaplusConfig.bankAccounts) 
-                ? window.rifaplusConfig.bankAccounts 
-                : [];
-            
-            // Find account by ID (id is unique across all accounts)
-            const cuentaSeleccionada = cuentas.find(c => c.id === accountId);
+            const accountId = String(this.value);
+            const cuentaSeleccionada = cuentas.find((cuenta, idx) =>
+                obtenerAccountIdSeguro(cuenta, idx) === accountId
+            );
             
             console.log('[AbrirModal] 🔄 Radio seleccionado, accountId:', accountId, 'cuenta:', cuentaSeleccionada);
             
@@ -367,22 +388,6 @@ async function abrirModalSeleccionCuenta() {
     });
     
     // No hay botones de copiar en el modal
-    
-    // Mostrar modal
-    console.log('[AbrirModal] 📺 Mostrando modal (display: flex)');
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-    modal.scrollTop = 0;
-
-    const modalBody = modal.querySelector('.modal-body-cuentas');
-    if (modalBody) {
-        modalBody.scrollTop = 0;
-    }
-
-    const modalCard = modal.querySelector('.modal-seleccion-cuentas');
-    if (modalCard) {
-        modalCard.scrollTop = 0;
-    }
 
     window.requestAnimationFrame(() => {
         if (modalBody) modalBody.scrollTop = 0;
@@ -395,11 +400,6 @@ async function abrirModalSeleccionCuenta() {
     }
     
     // Event listener para cerrar
-    const closeBtn = document.getElementById('closeModalSeleccionCuenta');
-    if (closeBtn) {
-        closeBtn.onclick = cerrarModalSeleccionCuenta;
-    }
-    
     // No cerrar al tocar fuera; evita salidas accidentales en móvil
     modal.onclick = function() {};
 }
@@ -407,8 +407,8 @@ async function abrirModalSeleccionCuenta() {
 function cerrarModalSeleccionCuenta() {
     const modal = document.getElementById('modalSeleccionCuenta');
     if (modal) {
-        modal.style.display = 'none';
-        document.body.style.overflow = 'auto';
+        modal.classList.remove('show');
+        window.rifaplusModalScrollLock?.sync?.();
     }
 }
 
@@ -609,7 +609,7 @@ function mostrarOrdenFormalManual(orden) {
     
     // Mostrar modal
     modal.classList.add('show');
-    document.body.style.overflow = 'hidden';
+    window.rifaplusModalScrollLock?.sync?.();
 }
 
 /* ============================================================ */

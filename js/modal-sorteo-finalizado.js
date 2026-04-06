@@ -11,7 +11,9 @@ class ModalSorteoFinalizado {
         this.modalCreado = false;
         this.verificacionActiva = false;
         this.navegacionBloqueada = false;
-        this.logEnabled = true;
+        this.logEnabled = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+        this.verificacionTimeoutId = null;
+        this._eventosRegistrados = false;
         
         // Log de inicialización
         this.log('🎉 ModalSorteoFinalizado inicializado', 'constructor');
@@ -22,12 +24,8 @@ class ModalSorteoFinalizado {
      */
     inicializar() {
         this.log('Iniciando verificación del estado del sorteo...', 'inicializar');
-
-        // Verificación inmediata
-        setTimeout(() => this.verificarEstadoSorteo(), 100);
-
-        // Verificación continua cada segundo (por si cambia el estado dinámicamente)
-        this.iniciarVerificacionContinua();
+        this.registrarEventosDeVerificacion();
+        this.programarVerificacionEstado(100);
     }
 
     /**
@@ -102,27 +100,64 @@ class ModalSorteoFinalizado {
      * Inicia verificación continua
      */
     iniciarVerificacionContinua() {
-        if (this.verificacionActiva) return;
+        this.programarVerificacionEstado();
+    }
+
+    programarVerificacionEstado(delayMs = null) {
+        if (this.modalCreado) return;
+
+        if (this.verificacionTimeoutId) {
+            clearTimeout(this.verificacionTimeoutId);
+            this.verificacionTimeoutId = null;
+        }
+
+        const config = window.rifaplusConfig;
+        const sorteoActivo = config?.sorteoActivo;
+        const estado = config?.rifa?.estado || sorteoActivo?.estado || 'activo';
+
+        if (estado === 'finalizado') {
+            this.verificarEstadoSorteo();
+            return;
+        }
+
+        const fechaCierre = new Date(sorteoActivo?.fechaCierre || '').getTime();
+        const ahora = Date.now();
+        let siguienteRevision = Number.isFinite(delayMs) ? delayMs : 1000;
+
+        if (!Number.isFinite(delayMs) && Number.isFinite(fechaCierre) && fechaCierre > ahora) {
+            // Revisa justo al cierre o antes si el plazo es demasiado largo.
+            siguienteRevision = Math.min(Math.max(fechaCierre - ahora + 50, 250), 60000);
+        }
 
         this.verificacionActiva = true;
-        this.log('Iniciando verificación continua cada segundo...', 'verificacion');
-
-        const intervalo = setInterval(() => {
-            try {
-                // Ejecutar la verificación completa cada segundo.
-                // verificarEstadoSorteo() manejará tanto el caso de estado='finalizado'
-                // como el caso en que la fecha/hora de cierre ya se alcanzó.
-                if (!this.modalCreado) {
-                    this.verificarEstadoSorteo();
-                } else {
-                    // Si el modal ya fue creado, detenemos la verificación
-                    clearInterval(intervalo);
-                    this.verificacionActiva = false;
-                }
-            } catch (err) {
-                console.warn('Error en verificación continua:', err && err.message);
+        this.verificacionTimeoutId = setTimeout(() => {
+            this.verificacionTimeoutId = null;
+            this.verificarEstadoSorteo();
+            if (!this.modalCreado) {
+                this.programarVerificacionEstado();
+            } else {
+                this.verificacionActiva = false;
             }
-        }, 1000);
+        }, siguienteRevision);
+    }
+
+    registrarEventosDeVerificacion() {
+        if (this._eventosRegistrados) return;
+        this._eventosRegistrados = true;
+
+        const revalidar = () => {
+            if (this.modalCreado) return;
+            this.programarVerificacionEstado(80);
+        };
+
+        window.addEventListener('configSyncCompleto', revalidar);
+        window.addEventListener('configuracionActualizada', revalidar);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                revalidar();
+            }
+        });
+        window.addEventListener('pageshow', revalidar);
     }
 
     /**
@@ -133,6 +168,11 @@ class ModalSorteoFinalizado {
             if (this.modalCreado) {
                 this.log('Modal ya fue creado, omitiendo...', 'warning');
                 return;
+            }
+
+            if (this.verificacionTimeoutId) {
+                clearTimeout(this.verificacionTimeoutId);
+                this.verificacionTimeoutId = null;
             }
 
             this.log('Creando modal...', 'modal');
@@ -159,7 +199,7 @@ class ModalSorteoFinalizado {
 
             // Agregar al DOM
             document.body.appendChild(overlay);
-            document.body.style.overflow = 'hidden';
+            window.rifaplusModalScrollLock?.sync?.();
             this.activarModoRestringido();
 
             // Agregar estilos CSS
@@ -761,7 +801,7 @@ class ModalSorteoFinalizado {
                             ov.parentNode.removeChild(ov);
                         }
                         this.desactivarModoRestringido();
-                        document.body.style.overflow = '';
+                        window.rifaplusModalScrollLock?.sync?.();
 
                         this.log('Redirigiendo a mis-boletos-restringido.html (supresión activa)', 'navegacion');
                         window.location.href = 'mis-boletos-restringido.html';
@@ -986,8 +1026,15 @@ class ModalSorteoFinalizado {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                overflow: hidden;
-                padding: 24px 16px;
+                overflow-x: hidden;
+                overflow-y: auto;
+                overscroll-behavior: contain;
+                -webkit-overflow-scrolling: touch;
+                padding:
+                    max(24px, env(safe-area-inset-top))
+                    max(16px, env(safe-area-inset-right))
+                    max(24px, env(safe-area-inset-bottom))
+                    max(16px, env(safe-area-inset-left));
                 opacity: 0;
                 transition: opacity 0.3s ease;
             }
@@ -1005,9 +1052,9 @@ class ModalSorteoFinalizado {
 
             .modal-sorteo-finalizado {
                 position: relative;
-                width: 95%;
+                width: min(100%, 860px);
                 max-width: 860px;
-                max-height: 90vh;
+                max-height: min(90dvh, 920px);
                 background: white;
                 border-radius: 28px;
                 box-shadow: 0 28px 80px rgba(0, 0, 0, 0.32);
@@ -1016,6 +1063,7 @@ class ModalSorteoFinalizado {
                 flex-direction: column;
                 animation: slideUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
                 overflow: hidden;
+                margin: auto;
             }
 
             @keyframes slideUp {
@@ -1033,12 +1081,16 @@ class ModalSorteoFinalizado {
                 display: flex;
                 flex-direction: column;
                 height: 100%;
+                min-height: 0;
                 overflow-y: auto;
                 overflow-x: hidden;
                 scroll-behavior: smooth;
                 background: linear-gradient(180deg, #ffffff 0%, var(--modal-surface) 100%);
                 scrollbar-width: thin;
                 scrollbar-color: color-mix(in srgb, var(--modal-primary) 45%, white) transparent;
+                overscroll-behavior: contain;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-gutter: stable;
             }
 
             .sorteo-header {
@@ -1575,12 +1627,17 @@ class ModalSorteoFinalizado {
 
             @media (max-width: 768px) {
                 .modal-sorteo-overlay {
-                    align-items: flex-end;
-                    padding: 12px;
+                    align-items: center;
+                    justify-content: center;
+                    padding:
+                        max(14px, env(safe-area-inset-top))
+                        max(12px, env(safe-area-inset-right))
+                        max(14px, env(safe-area-inset-bottom))
+                        max(12px, env(safe-area-inset-left));
                 }
                 .modal-sorteo-finalizado {
                     width: 100%;
-                    max-height: calc(100dvh - 24px);
+                    max-height: min(calc(100dvh - 28px), 860px);
                     border-radius: 24px;
                 }
                 .sorteo-finalizado-content {
@@ -1698,10 +1755,14 @@ class ModalSorteoFinalizado {
 
             @media (max-width: 420px) {
                 .modal-sorteo-overlay {
-                    padding: 8px;
+                    padding:
+                        max(10px, env(safe-area-inset-top))
+                        max(8px, env(safe-area-inset-right))
+                        max(10px, env(safe-area-inset-bottom))
+                        max(8px, env(safe-area-inset-left));
                 }
                 .modal-sorteo-finalizado {
-                    max-height: calc(100dvh - 16px);
+                    max-height: min(calc(100dvh - 20px), 820px);
                     border-radius: 20px;
                 }
                 .sorteo-header {
@@ -1778,6 +1839,3 @@ class ModalSorteoFinalizado {
 const modalSorteoFinalizado = new ModalSorteoFinalizado();
 window.ModalSorteoFinalizado = ModalSorteoFinalizado;
 window.modalSorteoFinalizado = modalSorteoFinalizado;
-
-// Log de carga
-console.log('✅ modal-sorteo-finalizado.js cargado correctamente');

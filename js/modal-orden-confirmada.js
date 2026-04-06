@@ -162,7 +162,7 @@ function mostrarModalOrdenConfirmada(datosOrden) {
 
         // ✅ 4. MOSTRAR MODAL
         modal.classList.add('show');
-        document.body.style.overflow = 'hidden';
+        window.rifaplusModalScrollLock?.sync?.();
 
         // ✅ 5. AGREGAR LISTENER AL BOTÓN (LIMPIO, SIN MEMORY LEAK)
         const btnPagar = modal.querySelector('#btnIrAPagar');

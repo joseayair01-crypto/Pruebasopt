@@ -25,6 +25,14 @@ window.rifaplusConfig._configPublicaPromise = null;
 window.rifaplusConfig._intervaloEstadoId = null;
 window.rifaplusConfig._intervaloConfigId = null;
 
+const RIFAPLUS_SYNC_DEBUG = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+function syncDebug(...args) {
+    if (RIFAPLUS_SYNC_DEBUG) {
+        console.debug(...args);
+    }
+}
+
 window.rifaplusConfig.debeSincronizarEstadoAutomaticamente = function() {
     const body = document.body;
     if (!body) return false;
@@ -123,7 +131,7 @@ window.rifaplusConfig.sincronizarConfigDelBackend = async function(opciones = {}
 
     // Evitar sincronizaciones simultáneas
     if (this._sincronizandoBackend) {
-        console.debug('⏳ Sincronización ya en progreso, omitiendo...');
+        syncDebug('⏳ Sincronización ya en progreso, omitiendo...');
         return false;
     }
     
@@ -135,7 +143,7 @@ window.rifaplusConfig.sincronizarConfigDelBackend = async function(opciones = {}
     
     if (!force && this._ultimaSincronizacion && (ahora - this._ultimaSincronizacion < cooldownMs)) {
         const segundosFaltantes = Math.ceil((cooldownMs - (ahora - this._ultimaSincronizacion)) / 1000);
-        console.debug(`⏳ Cooldown activo (${this._reintentosFallidos} reintentos): próxima en ${segundosFaltantes}s`);
+        syncDebug(`⏳ Cooldown activo (${this._reintentosFallidos} reintentos): próxima en ${segundosFaltantes}s`);
         return false;
     }
     
@@ -162,7 +170,7 @@ window.rifaplusConfig.sincronizarConfigDelBackend = async function(opciones = {}
         
         // Manejar específicamente 429 (Too Many Requests)
         if (response.status === 429) {
-            console.debug('⏳ Rate limit alcanzado (429). Usar config local, reintentando...', {
+            syncDebug('⏳ Rate limit alcanzado (429). Usar config local, reintentando...', {
                 reintentos: this._reintentosFallidos,
                 maxReintentos: this._maxReintentos
             });
@@ -175,7 +183,7 @@ window.rifaplusConfig.sincronizarConfigDelBackend = async function(opciones = {}
         }
         
         if (!response.ok) {
-            console.debug(`ℹ️  Backend no disponible (${response.status}). Usar config local`, {
+            syncDebug(`ℹ️  Backend no disponible (${response.status}). Usar config local`, {
                 reintentos: this._reintentosFallidos,
                 maxReintentos: this._maxReintentos
             });
@@ -194,17 +202,10 @@ window.rifaplusConfig.sincronizarConfigDelBackend = async function(opciones = {}
             if (result.data.cliente) {
                 const clienteCopy = Object.assign({}, result.data.cliente);
                 
-                console.log('📥 [Config-Sync] Sincronizando cliente desde backend:', {
-                    nombre: clienteCopy.nombre,
-                    eslogan: clienteCopy.eslogan
-                });
-                
                 // ✅ Sincronizar todAS las propiedades del cliente (merge completo)
                 Object.keys(clienteCopy).forEach(key => {
                     this.cliente[key] = clienteCopy[key];
                 });
-                
-                console.log('✅ Cliente completamente sincronizado. Nombre actual:', this.cliente.nombre);
             }
             
             if (result.data.rifa) {
@@ -225,16 +226,7 @@ window.rifaplusConfig.sincronizarConfigDelBackend = async function(opciones = {}
                 // ✅ RESTAURAR: infoRifa (estructura local de tarjetas)
                 if (infoRifaLocal && Array.isArray(infoRifaLocal)) {
                     this.rifa.infoRifa = infoRifaLocal;
-                    console.log('✅ infoRifa (tarjetas) protegida durante sincronización');
                 }
-                
-                console.log('✅ Rifa sincronizada completamente desde backend:', {
-                    nombreSorteo: this.rifa.nombreSorteo,
-                    totalBoletos: this.rifa.totalBoletos,
-                    precioBoleto: this.rifa.precioBoleto,
-                    galeríaImagenes: this.rifa.galeria?.imagenes?.length || 0,
-                    infoRifaTarjetas: this.rifa.infoRifa?.length || 0
-                });
 
                 try {
                     if (Number.isFinite(Number(this.rifa.totalBoletos)) && Number(this.rifa.totalBoletos) > 0) {
@@ -263,13 +255,8 @@ window.rifaplusConfig.sincronizarConfigDelBackend = async function(opciones = {}
             
             // ✅ ACTUALIZAR UI CON EL NUEVO NOMBRE DEL CLIENTE INMEDIATAMENTE
             if (typeof this.actualizarNombreClienteEnUI === 'function') {
-                console.log('🎨 Actualizando UI elementos con nombre:', this.cliente?.nombre);
                 this.actualizarNombreClienteEnUI();
-                console.log('✅ UI actualizada exitosamente');
             }
-            
-            // Emitir evento general de sincronización para que todas las páginas actualicen sus datos
-            console.log('✅ Config SINCRONIZADA desde backend (en', Math.round(Date.now() - ahora), 'ms)');
             
             // Resetear reintentos fallidos cuando funciona
             this._reintentosFallidos = 0;
@@ -347,22 +334,22 @@ window.rifaplusConfig.sincronizarEstadoBackend = async function() {
                 this.estado.ultimaActualizacion = new Date();
                 
                 this.emitirEvento('estadoActualizado', this.estado);
-                console.debug('✅ Estado actualizado desde /stats');
+                syncDebug('✅ Estado actualizado desde /stats');
                 
                 this._cargarDatosCompletosEnBackground();
             }
         } else if (statsResponse.status === 429) {
-            console.debug('⏳ Rate limit en /api/public/boletos/stats (429)');
+            syncDebug('⏳ Rate limit en /api/public/boletos/stats (429)');
             return false;
         }
         
         return true;
     } catch (error) {
         if (error.name === 'AbortError') {
-            console.debug('⏱️  Timeout en /stats (2s)');
+            syncDebug('⏱️  Timeout en /stats (2s)');
             this._cargarDatosCompletosEnBackground();
         } else {
-            console.debug('ℹ️  Error sincronizando estado:', error.message);
+            syncDebug('ℹ️  Error sincronizando estado:', error.message);
         }
     } finally {
         if (timeoutId) clearTimeout(timeoutId);
@@ -403,12 +390,12 @@ window.rifaplusConfig._cargarDatosCompletosEnBackground = async function() {
         if (respuesta.ok) {
             const datos = await respuesta.json();
             if (datos.success && datos.data) {
-                console.debug(`✅ Datos de rango cargados en background (${inicio}-${fin})`);
+                syncDebug(`✅ Datos de rango cargados en background (${inicio}-${fin})`);
             }
         }
         return true;
     } catch (error) {
-        console.debug('ℹ️  Error cargando rango en background (no crítico):', error.message);
+        syncDebug('ℹ️  Error cargando rango en background (no crítico):', error.message);
     }
 
     return false;
@@ -463,7 +450,7 @@ window.rifaplusConfig.emitirEvento = function(evento, datos) {
     try {
         window.dispatchEvent(new CustomEvent(evento, { detail: datos }));
     } catch (err) {
-        console.debug('Error emitiendo CustomEvent:', err);
+        syncDebug('Error emitiendo CustomEvent:', err);
     }
 };
 
@@ -478,10 +465,8 @@ window.rifaplusConfig.inicializar = async function() {
         }
         
         // 1.5. Sincronizar desde backend INMEDIATAMENTE (sin delay)
-        console.log('🚀 [Init] Sincronizando config desde backend INMEDIATAMENTE...');
         try {
             await this.sincronizarConfigDelBackend();
-            console.log('✅ [Init] Sincronización inicial completada');
         } catch (syncError) {
             console.warn('⚠️  [Init] Config local será usada (error sincronización):', syncError.message);
         }
@@ -506,9 +491,7 @@ window.rifaplusConfig.inicializar = async function() {
         
         // 4. Iniciar actualizaciones automáticas (cada 5 minutos)
         this.iniciarActualizacionesAutomaticas();
-        
-        console.log('✅ [Config] Sistema inicializado correctamente');
-        
+
         // 🎉 Disparar evento de completitud para que otras páginas sepan que config está lista
         window.dispatchEvent(new CustomEvent('configSyncCompleto', {
             detail: { 
@@ -516,13 +499,10 @@ window.rifaplusConfig.inicializar = async function() {
                 rifa: this.rifa
             }
         }));
-        console.log('📢 Evento configSyncCompleto disparado');
     } catch (error) {
         console.error('Error inicializando configuración:', error);
     }
 };
-
-console.log('✅ [Config-Sync] Sistema de sincronización y eventos inicializado');
 
 // 🚀 AUTO-INICIALIZAR apenas el DOM esté listo
 if (document.readyState === 'loading') {
@@ -533,7 +513,6 @@ if (document.readyState === 'loading') {
     });
 } else {
     // DOM ya está listo (esto ocurre si config-sync.js se carga después del DOMContentLoaded)
-    console.log('⚡ [Config-Sync] DOM ya listo, inicializando inmediatamente...');
     window.rifaplusConfig.inicializar().catch(e => 
         console.error('❌ Error en inicialización automática:', e)
     );

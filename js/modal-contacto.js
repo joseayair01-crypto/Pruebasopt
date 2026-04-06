@@ -88,7 +88,7 @@ function abrirModalContacto() {
     const modal = document.getElementById('modalContacto');
     if (modal) {
         modal.classList.add('show');
-        document.body.style.overflow = 'hidden'; // Prevenir scroll
+        window.rifaplusModalScrollLock?.sync?.();
         limpiarFormularioContacto();
     }
 }
@@ -101,7 +101,7 @@ function cerrarModalContacto() {
     const modal = document.getElementById('modalContacto');
     if (modal) {
         modal.classList.remove('show');
-        document.body.style.overflow = 'auto'; // Restaurar scroll
+        window.rifaplusModalScrollLock?.sync?.();
     }
 }
 

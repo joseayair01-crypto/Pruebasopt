@@ -673,6 +673,14 @@ function inicializarCarrusel() {
         });
     }
 
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            iniciarAutoavance();
+        } else {
+            pausarAutoavance();
+        }
+    });
+
     // Iniciar
     iniciarAutoavance();
     mostrarSlide(0);
@@ -748,9 +756,15 @@ function inicializarCuentaRegresiva() {
     if (!validacion.valida) {
         // Si está pendiente (sincronización en progreso), no lanzar error, simplemente esperar
         if (validacion.pendiente) {
-            console.debug('⏳ [Countdown] Sincronizando fecha del sorteo desde servidor...');
-            // Reintentar en 1 segundo cuando la sincronización complete
-            setTimeout(() => inicializarCuentaRegresiva(), 1000);
+            if (!contenedorCountdown.dataset.pendingConfigListener) {
+                contenedorCountdown.dataset.pendingConfigListener = 'true';
+                const reintentarCountdown = () => {
+                    delete contenedorCountdown.dataset.pendingConfigListener;
+                    inicializarCuentaRegresiva();
+                };
+                window.addEventListener('configSyncCompleto', reintentarCountdown, { once: true });
+                window.addEventListener('configuracionActualizada', reintentarCountdown, { once: true });
+            }
             return;
         }
         console.error('❌ [Countdown] Fecha del sorteo inválida:', validacion.mensaje);

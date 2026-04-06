@@ -48,6 +48,8 @@ var selectedNumbersGlobal = new Set();
 
 // Guardar estado del filtro de disponibles (persiste al cambiar rangos)
 var filtroDisponiblesActivo = false;
+var resumenPersistidoSnapshot = '';
+var rangoInitSuscrito = false;
 
 // ⚠️ FLAG DE SINCRONIZACIÓN: Indica si los datos de boletos (sold/reserved) están FRESCOS
 // Previene race conditions donde el Web Worker aún está procesando
@@ -312,8 +314,6 @@ var visibilityCheckExecuting = false;
 document.addEventListener('visibilitychange', function() {
     if (!document.hidden && typeof cargarBoletosPublicos === 'function' && !visibilityCheckExecuting) {
         visibilityCheckExecuting = true;
-        // La página es visible de nuevo - actualizar disponibilidad de boletos
-        console.log('📱 Usuario volvió a la pestaña - refrescando disponibilidad de boletos');
         cargarBoletosPublicos().catch(e => console.warn('Error al refrescar boletos:', e)).finally(() => {
             visibilityCheckExecuting = false;
         });
@@ -325,7 +325,6 @@ document.addEventListener('visibilitychange', function() {
  * Previene memory leaks y API calls innecesarias
  */
 window.addEventListener('pagehide', function() {
-    console.log('🧹 Limpiando timers de compra.js...');
     if (window.rifaplusFetchTimeoutId) {
         clearTimeout(window.rifaplusFetchTimeoutId);
         window.rifaplusFetchTimeoutId = null;
@@ -336,7 +335,6 @@ window.addEventListener('pagehide', function() {
  * Inicialización cuando DOM está listo
  */
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🔍 COMPRA.JS LOADED - Precio del config:', window.rifaplusConfig?.rifa?.precioBoleto);
     inicializarSistemaCompra();
     // Carrito será inicializado por carrito-global.js
     
@@ -345,7 +343,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // ✅ LISTENER: Si la configuración se sincroniza desde el backend, reinicializar rangos
     window.addEventListener('configuracionActualizada', function() {
-        console.log('🔄 [Compra] Configuración actualizada - reiniciando rangos...');
         inicializarRangoDefault();
     });
 });
@@ -404,23 +401,15 @@ async function inicializarSistemaCompra() {
             const checkboxFiltro = document.getElementById('filtroDisponibles');
             if (checkboxFiltro) {
                 checkboxFiltro.checked = filtroDisponiblesActivo;
-                // ⭐ CRÍTICO: Si el filtro estaba activado, reaplicarlo cuando carguen los boletos
-                if (filtroDisponiblesActivo) {
-                    // Esperar a que los elementos '.numero-btn' estén en el DOM
-                    const esperar = setInterval(() => {
-                        if (document.querySelector('.numero-btn')) {
-                            clearInterval(esperar);
-                            aplicarFiltroDisponibles(true);
-                        }
-                    }, 50);
-                }
             }
         } catch (error) {
             console.error('Error al restaurar estado del filtro:', error);
         }
     }
     
-    inicializarRangoDefault();
+    if (!inicializarRangoDefault()) {
+        solicitarInicializacionRangoCuandoConfigEsteLista();
+    }
     configurarEventListeners();
     
     // ⚡ OPTIMIZACIÓN: NO esperar cargarBoletosPublicos() completo
@@ -1255,10 +1244,15 @@ function agregarNumerosSuerteAlCarrito() {
     }
     
     // Marcar botones en la grilla
-    boletos_para_agregar.forEach((numero) => {
+    boletos_para_agregar.forEach((numero, index) => {
         const botonNumero = document.querySelector(`.numero-btn[data-numero="${numero}"]`);
         if (botonNumero && !botonNumero.classList.contains('selected')) {
             botonNumero.classList.add('selected');
+        }
+        if (botonNumero) {
+            setTimeout(() => {
+                enfatizarNumeroSeleccionado(botonNumero, numero);
+            }, Math.min(280, index * 55));
         }
     });
     
@@ -1351,27 +1345,18 @@ function actualizarEstadoBtnComprar() {
 }
 
 function configurarEventListeners() {
-    
     const grid = document.getElementById('numerosGrid');
     const btnLimpiar = document.getElementById('btnLimpiar');
     const btnComprar = document.getElementById('btnComprar');
     const btnProbarMaquina = document.getElementById('btnProbarMaquina');
-    
-    console.log('🔧 Configurando event listeners...');
-    console.log('  - Grid:', grid ? '✓' : '✗');
-    console.log('  - btnLimpiar:', btnLimpiar ? '✓' : '✗');
-    console.log('  - btnComprar:', btnComprar ? '✓' : '✗');
-    console.log('  - btnProbarMaquina:', btnProbarMaquina ? '✓' : '✗');
-    
+
     // 1. CLICKS EN NÚMEROS
     if (grid) {
         grid.addEventListener('click', function(e) {
             if (e.target.classList.contains('numero-btn')) {
-                console.log('📌 Click en número:', e.target.textContent);
                 manejarClickNumero(e.target);
             }
         });
-        console.log('✓ Evento click en grid configurado');
     }
     
     // 2. BOTONES DE RANGO - Se configuran dinámicamente en generarBotonesRango()
@@ -1379,7 +1364,6 @@ function configurarEventListeners() {
     // 3. BOTÓN LIMPIAR ✅ MEJORADO: Usar delegación si no existe aún
     if (btnLimpiar) {
         btnLimpiar.addEventListener('click', limpiarSeleccion);
-        console.log('✓ btnLimpiar event listener configurado');
     } else {
         // Fallback: Usar delegación de eventos para cuando el botón se agregue dinámicamente
         document.addEventListener('click', function(e) {
@@ -1399,7 +1383,6 @@ function configurarEventListeners() {
                 rifaplusUtils.showFeedback('⚠️ Primero selecciona al menos un boleto', 'warning');
             }
         });
-        console.log('✓ btnComprar event listener configurado');
     } else {
         // Fallback: Usar delegación de eventos para cuando el botón se agregue dinámicamente
         document.addEventListener('click', function(e) {
@@ -1413,17 +1396,12 @@ function configurarEventListeners() {
             }
         });
     }
-    
+
     // 5. BOTÓN PROBAR MÁQUINA - Scroll suave con offset para mostrar el título
     if (btnProbarMaquina) {
         btnProbarMaquina.addEventListener('click', function(e) {
             e.preventDefault();
-            const maquinaCard = document.getElementById('maquinaCard');
-            if (maquinaCard) {
-                const yOffset = -80; // Ajusta el offset según la altura del header
-                const y = maquinaCard.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                window.scrollTo({ top: y, behavior: 'smooth' });
-            }
+            scrollSuaveCompraA('maquinaCard', -80);
         });
     }
 
@@ -1432,21 +1410,8 @@ function configurarEventListeners() {
     if (btnSeleccionarBoletos) {
         btnSeleccionarBoletos.addEventListener('click', function(e) {
             e.preventDefault();
-            // Buscar el título de la sección
-            const tituloBoletos = document.querySelector('.seleccion-section .section-title');
-            if (tituloBoletos) {
-                const yOffset = -40; // Ajusta el offset para que el título quede visible
-                const y = tituloBoletos.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                window.scrollTo({ top: y, behavior: 'smooth' });
-            } else {
-                // Fallback al grid si no se encuentra el título
-                const numerosGrid = document.getElementById('numerosGrid');
-                if (numerosGrid) {
-                    const yOffset = -80;
-                    const y = numerosGrid.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                    window.scrollTo({ top: y, behavior: 'smooth' });
-                }
-            }
+            scrollSuaveCompraA('.seleccion-section .section-title', -40) ||
+                scrollSuaveCompraA('numerosGrid', -80);
         });
     }
 
@@ -1460,6 +1425,20 @@ function configurarEventListeners() {
 
     // 7. BÚSQUEDA DE BOLETOS
     configurarBuscadorBoletos();
+}
+
+function scrollSuaveCompraA(target, offset) {
+    const elemento = typeof target === 'string'
+        ? document.querySelector(target) || document.getElementById(target)
+        : target;
+
+    if (!elemento) {
+        return false;
+    }
+
+    const y = elemento.getBoundingClientRect().top + window.pageYOffset + offset;
+    window.scrollTo({ top: y, behavior: 'smooth' });
+    return true;
 }
 
 /**
@@ -1481,8 +1460,6 @@ async function manejarClickNumero(boton) {
     
     if (boton.classList.contains('selected')) {
         // DESELECCIONAR: quitar de Set, localStorage y actualizar vistas
-        console.log(`🔍 Deseleccionando boleto #${numero}`);
-        
         // ⚡ Versión defensiva - usa función si está disponible, sino usa API global
         if (typeof removerBoletoSeleccionado === 'function') {
             removerBoletoSeleccionado(numero);
@@ -1493,7 +1470,6 @@ async function manejarClickNumero(boton) {
         }
     } else {
         // SELECCIONAR: validar disponibilidad y agregar
-        console.log(`🔍 Seleccionando boleto #${numero}`);
         boton.classList.add('is-processing');
         boton.disabled = true;
         
@@ -1507,6 +1483,7 @@ async function manejarClickNumero(boton) {
         // Animar si se agregó exitosamente
         if (seAgrego && selectedNumbersGlobal.has(numero)) {
             boton.classList.add('selected');
+            enfatizarNumeroSeleccionado(boton, numero);
             // Mostrar efecto en el carrito sin modificar el botón
             animarAgregarAlCarrito(null, numero, false);
         }
@@ -1561,25 +1538,13 @@ function actualizarResumenCompra() {
     
     // Usar Set global en lugar de contar botones visibles
     const cantidad = selectedNumbersGlobal.size;
-    
-    // 🔍 DEBUG MASIVO
-    console.log('%c📊 [actualizarResumenCompra] INICIANDO', 'color: #FF6B6B; font-weight: bold; font-size: 14px');
-    console.log('  ✓ Cantidad de boletos:', cantidad);
-    console.log('  ✓ Boletos seleccionados:', Array.from(selectedNumbersGlobal));
-    console.log('  ✓ window.rifaplusSoldNumbers:', window.rifaplusSoldNumbers?.length || 0, window.rifaplusSoldNumbers);
-    console.log('  ✓ window.rifaplusReservedNumbers:', window.rifaplusReservedNumbers?.length || 0, window.rifaplusReservedNumbers);
-    console.log('  ✓ OportunidadesService disponible:', !!window.OportunidadesService);
-    console.log('  ✓ Oportunidades enabled:', window.rifaplusConfig?.rifa?.oportunidades?.enabled);
-    console.log('  ✓ Config oportunidades:', window.rifaplusConfig?.rifa?.oportunidades);
-    
+
     cantidadBoletos.textContent = cantidad;
     
     if (numerosSeleccionados) {
         if (cantidad > 0) {
             // Ordenar números seleccionados para visualización
             const numerosOrdenados = Array.from(selectedNumbersGlobal).sort((a, b) => a - b);
-            
-            console.log('  ✓ Números ordenados:', numerosOrdenados);
             
             // ✅ NOTA: Las oportunidades ya NO se calculan en cliente
             // Con el nuevo sistema pre-asignado:
@@ -1653,13 +1618,18 @@ function actualizarResumenCompra() {
     
     // Guardar totales actualizados en localStorage para consistencia
     try {
-        localStorage.setItem('rifaplus_total', JSON.stringify({
+        const resumenSerializado = JSON.stringify({
             subtotal: calculoDescuento.subtotal,
             descuento: calculoDescuento.descuentoMonto,
             totalFinal: calculoDescuento.totalFinal,
             precioUnitario: calculoDescuento.precioUnitario,
             cantidad: calculoDescuento.cantidadBoletos
-        }));
+        });
+
+        if (resumenPersistidoSnapshot !== resumenSerializado) {
+            localStorage.setItem('rifaplus_total', resumenSerializado);
+            resumenPersistidoSnapshot = resumenSerializado;
+        }
     } catch (e) {
         console.warn('No se pudo guardar rifaplus_total en localStorage', e);
     }
@@ -1724,15 +1694,33 @@ function generarBotonesRango() {
     return true;  // Éxito
 }
 
+function solicitarInicializacionRangoCuandoConfigEsteLista() {
+    if (rangoInitSuscrito) {
+        return;
+    }
+
+    rangoInitSuscrito = true;
+
+    const reintentar = () => {
+        if (!inicializarRangoDefault()) {
+            return;
+        }
+
+        rangoInitSuscrito = false;
+        window.removeEventListener('configSyncCompleto', reintentar);
+        window.removeEventListener('configuracionActualizada', reintentar);
+    };
+
+    window.addEventListener('configSyncCompleto', reintentar);
+    window.addEventListener('configuracionActualizada', reintentar);
+}
+
 function inicializarRangoDefault() {
     // Generar botones de rango desde config.js
     const exitoGen = generarBotonesRango();
     
-    // Si falla (rangos no disponibles), reintenta en 500ms
     if (!exitoGen) {
-        console.log('⏳ Esperando rangos... reintentar en 500ms');
-        setTimeout(inicializarRangoDefault, 500);
-        return;
+        return false;
     }
     
     // Usar SIEMPRE el primer rango de config.js
@@ -1743,8 +1731,7 @@ function inicializarRangoDefault() {
     
     if (!primerRango) {
         console.warn('⏳ Primer rango no disponible todavía...');
-        setTimeout(inicializarRangoDefault, 500);
-        return;
+        return false;
     }
     
     const rangoBtns = document.querySelectorAll('.rango-btn');
@@ -1754,6 +1741,7 @@ function inicializarRangoDefault() {
     }
 
     renderRange(primerRango.inicio, primerRango.fin);
+    return true;
 }
 
 function renderRange(inicio, fin) {
@@ -3026,6 +3014,7 @@ async function agregarBoletoDirectoCarrito(numero) {
             if (!botonEnGrid.classList.contains('selected')) {
                 botonEnGrid.classList.add('selected');
             }
+            enfatizarNumeroSeleccionado(botonEnGrid, numero);
             console.log(`✅ Boleto #${numero} marcado como seleccionado en grid`);
         } else {
             console.warn(`⚠️ No se encontró boleto #${numero} en el grid. Data-numero: ${numero}`);
@@ -3163,6 +3152,44 @@ function configurarColoresAnimacionCarrito(colorBase) {
     root.style.setProperty('--cart-confirm-shadow', colorConAlpha(colorPrincipal, 0.48));
 }
 
+function enfatizarNumeroSeleccionado(boton, numeroDelBoleto = 0) {
+    if (!boton || boton.nodeType !== 1) {
+        return;
+    }
+
+    boton.classList.remove('selection-emphasis');
+    void boton.offsetWidth;
+    boton.classList.add('selection-emphasis');
+    boton.style.setProperty('--selection-ticket-number', `"${numeroDelBoleto}"`);
+
+    const cleanup = () => {
+        boton.classList.remove('selection-emphasis');
+        boton.style.removeProperty('--selection-ticket-number');
+    };
+
+    setTimeout(cleanup, 760);
+}
+
+function crearEstallidoCarrito(carritoNav, colorSeleccionado) {
+    if (!carritoNav) {
+        return;
+    }
+
+    try {
+        const burst = document.createElement('div');
+        burst.className = 'carrito-arrival-burst';
+        burst.style.borderColor = colorSeleccionado;
+        burst.style.boxShadow = `
+            0 0 0 6px ${colorConAlpha(colorSeleccionado, 0.16)},
+            0 0 22px ${colorConAlpha(colorSeleccionado, 0.42)}
+        `;
+        carritoNav.appendChild(burst);
+        setTimeout(() => burst.remove(), 620);
+    } catch (error) {
+        console.warn('No se pudo crear estallido en carrito:', error.message);
+    }
+}
+
 
 
 /**
@@ -3185,6 +3212,7 @@ function animarAgregarAlCarrito(botonElemento = null, numeroDelBoleto = 0, conAn
             botonElemento.textContent = '✅ ¡Agregado!';
             botonElemento.style.backgroundColor = colorSeleccionado;
             botonElemento.style.color = 'white';
+            enfatizarNumeroSeleccionado(botonElemento, numeroDelBoleto);
             
             setTimeout(() => {
                 botonElemento.classList.remove('being-added');
@@ -3200,153 +3228,24 @@ function animarAgregarAlCarrito(botonElemento = null, numeroDelBoleto = 0, conAn
             carritoNav.classList.add('cart-pulse');
             const originalColor = carritoNav.style.color;
             carritoNav.style.color = colorSeleccionado;
-            carritoNav.style.transform = isMobile ? 'scale(1.14)' : 'scale(1.3)';
+            carritoNav.style.transform = isMobile ? 'scale(1.18)' : 'scale(1.34)';
             
             setTimeout(() => {
                 carritoNav.classList.remove('cart-pulse');
                 carritoNav.style.color = originalColor;
                 carritoNav.style.transform = '';
-            }, isMobile ? 420 : 600);
+            }, isMobile ? 520 : 720);
             
             // 3️⃣ EFECTO VOLADO: Animar boleto volando al carrito
             crearAnimacionVolado(botonElemento, numeroDelBoleto);
+            setTimeout(() => {
+                crearEstallidoCarrito(carritoNav, colorSeleccionado);
+            }, isMobile ? 280 : 420);
         }
     } catch (error) {
         console.error('Error al animar agregar al carrito:', error);
     }
 }
-
-/**
- * crearEfectoVolandoProfesional - Crea un efecto volador profesional y llamativo
- * MEJORADO para móvil: Maneja correctamente scroll y viewport
- * Soporta: grid, buscador, máquina de suerte
- */
-function crearEfectoVolandoProfesional(origenElement, numeroDelBoleto, origen = 'grid') {
-    try {
-        const carritoNav = document.getElementById('carritoNav');
-        if (!carritoNav) return;
-        
-        const colorSeleccionado = obtenerColorSeleccionado();
-        const colorSeleccionadoClaro = mezclarColorCss(colorSeleccionado, 'rgb(255, 255, 255)', 0.28);
-        
-        // 📍 Obtener posiciones correctas considerando scroll
-        const origenRect = origenElement?.getBoundingClientRect ? origenElement.getBoundingClientRect() : {
-            left: window.innerWidth / 2,
-            top: window.innerHeight / 2,
-            width: 0,
-            height: 0
-        };
-        const carritoRect = carritoNav.getBoundingClientRect();
-        
-        // 🔍 Validación: Si el origen está muy fuera de viewport, usar posición por defecto
-        const isMobile = window.innerWidth < 768;
-        const origenVisibleEnViewport = origenRect.top >= -100 && origenRect.top <= window.innerHeight + 100;
-        
-        // Si estamos en móvil y el origen está significativamente fuera de viewport,
-        // usar el centro de la pantalla pero aún hacer la animación
-        let startX = origenRect.left + origenRect.width / 2;
-        let startY = origenRect.top + origenRect.height / 2;
-        
-        if (isMobile && !origenVisibleEnViewport) {
-            // En móvil, si está muy fuera, usar una posición estimada/fallback
-            console.log('⚠️ En móvil, origen fuera de viewport. Usando fallback.');
-            // Usar puntos donde es probable que el carrito sea visible (parte superior de la pantalla)
-            startX = window.innerWidth * 0.5;
-            startY = 100; // Usa una posición estimada en la parte superior
-        }
-        
-        // 🎨 Crear elemento principal del boleto volador
-        const mainTicket = document.createElement('div');
-        mainTicket.className = 'ticket-fly-animation';
-        
-        mainTicket.style.cssText = `
-            position: fixed;
-            left: ${startX}px;
-            top: ${startY}px;
-            width: 50px;
-            height: 50px;
-            z-index: 9998;
-            pointer-events: none;
-            will-change: transform, opacity;
-        `;
-        
-        // 🎫 Icono del boleto con efecto de destello
-        const ticketIcon = document.createElement('div');
-        ticketIcon.className = 'ticket-fly-animation__icon';
-        ticketIcon.style.cssText = `
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, ${colorSeleccionado}, ${colorSeleccionadoClaro});
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            box-shadow: 0 0 20px ${colorConAlpha(colorSeleccionado, 0.6)}, inset 0 1px 0 rgba(255,255,255,0.3);
-            transform: rotate(-15deg);
-        `;
-        ticketIcon.textContent = '🎫';
-        mainTicket.appendChild(ticketIcon);
-        
-        // ✨ Crear partículas de luz alrededor
-        for (let i = 0; i < 8; i++) {
-            const particle = document.createElement('div');
-            particle.className = 'ticket-fly-animation__particle';
-            const angle = (i / 8) * Math.PI * 2;
-            const distance = 35;
-            const offsetX = Math.cos(angle) * distance;
-            const offsetY = Math.sin(angle) * distance;
-            
-            particle.style.cssText = `
-                position: absolute;
-                width: 8px;
-                height: 8px;
-                background: ${colorSeleccionado};
-                border-radius: 50%;
-                left: 50%;
-                top: 50%;
-                transform: translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px));
-                opacity: 0.8;
-                box-shadow: 0 0 8px ${colorConAlpha(colorSeleccionado, 0.9)};
-            `;
-            mainTicket.appendChild(particle);
-        }
-        
-        document.body.appendChild(mainTicket);
-        
-        // 🚀 Calcular trayectoria hacia carrito
-        const deltaX = carritoRect.left - startX;
-        const deltaY = carritoRect.top - startY;
-        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-        const duration = Math.min(1000, 600 + distance * 0.2);
-        
-        // ✨ Crear animación suave y profesional
-        requestAnimationFrame(() => {
-            mainTicket.style.transition = `all ${duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
-            mainTicket.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(0.2) rotate(360deg)`;
-            mainTicket.style.opacity = '0';
-            
-            // Animar partículas de dispersión
-            const particles = mainTicket.querySelectorAll('div:not(:first-child)');
-            particles.forEach((p, i) => {
-                p.style.transition = `all ${duration}ms ease-out`;
-                p.style.opacity = '0';
-                const angle = (i / 8) * Math.PI * 2;
-                const finalDistance = Math.random() * 200 + 100;
-                p.style.transform = `translate(calc(-50% + ${Math.cos(angle) * finalDistance}px), calc(-50% + ${Math.sin(angle) * finalDistance}px))`;
-            });
-        });
-        
-        // Limpiar elemento
-        setTimeout(() => {
-            mainTicket.remove();
-        }, duration + 200);
-        
-    } catch (error) {
-        console.error('Error en crearEfectoVolandoProfesional:', error);
-    }
-}
-
 
 /**
  * crearEfectoVoladoProfesional - Crea un efecto volador profesional y llamativo
@@ -3453,32 +3352,51 @@ function crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, origen = '
         
         // 🎨 Crear elemento principal del boleto volador
         const mainTicket = document.createElement('div');
+        mainTicket.className = 'ticket-fly-animation';
         
         mainTicket.style.cssText = `
             position: fixed;
             left: ${startX}px;
             top: ${startY}px;
-            width: ${lowPowerMode ? 42 : 50}px;
-            height: ${lowPowerMode ? 42 : 50}px;
+            width: ${lowPowerMode ? 50 : 62}px;
+            height: ${lowPowerMode ? 50 : 62}px;
             z-index: 9998;
             pointer-events: none;
             will-change: transform, opacity;
             opacity: 1;
             contain: layout style paint;
             transform: translateZ(0);
+            filter: drop-shadow(0 12px 24px ${colorConAlpha(colorSeleccionado, lowPowerMode ? 0.3 : 0.42)});
         `;
+
+        const trail = document.createElement('div');
+        trail.className = 'ticket-fly-animation__trail';
+        trail.style.cssText = `
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: ${lowPowerMode ? 84 : 120}px;
+            height: ${lowPowerMode ? 12 : 16}px;
+            transform: translate(-72%, -50%);
+            border-radius: 999px;
+            background: linear-gradient(90deg, ${colorConAlpha(colorSeleccionado, 0)} 0%, ${colorConAlpha(colorSeleccionado, lowPowerMode ? 0.18 : 0.3)} 42%, ${colorConAlpha(colorSeleccionado, lowPowerMode ? 0.42 : 0.62)} 100%);
+            filter: blur(${lowPowerMode ? 4 : 5}px);
+            opacity: ${lowPowerMode ? 0.78 : 0.96};
+        `;
+        mainTicket.appendChild(trail);
         
         // 🎫 Icono del boleto con efecto de destello (MEJORADO)
         const ticketIcon = document.createElement('div');
+        ticketIcon.className = 'ticket-fly-animation__icon';
         ticketIcon.style.cssText = `
             width: 100%;
             height: 100%;
             background: linear-gradient(135deg, ${colorSeleccionado}, ${colorSeleccionadoClaro});
-            border-radius: 8px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: ${lowPowerMode ? 22 : 28}px;
+            font-size: ${lowPowerMode ? 24 : 30}px;
             font-weight: bold;
             box-shadow: ${lowPowerMode
                 ? `0 0 14px ${colorConAlpha(colorSeleccionado, 0.45)}, inset 0 1px 0 rgba(255,255,255,0.35)`
@@ -3488,13 +3406,36 @@ function crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, origen = '
         `;
         ticketIcon.textContent = '🎫';
         mainTicket.appendChild(ticketIcon);
+
+        if (numeroDelBoleto) {
+            const ticketLabel = document.createElement('div');
+            ticketLabel.className = 'ticket-fly-animation__label';
+            ticketLabel.style.cssText = `
+                position: absolute;
+                left: 50%;
+                top: -16px;
+                transform: translateX(-50%);
+                padding: 4px 8px;
+                border-radius: 999px;
+                background: rgba(12, 15, 28, 0.82);
+                color: #ffffff;
+                font-size: ${lowPowerMode ? 10 : 11}px;
+                font-weight: 800;
+                letter-spacing: 0.04em;
+                white-space: nowrap;
+                box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+            `;
+            ticketLabel.textContent = `#${numeroDelBoleto}`;
+            mainTicket.appendChild(ticketLabel);
+        }
         
         // En móvil reducimos partículas para mejorar fps sin perder el efecto
-        const particleCount = lowPowerMode ? 4 : Math.min(12, Math.max(6, Math.floor(window.innerWidth / 140)));
+        const particleCount = lowPowerMode ? 6 : Math.min(14, Math.max(8, Math.floor(window.innerWidth / 120)));
         for (let i = 0; i < particleCount; i++) {
             const particle = document.createElement('div');
+            particle.className = 'ticket-fly-animation__particle';
             const angle = (i / particleCount) * Math.PI * 2;
-            const distance = lowPowerMode ? 28 : 45;
+            const distance = lowPowerMode ? 32 : 52;
             const offsetX = Math.cos(angle) * distance;
             const offsetY = Math.sin(angle) * distance;
             
@@ -3507,10 +3448,10 @@ function crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, origen = '
                 left: 50%;
                 top: 50%;
                 transform: translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px));
-                opacity: ${lowPowerMode ? 0.75 : 1};
+                opacity: ${lowPowerMode ? 0.82 : 1};
                 box-shadow: ${lowPowerMode
-                    ? `0 0 8px ${colorConAlpha(colorSeleccionado, 0.55)}`
-                    : `0 0 15px ${colorConAlpha(colorSeleccionado, 1)}, 0 0 30px ${colorConAlpha(colorSeleccionado, 0.6)}`};
+                    ? `0 0 10px ${colorConAlpha(colorSeleccionado, 0.62)}`
+                    : `0 0 18px ${colorConAlpha(colorSeleccionado, 1)}, 0 0 34px ${colorConAlpha(colorSeleccionado, 0.64)}`};
             `;
             mainTicket.appendChild(particle);
         }
@@ -3535,18 +3476,22 @@ function crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, origen = '
         // ✨ Crear animación suave y CONFIABLE
         requestAnimationFrame(() => {
             mainTicket.style.transition = `transform ${duration}ms cubic-bezier(0.16, 1, 0.3, 1), opacity ${duration}ms ease-out`;
-            mainTicket.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(${lowPowerMode ? 0.18 : 0.1}) rotate(${lowPowerMode ? 300 : 720}deg)`;
+            mainTicket.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(${lowPowerMode ? 0.22 : 0.12}) rotate(${lowPowerMode ? 340 : 760}deg)`;
             mainTicket.style.opacity = '0';
+
+            trail.style.transition = `transform ${duration}ms ease-out, opacity ${duration}ms ease-out`;
+            trail.style.transform = `translate(-110%, -50%) scaleX(${lowPowerMode ? 1.25 : 1.55})`;
+            trail.style.opacity = '0';
             
             // Animar partículas de forma más ligera
-            const particles = mainTicket.querySelectorAll('div:not(:first-child)');
+            const particles = mainTicket.querySelectorAll('.ticket-fly-animation__particle');
             particles.forEach((p, i) => {
                 p.style.transition = `transform ${duration}ms ease-out, opacity ${duration}ms ease-out`;
                 p.style.opacity = '0';
                 const angle = (i / particles.length) * Math.PI * 2;
                 const finalDistance = lowPowerMode
-                    ? (Math.random() * 55 + 55)
-                    : (Math.random() * 180 + 120);
+                    ? (Math.random() * 70 + 70)
+                    : (Math.random() * 220 + 140);
                 p.style.transform = `translate(calc(-50% + ${Math.cos(angle) * finalDistance}px), calc(-50% + ${Math.sin(angle) * finalDistance}px)) scale(0)`;
             });
         });
@@ -3583,7 +3528,6 @@ function crearAnimacionVolado(botonElemento = null, numeroDelBoleto = 0) {
         // 1️⃣ Si pasamos un botón, usarlo directamente
         if (origenElement && origenElement.nodeType === 1) {
             origen = 'boton';
-            console.log('✅ Usando botón origen directo');
             crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, origen);
             return;
         }
@@ -3595,7 +3539,6 @@ function crearAnimacionVolado(botonElemento = null, numeroDelBoleto = 0) {
                 origenElement = numerosGrid.querySelector(`[data-numero="${numeroDelBoleto}"]`);
                 if (origenElement && origenElement.nodeType === 1) {
                     origen = 'grid';
-                    console.log(`✅ Encontrado en grid: #${numeroDelBoleto}`);
                     crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, origen);
                     return;
                 }
@@ -3612,13 +3555,11 @@ function crearAnimacionVolado(botonElemento = null, numeroDelBoleto = 0) {
                 origenElement = numerosSuerte.querySelector(`[data-numero="${numeroDelBoleto}"]`);
                 if (origenElement && origenElement.nodeType === 1) {
                     origen = 'suerte-elemento';
-                    console.log(`✅ Encontrado en máquina: #${numeroDelBoleto}`);
                     crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, origen);
                     return;
                 }
                 
                 // Si no encontramos el número, usar toda la máquina como origen
-                console.log('📍 Número no encontrado en máquina, usando contenedor');
                 origenElement = numerosSuerte;
                 origen = 'suerte';
                 crearEfectoVoladoProfesional(origenElement, numeroDelBoleto, origen);
@@ -3630,7 +3571,6 @@ function crearAnimacionVolado(botonElemento = null, numeroDelBoleto = 0) {
         
         // 4️⃣ Si grid no está visible, crear fallback desde su posición anterior
         if (numerosGrid) {
-            console.log('📍 Grid existe pero no visible, usando como fallback');
             try {
                 const gridRect = numerosGrid.getBoundingClientRect();
                 origenElement = document.createElement('div');
@@ -3649,7 +3589,6 @@ function crearAnimacionVolado(botonElemento = null, numeroDelBoleto = 0) {
         }
         
         // 5️⃣ Último recurso: viewport center (NUNCA falla)
-        console.log('⚠️ Usando viewport center como último recurso');
         origenElement = document.createElement('div');
         origenElement.style.cssText = `position: fixed; left: ${window.innerWidth / 2}px; top: ${window.innerHeight / 2}px; width: 0; height: 0;`;
         document.body.appendChild(origenElement);

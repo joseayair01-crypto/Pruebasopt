@@ -1605,6 +1605,31 @@ body {
     }
 }
 
+@keyframes selectedNumberPop {
+    0% {
+        transform: scale(1) translateY(0);
+        box-shadow: 0 0 0 0 var(--cart-confirm-shadow, rgba(var(--secondary-rgb), 0.42));
+    }
+    28% {
+        transform: scale(1.18) translateY(-2px);
+        box-shadow:
+            0 0 0 10px rgba(var(--secondary-rgb), 0.18),
+            0 14px 30px rgba(var(--secondary-rgb), 0.24);
+    }
+    55% {
+        transform: scale(0.95);
+        box-shadow:
+            0 0 0 16px rgba(var(--secondary-rgb), 0),
+            0 10px 22px rgba(var(--secondary-rgb), 0.18);
+    }
+    100% {
+        transform: scale(1.05);
+        box-shadow:
+            0 0 0 0 rgba(var(--secondary-rgb), 0),
+            0 10px 24px rgba(var(--secondary-rgb), 0.28);
+    }
+}
+
 @keyframes flyToCart {
     0% {
         opacity: 1;
@@ -1623,14 +1648,29 @@ body {
     0%, 100% {
         transform: scale(1);
     }
-    25% {
-        transform: scale(1.2);
+    20% {
+        transform: scale(1.24) rotate(-8deg);
     }
     50% {
-        transform: scale(0.95);
+        transform: scale(0.92) rotate(6deg);
     }
-    75% {
-        transform: scale(1.15);
+    78% {
+        transform: scale(1.18) rotate(-4deg);
+    }
+}
+
+@keyframes cartArrivalBurst {
+    0% {
+        transform: translate(-50%, -50%) scale(0.2);
+        opacity: 0;
+    }
+    28% {
+        transform: translate(-50%, -50%) scale(1.1);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1.85);
+        opacity: 0;
     }
 }
 
@@ -1651,6 +1691,10 @@ body {
 
 .numero-btn.being-added {
     animation: addToCartConfirm 0.6s ease-out !important;
+}
+
+.numero-btn.selection-emphasis {
+    animation: selectedNumberPop 0.72s cubic-bezier(0.22, 1, 0.36, 1) !important;
 }
 
 .numero-btn.flying-to-cart {
@@ -3671,7 +3715,9 @@ footer {
 
 .ticket-fly-animation,
 .ticket-fly-animation__icon,
-.ticket-fly-animation__particle {
+.ticket-fly-animation__particle,
+.ticket-fly-animation__label,
+.ticket-fly-animation__trail {
     transition-duration: inherit;
 }
 
@@ -3681,7 +3727,9 @@ footer {
     }
 
     .ticket-fly-animation__icon,
-    .ticket-fly-animation__particle {
+    .ticket-fly-animation__particle,
+    .ticket-fly-animation__label,
+    .ticket-fly-animation__trail {
         transition-duration: 0.8s !important;
     }
 }
@@ -3735,10 +3783,10 @@ footer {
 .compra-hero-sub{
     opacity:1;
     margin: 0 auto 1.1rem;
-    color: rgba(229, 238, 246, 0.82);
+    color: var(--text-dark);
     max-width: 56ch;
     line-height: 1.65;
-    text-shadow: 0 1px 0 rgba(var(--primary-rgb), 0.12);
+    text-shadow: none;
 }
 .compra-hero-cta{
     display:flex;
@@ -5188,6 +5236,8 @@ footer {
     justify-content: center;
     line-height: 1;
     overflow: hidden;
+    position: relative;
+    isolation: isolate;
     transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, transform 120ms ease, box-shadow 140ms ease, opacity 120ms ease;
     box-shadow: none;
     touch-action: manipulation;
@@ -5207,10 +5257,21 @@ footer {
 .numero-btn.selected {
     background: var(--seleccionado);
     color: white;
-    font-weight: 700;
     border-color: var(--seleccionado);
-    box-shadow: 0 6px 20px var(--seleccionado-30);
-    transform: scale(1.01);
+    box-shadow: none;
+    transform: none;
+}
+
+.numero-btn.selection-emphasis::before {
+    content: '';
+    position: absolute;
+    inset: -24%;
+    background:
+        radial-gradient(circle, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.08) 28%, transparent 58%);
+    opacity: 1;
+    pointer-events: none;
+    z-index: -1;
+    animation: cartArrivalBurst 0.72s ease-out forwards;
 }
 
 .numero-btn:active:not(.sold):not(.reserved):not(.selected) {
@@ -5228,6 +5289,52 @@ footer {
     box-shadow: 0 0 0 2px rgba(var(--secondary-rgb), 0.08);
     transform: scale(0.985);
     opacity: 0.94;
+}
+
+.carrito-nav {
+    position: relative;
+    overflow: visible;
+}
+
+.carrito-nav.cart-pulse {
+    filter: drop-shadow(0 0 14px rgba(var(--secondary-rgb), 0.28));
+}
+
+.carrito-arrival-burst {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    border: 2px solid var(--cart-confirm-color, var(--seleccionado));
+    box-shadow:
+        0 0 0 6px rgba(var(--secondary-rgb), 0.18),
+        0 0 20px rgba(var(--secondary-rgb), 0.34);
+    pointer-events: none;
+    z-index: 4;
+    animation: cartArrivalBurst 0.56s ease-out forwards;
+}
+
+.carrito-arrival-burst::before,
+.carrito-arrival-burst::after {
+    content: '';
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: var(--cart-confirm-color, var(--seleccionado));
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 14px var(--cart-confirm-color, var(--seleccionado));
+}
+
+.carrito-arrival-burst::before {
+    margin-left: -18px;
+}
+
+.carrito-arrival-burst::after {
+    margin-left: 18px;
 }
 
 .numero-btn.sold {
@@ -9462,6 +9569,10 @@ body.modal-scroll-locked {
     display: flex !important;
 }
 
+#modalSeleccionCuenta.show {
+    display: flex !important;
+}
+
 .modal-seleccion-cuentas {
     background: linear-gradient(180deg, var(--surface-base), var(--surface-card-cool));
     border-radius: 24px;
@@ -10038,8 +10149,13 @@ body.modal-scroll-locked {
 /* Ocultar botón cuando hay modales abiertos */
 .modal-overlay[style*="display: flex"] ~ .btn-flotante-comprobante,
 #modalSeleccionCuenta[style*="display: flex"] ~ .btn-flotante-comprobante,
+#modalSeleccionCuenta.show ~ .btn-flotante-comprobante,
 #modalOrdenFormal.show ~ .btn-flotante-comprobante,
 #modalContacto.show ~ .btn-flotante-comprobante,
+.modal-overlay-conflicto ~ .btn-flotante-comprobante,
+.modal.show ~ .btn-flotante-comprobante,
+.modal-orden-formal.show ~ .btn-flotante-comprobante,
+#modalOrdenConfirmada.show ~ .btn-flotante-comprobante,
 .modal-carrito-overlay.active ~ .btn-flotante-comprobante {
     opacity: 0;
     pointer-events: none;
