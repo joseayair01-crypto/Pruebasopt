@@ -85,10 +85,10 @@
     
     /* Estados de boletos - Colores para la leyenda y grid */
     --disponible: #ffffff;
-    --seleccionado: rgba(var(--secondary-rgb), 0.9);
-    --apartado: #c9938d;
-    --vendido: #2f1d28;
-    --seleccionado-30: rgba(var(--secondary-rgb), 0.3);
+    --seleccionado: var(--primary);
+    --apartado: rgba(var(--secondary-rgb), 0.16);
+    --vendido: #000000;
+    --seleccionado-30: rgba(var(--primary-rgb), 0.3);
     
     /* Variables dinámicas para animaciones (se inyectan desde JS) */
     --fly-to-x: 0;
@@ -5352,10 +5352,10 @@ footer {
 
 .numero-btn.reserved {
     background: var(--apartado);
-    color: var(--primary);
-    border: 2px dotted #000000;
+    color: var(--secondary-dark);
+    border: 1.5px solid rgba(var(--secondary-rgb), 0.42);
     cursor: not-allowed;
-    opacity: 0.85;
+    opacity: 1;
     position: relative;
 }
 

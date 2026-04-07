@@ -33,6 +33,10 @@ const ADMIN_LAYOUT = {
     },
     authPromise: null,
 
+    get fallbackLogo() {
+        return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='34' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ESorteo%3C/text%3E%3C/svg%3E";
+    },
+
     esPaginaLoginAdmin() {
         const rawPath = window.location.pathname || '';
         const paginaActual = rawPath.split('/').pop() || 'admin-dashboard.html';
@@ -168,8 +172,8 @@ const ADMIN_LAYOUT = {
      */
     configurarLogo() {
         const config = window.rifaplusConfig || {};
-        const nombreCliente = config.cliente?.nombre || 'SORTEO';
-        const logoCliente = config.cliente?.logo || config.cliente?.logotipo || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='34' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ESaDev%3C/text%3E%3C/svg%3E";
+        const nombreCliente = String(config.cliente?.nombre || '').trim() || 'Sorteo';
+        const logoCliente = config.cliente?.logo || config.cliente?.logotipo || this.fallbackLogo;
         
         debugAdminLayout('Actualizando header admin', {
             nombreClienteAUsar: nombreCliente,
@@ -191,6 +195,44 @@ const ADMIN_LAYOUT = {
         
         if (titleSub) {
             titleSub.textContent = nombreCliente;
+        }
+
+        const loginTitle = document.getElementById('loginTitle');
+        if (loginTitle) {
+            loginTitle.textContent = `${nombreCliente} - Admin`;
+        }
+
+        const loginLogo = document.getElementById('loginLogo');
+        if (loginLogo) {
+            loginLogo.src = logoCliente;
+            loginLogo.alt = `Logo de ${nombreCliente}`;
+        }
+
+        const dashboardLogo = document.getElementById('dashboardLogo');
+        if (dashboardLogo) {
+            dashboardLogo.src = logoCliente;
+            dashboardLogo.alt = `Logo de ${nombreCliente}`;
+        }
+
+        this.configurarMetadatosBranding(nombreCliente, logoCliente);
+    },
+
+    configurarMetadatosBranding(nombreCliente, logoCliente) {
+        const tituloActual = String(document.title || '').trim();
+        const baseTitle = tituloActual
+            .replace(/\s*[-|]\s*.*$/, '')
+            .trim() || 'Panel Admin';
+
+        document.title = `${baseTitle} | ${nombreCliente}`;
+
+        document.querySelectorAll('link[rel="icon"], link[rel="apple-touch-icon"], link[rel="preload"][as="image"]').forEach((link) => {
+            link.href = logoCliente;
+        });
+
+        const logoHeader = document.querySelector('.admin-logo-img');
+        if (logoHeader) {
+            logoHeader.src = logoCliente;
+            logoHeader.alt = `Logo de ${nombreCliente}`;
         }
     },
     

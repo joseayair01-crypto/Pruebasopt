@@ -454,7 +454,7 @@ window.rifaplusUtils = window.utilidadesRifaPlus;
 function inyectarLogoDinamico() {
     try {
         const imageDelivery = window.RifaPlusImageDelivery;
-        const logoConfigCrudo = window.rifaplusConfig?.cliente?.logo || window.rifaplusConfig?.cliente?.logotipo || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='28' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ERifaPlus%3C/text%3E%3C/svg%3E";
+        const logoConfigCrudo = window.rifaplusConfig?.cliente?.logo || window.rifaplusConfig?.cliente?.logotipo || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='28' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ESorteo%3C/text%3E%3C/svg%3E";
         let logoConfig = logoConfigCrudo;
 
         try {
@@ -519,7 +519,7 @@ function inyectarLogoDinamico() {
 
                 img.onerror = function() {
                     console.warn(`Logo no encontrado: ${logoConfig}. Usando fallback inline.`);
-                    this.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='28' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ERifaPlus%3C/text%3E%3C/svg%3E";
+                    this.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='28' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ESorteo%3C/text%3E%3C/svg%3E";
                 };
             });
         });
@@ -544,7 +544,7 @@ function inyectarLogoDinamico() {
  * Inicializa todos los módulos disponibles
  */
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Inicializando RifaPlus...');
+    console.log('🚀 Inicializando SaDev...');
 
     // 🎉 Inicializar modal de sorteo finalizado (SI aplica)
     if (window.modalSorteoFinalizado) {
@@ -574,7 +574,7 @@ document.addEventListener('DOMContentLoaded', function() {
     inicializarNavegacion();      // Navegación activa
     inicializarMenuMovil();       // Menú responsivo móvil
 
-    console.log('✅ RifaPlus inicializado correctamente');
+    console.log('✅ SaDev inicializado correctamente');
 });
 
 // ============================================================ //

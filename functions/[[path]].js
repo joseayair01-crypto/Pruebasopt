@@ -102,7 +102,7 @@ async function fetchMetadata(apiBase, requestUrl, pathname) {
 
     const response = await fetch(url.toString(), {
         headers: {
-            'user-agent': 'Cloudflare-Pages-RifaPlus-Metadata/1.0'
+            'user-agent': 'Cloudflare-Pages-SaDev-Metadata/1.0'
         }
     });
 
@@ -165,7 +165,7 @@ export async function onRequest(context) {
         const injectedHtml = injectMetadata(html, metadata);
         const headers = new Headers(assetResponse.headers);
         headers.delete('content-length');
-        headers.set('x-rifaplus-og-injected', 'true');
+        headers.set('x-sadev-og-injected', 'true');
 
         return new Response(injectedHtml, {
             status: assetResponse.status,
@@ -174,8 +174,8 @@ export async function onRequest(context) {
         });
     } catch (error) {
         const headers = new Headers(assetResponse.headers);
-        headers.set('x-rifaplus-og-injected', 'fallback');
-        headers.set('x-rifaplus-og-error', String(error.message || 'unknown'));
+        headers.set('x-sadev-og-injected', 'fallback');
+        headers.set('x-sadev-og-error', String(error.message || 'unknown'));
 
         return new Response(html, {
             status: assetResponse.status,

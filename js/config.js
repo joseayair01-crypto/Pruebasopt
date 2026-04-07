@@ -37,7 +37,7 @@
  * ============================================================
  */
 
-let rifaplusLogoInicial = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='28' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ERifaPlus%3C/text%3E%3C/svg%3E";
+let rifaplusLogoInicial = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='28' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ESorteo%3C/text%3E%3C/svg%3E";
 
 try {
     const logoCacheado = localStorage.getItem('rifaplus_cached_logo') || '';
@@ -1629,6 +1629,6 @@ window.addEventListener('ganadesoresActualizados', function() {
     }
 });
 
-console.log('✅ [RifaPlus Config v3.1.0] Inicializado (arquitectura sin duplicación)');
-console.log('✅ [RifaPlus Config] Funciones, getters y métodos registrados');
-console.log('✅ [RifaPlus Config] Datos se sincronizan desde /backend/config.json');
+console.log('✅ [SaDev Config v3.1.0] Inicializado (arquitectura sin duplicación)');
+console.log('✅ [SaDev Config] Funciones, getters y métodos registrados');
+console.log('✅ [SaDev Config] Datos se sincronizan desde /backend/config.json');

@@ -6,16 +6,16 @@
     <meta name="rifaplus-api-base" content="">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:* http://localhost:* http://localhost:5001; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://fonts.googleapis.com http://localhost:5001 http://127.0.0.1:5001; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' http://127.0.0.1:* http://localhost:* https: http://localhost:5001 http://127.0.0.1:5001 ws: wss: ws://localhost:5001 wss://localhost:5001 ws://127.0.0.1:5001 wss://127.0.0.1:5001; img-src 'self' data: https:;">
     <!-- METADATOS DINÁMICOS - Cloudflare Functions y js/meta-inyector los actualizan desde la configuración actual -->
-    <title>Compra tus boletos | RifaPlus</title>
+    <title>Compra tus boletos</title>
     <meta name="description" content="Selecciona tus boletos y participa en el sorteo activo.">
-    <meta property="og:title" content="Compra tus boletos | RifaPlus" />
+    <meta property="og:title" content="Compra tus boletos" />
     <meta property="og:description" content="Selecciona tus boletos y participa en el sorteo activo." />
     <meta property="og:image" content="images/placeholder-cover.svg" />
     <meta property="og:url" content="http://127.0.0.1:5500/compra.html" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="es_MX" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Compra tus boletos | RifaPlus" />
+    <meta name="twitter:title" content="Compra tus boletos" />
     <meta name="twitter:description" content="Selecciona tus boletos y participa en el sorteo activo." />
     <meta name="twitter:image" content="images/placeholder-cover.svg" />
     <link rel="stylesheet" href="css/styles.css?v=20260401.3">
@@ -23,7 +23,7 @@
     <script>
         (function() {
             const imageDelivery = window.RifaPlusImageDelivery;
-            const fallbackLogo = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='28' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ERifaPlus%3C/text%3E%3C/svg%3E";
+            const fallbackLogo = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='28' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ESorteo%3C/text%3E%3C/svg%3E";
             let configLocal = {};
 
             try {
@@ -47,7 +47,7 @@
                         return true;
                     }
 
-                    return /^(sorteo|sorteos|sorteo actual|sorteo en vivo|sorteo demo|organizador|cliente|rifaplus)$/i.test(nombre);
+                    return /^(sorteo|sorteos|sorteo actual|sorteo en vivo|sorteo demo|organizador|cliente|rifaplus|sadev)$/i.test(nombre);
                 },
                 resolverOrganizador() {
                     for (let i = 0; i < arguments.length; i += 1) {
@@ -169,9 +169,9 @@
             <a href="index.html#top" class="logo" data-logo-src id="logoLink">
                 <div class="logo-circle">
                     <script>
-                        document.write('<img src="' + (window.__RIFAPLUS_CACHED_LOGO__ || "data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 240 96\\'%3E%3Crect width=\\'240\\' height=\\'96\\' rx=\\'20\\' fill=\\'%230b2235\\'/%3E%3Ctext x=\\'120\\' y=\\'58\\' font-size=\\'28\\' text-anchor=\\'middle\\' fill=\\'%23ffffff\\' font-family=\\'Arial,sans-serif\\'%3ERifaPlus%3C/text%3E%3C/svg%3E") + '" alt="Logo del organizador" class="logo-image dynamic-logo" data-dynamic-logo="true" width="320" height="137" decoding="async">');
+                        document.write('<img src="' + (window.__RIFAPLUS_CACHED_LOGO__ || "data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 240 96\\'%3E%3Crect width=\\'240\\' height=\\'96\\' rx=\\'20\\' fill=\\'%230b2235\\'/%3E%3Ctext x=\\'120\\' y=\\'58\\' font-size=\\'28\\' text-anchor=\\'middle\\' fill=\\'%23ffffff\\' font-family=\\'Arial,sans-serif\\'%3ESorteo%3C/text%3E%3C/svg%3E") + '" alt="Logo del organizador" class="logo-image dynamic-logo" data-dynamic-logo="true" width="320" height="137" decoding="async">');
                     </script>
-                    <noscript><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='28' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ERifaPlus%3C/text%3E%3C/svg%3E" alt="Logo del organizador" class="logo-image dynamic-logo" data-dynamic-logo="true" width="320" height="137" decoding="async"></noscript>
+                    <noscript><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='28' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ESorteo%3C/text%3E%3C/svg%3E" alt="Logo del organizador" class="logo-image dynamic-logo" data-dynamic-logo="true" width="320" height="137" decoding="async"></noscript>
                 </div>
             </a>
 
@@ -466,7 +466,7 @@
                 <!-- Columna izquierda: Logo y nombre -->
                 <div class="footer-logo-section">
                     <div class="footer-logo-box">
-                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='28' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ERifaPlus%3C/text%3E%3C/svg%3E" alt="Logo del organizador" class="footer-logo-img dynamic-logo" data-dynamic-logo="true" width="200" height="100">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='28' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ESorteo%3C/text%3E%3C/svg%3E" alt="Logo del organizador" class="footer-logo-img dynamic-logo" data-dynamic-logo="true" width="200" height="100">
                     </div>
                     <h3 id="footerNombre" class="footer-client-name">SORTEO</h3>
                     <p id="footerEslogan" class="footer-eslogan">Rifas 100% Transparentes y Seguras</p>
@@ -600,7 +600,7 @@
             <div class="modal-carrito-body">
                 <div class="carrito-vacio" id="carritoVacio">
                     <div class="carrito-vacio-content">
-                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='28' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ERifaPlus%3C/text%3E%3C/svg%3E" alt="Logo del organizador" class="carrito-logo dynamic-logo" data-dynamic-logo="true">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='28' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ESorteo%3C/text%3E%3C/svg%3E" alt="Logo del organizador" class="carrito-logo dynamic-logo" data-dynamic-logo="true">
                         <p class="carrito-vacio-titulo">Tu carrito está vacío</p>
                         <p class="carrito-vacio-subtitulo">¡Comienza a seleccionar tus boletos favoritos!</p>
                         <button class="btn btn-primary btn-carrito-comprar" id="btnIrAComprar">
