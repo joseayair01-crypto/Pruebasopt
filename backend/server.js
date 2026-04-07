@@ -4099,29 +4099,58 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
 
         // Respuesta
         if (resultado.isDuplicate) {
+            const ordenExistente = resultado.ordenExistente;
+
+            if (wsEvents && ordenExistente) {
+                try {
+                    const createdAtMs = new Date(ordenExistente.created_at).getTime();
+                    const esOrdenReciente = Number.isFinite(createdAtMs)
+                        ? (Date.now() - createdAtMs) <= (15 * 60 * 1000)
+                        : true;
+
+                    // Reemitir órdenes recientes ayuda a recuperar el realtime
+                    // cuando el cliente reintenta el POST o la primera respuesta se pierde.
+                    if (esOrdenReciente) {
+                        wsEvents.emitirNuevaOrdenAdmin({
+                            numero_orden: ordenExistente.numero_orden,
+                            nombre_cliente: ordenExistente.nombre_cliente,
+                            telefono_cliente: ordenExistente.telefono_cliente,
+                            estado: ordenExistente.estado || 'pendiente',
+                            cantidad_boletos: ordenExistente.cantidad_boletos,
+                            total: ordenExistente.total,
+                            comprobante_path: ordenExistente.comprobante_path || null,
+                            created_at: ordenExistente.created_at || new Date().toISOString(),
+                            updated_at: ordenExistente.updated_at || ordenExistente.created_at || new Date().toISOString()
+                        });
+                    }
+                } catch (wsError) {
+                    console.warn(`⚠️  Error reemitiendo orden idempotente al canal admin:`, wsError.message);
+                }
+            }
+
             // Idempotencia: 200 OK si la orden ya existe
             logOperacionHttp('POST /api/ordenes (idempotente)', startTime, {
-                ordenId: resultado.ordenExistente.numero_orden,
-                cantidad: resultado.ordenExistente.cantidad_boletos,
+                ordenId: ordenExistente.numero_orden,
+                cantidad: ordenExistente.cantidad_boletos,
                 statusCode: 200
             }, { slowMs: 1200, warnMs: 2500 });
             return res.json({
                 success: true,
                 message: 'Orden ya registrada',
-                ordenId: resultado.ordenExistente.numero_orden,
-                url: `http://${req.headers.host || `localhost:${PORT}`}/api/ordenes/${resultado.ordenExistente.numero_orden}`,
-                cantidad: resultado.ordenExistente.cantidad_boletos,
+                ordenId: ordenExistente.numero_orden,
+                url: `http://${req.headers.host || `localhost:${PORT}`}/api/ordenes/${ordenExistente.numero_orden}`,
+                cantidad: ordenExistente.cantidad_boletos,
                 data: {
-                    numero_orden: resultado.ordenExistente.numero_orden,
-                    cantidad_boletos: resultado.ordenExistente.cantidad_boletos,
+                    numero_orden: ordenExistente.numero_orden,
+                    cantidad_boletos: ordenExistente.cantidad_boletos,
                     cantidad_oportunidades: resultado.cantidadOportunidades || 0,
                     totales: {
-                        precioUnitario: Number(resultado.ordenExistente.precio_unitario ?? 0),
-                        subtotal: Number(resultado.ordenExistente.subtotal ?? 0),
-                        descuento: Number(resultado.ordenExistente.descuento ?? 0),
-                        totalFinal: Number(resultado.ordenExistente.total ?? 0)
+                        precioUnitario: Number(ordenExistente.precio_unitario ?? 0),
+                        subtotal: Number(ordenExistente.subtotal ?? 0),
+                        descuento: Number(ordenExistente.descuento ?? 0),
+                        totalFinal: Number(ordenExistente.total ?? 0)
                     },
-                    estado: resultado.ordenExistente.estado
+                    estado: ordenExistente.estado
                 }
             });
         }
