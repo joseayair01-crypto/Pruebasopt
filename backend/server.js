@@ -3490,7 +3490,7 @@ app.post('/api/public/order-counter/next', limiterOrdenes, async (req, res) => {
         
         // IMPORTANTE: Pasar configActual a obtenerPrefijoOrdenCliente para ASEGURAR que usa el correcto
         const prefijo = obtenerPrefijoOrdenCliente(cliente_id, configActual);
-        console.log(`📋 Generando orden para cliente_id="${cliente_id}", prefijo="${prefijo}", config.cliente.prefijoOrden="${configActual?.cliente?.prefijoOrden}"`);
+        logOrdenesDebug(`📋 Generando orden para cliente_id="${cliente_id}", prefijo="${prefijo}", config.cliente.prefijoOrden="${configActual?.cliente?.prefijoOrden}"`);
 
         // Usar transacción con bloqueo explícito para evitar IDs duplicados bajo concurrencia
         const orderId = await db.transaction(async (trx) => {
@@ -3500,7 +3500,7 @@ app.post('/api/public/order-counter/next', limiterOrdenes, async (req, res) => {
             const numero = String(counter.proximo_numero).padStart(3, '0');
             const fullOrderId = `${prefijo}-${counter.ultima_secuencia}${numero}`;
             
-            console.log(`✅ Generado orden_id: ${fullOrderId} (num=${numero}, seq=${counter.ultima_secuencia})`);
+            logOrdenesDebug(`✅ Generado orden_id: ${fullOrderId} (num=${numero}, seq=${counter.ultima_secuencia})`);
 
             // 2. Calcular siguiente número y secuencia
             let nextNum = counter.proximo_numero + 1;
@@ -3690,6 +3690,12 @@ function incrementarSecuenciaSQL(secuencia) {
     return String.fromCharCode(letra1) + String.fromCharCode(letra2);
 }
 
+function logOrdenesDebug(...args) {
+    if (process.env.DEBUG_ORDENES === 'true') {
+        console.log(...args);
+    }
+}
+
 async function obtenerOCrearCounterOrden(trx, clienteId) {
     let counter = await trx('order_id_counter')
         .where('cliente_id', clienteId)
@@ -3844,7 +3850,7 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
     let ordenId = '';
     
     try {
-        console.log('\n📨 [POST /api/ordenes] REQUEST RECIBIDO');
+        logOrdenesDebug('\n📨 [POST /api/ordenes] REQUEST RECIBIDO');
         const orden = req.body;
         
         // ===== VALIDACIONES BÁSICAS =====
@@ -3941,7 +3947,7 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
             console.warn(`   Cliente: subtotal=$${totalesCliente.subtotal.toFixed(2)}, descuento=$${totalesCliente.descuento.toFixed(2)}, total=$${totalesCliente.totalFinal.toFixed(2)}`);
             console.warn(`   Servidor: subtotal=$${subtotal.toFixed(2)}, descuento=$${descuento.toFixed(2)}, total=$${total.toFixed(2)}`);
         } else {
-            console.log(`✅ [AUDITORÍA] Precios consistentes para orden ${ordenId}`);
+            logOrdenesDebug(`✅ [AUDITORÍA] Precios consistentes para orden ${ordenId}`);
         }
 
         // ===== TRANSACCIÓN ATÓMICA =====
@@ -3983,42 +3989,33 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                 };
             }
 
-            const marcaTiempoReserva = new Date();
-            const boletosActualizados = await trx('boletos_estado')
+            // PASO 2: Bloquear boletos objetivo y verificar disponibilidad real
+            // El orden consistente reduce riesgo de deadlocks en compras concurrentes.
+            const boletosBD = await trx('boletos_estado')
                 .whereIn('numero', boletosOrdenados)
-                .where('estado', 'disponible')
-                .whereNull('numero_orden')
+                .select('numero', 'estado', 'numero_orden')
+                .orderBy('numero', 'asc')
                 .timeout(10000)
-                .update({
-                    numero_orden: ordenId,
-                    estado: 'apartado',
-                    updated_at: marcaTiempoReserva
-                });
+                .forUpdate();
 
-            if (boletosActualizados !== boletosOrdenados.length) {
-                const boletosBD = await trx('boletos_estado')
-                    .whereIn('numero', boletosOrdenados)
-                    .select('numero', 'estado', 'numero_orden')
-                    .orderBy('numero', 'asc')
-                    .timeout(10000);
+            const boletosEncontrados = new Set(boletosBD.map((boleto) => Number(boleto.numero)));
+            const boletosFaltantes = boletosOrdenados.filter((numero) => !boletosEncontrados.has(numero));
+            const boletosNoDisponibles = boletosBD.filter((b) =>
+                b.estado !== 'disponible' || b.numero_orden !== null
+            );
 
-                const boletosEncontrados = new Set(boletosBD.map((boleto) => Number(boleto.numero)));
-                const boletosFaltantes = boletosOrdenados.filter((numero) => !boletosEncontrados.has(numero));
-                const boletosNoDisponibles = boletosBD.filter((boleto) =>
-                    boleto.estado !== 'disponible' || boleto.numero_orden !== null
-                );
+            if (boletosNoDisponibles.length > 0 || boletosFaltantes.length > 0) {
                 const numerosConflictivos = Array.from(new Set([
-                    ...boletosNoDisponibles.map((boleto) => Number(boleto.numero)),
+                    ...boletosNoDisponibles.map((b) => Number(b.numero)),
                     ...boletosFaltantes
                 ])).sort((a, b) => a - b);
+                const boletosDisponibles = boletosValidos.filter((n) => !numerosConflictivos.includes(n));
 
                 throw {
                     code: 'BOLETOS_CONFLICTO',
                     boletosConflicto: numerosConflictivos,
-                    boletosDisponibles: boletosValidos.filter((numero) => !numerosConflictivos.includes(numero)),
-                    message: boletosFaltantes.length > 0
-                        ? 'Algunos boletos no existen en el inventario actual'
-                        : 'Algunos boletos cambiaron de estado mientras se procesaba la orden'
+                    boletosDisponibles,
+                    message: `${boletosNoDisponibles.length} boleto(s) no disponible(s)`
                 };
             }
 
@@ -4046,6 +4043,40 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
             };
 
             await trx('ordenes').insert(ordenData).timeout(10000);
+
+            // PASO 4: Reservar boletos de forma condicional.
+            // Si algo cambió entre validación y update, la transacción se revierte.
+            const boletosActualizados = await trx('boletos_estado')
+                .whereIn('numero', boletosOrdenados)
+                .where('estado', 'disponible')
+                .whereNull('numero_orden')
+                .timeout(10000)
+                .update({
+                    numero_orden: ordenId,
+                    estado: 'apartado',
+                    updated_at: new Date()
+                });
+
+            if (boletosActualizados !== boletosOrdenados.length) {
+                const boletosConflictoBD = await trx('boletos_estado')
+                    .whereIn('numero', boletosOrdenados)
+                    .where(function() {
+                        this.whereNot('estado', 'disponible').orWhereNotNull('numero_orden');
+                    })
+                    .timeout(10000)
+                    .select('numero');
+
+                const numerosConflictivos = Array.from(new Set(
+                    boletosConflictoBD.map((boleto) => Number(boleto.numero))
+                )).sort((a, b) => a - b);
+
+                throw {
+                    code: 'BOLETOS_CONFLICTO',
+                    boletosConflicto: numerosConflictivos,
+                    boletosDisponibles: boletosValidos.filter((n) => !numerosConflictivos.includes(n)),
+                    message: 'Algunos boletos cambiaron de estado mientras se procesaba la orden'
+                };
+            }
 
             if (oportunidadesHabilitadas) {
                 if (!oportunidadesConfig.configuracionCompleta || !oportunidadesConfig.configuracionConsistente) {
@@ -4121,7 +4152,7 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                     };
                 }
 
-                console.log(`✅ Orden ${ordenId} creada: ${boletosValidos.length} boletos + ${oportunidadesActualizadas} oportunidades asignadas`);
+                logOrdenesDebug(`✅ Orden ${ordenId} creada: ${boletosValidos.length} boletos + ${oportunidadesActualizadas} oportunidades asignadas`);
 
                 return {
                     isDuplicate: false,
@@ -4135,7 +4166,7 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                     totalFinal: total
                 };
             } else {
-                console.log(`✅ Orden ${ordenId} creada: ${boletosValidos.length} boletos (sin oportunidades)`);
+                logOrdenesDebug(`✅ Orden ${ordenId} creada: ${boletosValidos.length} boletos (sin oportunidades)`);
 
                 return {
                     isDuplicate: false,
@@ -4239,7 +4270,7 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
                 });
-                console.log(`✅ Evento WebSocket emitido: Nueva orden con ${resultado.cantidad} boletos`);
+                logOrdenesDebug(`✅ Evento WebSocket emitido: Nueva orden con ${resultado.cantidad} boletos`);
             } catch (wsError) {
                 // No fallar si hay error en WebSocket - es no-crítico
                 console.warn(`⚠️  Error emitiendo evento WebSocket:`, wsError.message);
