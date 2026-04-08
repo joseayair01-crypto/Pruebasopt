@@ -3983,34 +3983,42 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                 };
             }
 
-            // PASO 2: Bloquear boletos objetivo y verificar disponibilidad real
-            // El orden consistente reduce riesgo de deadlocks en compras concurrentes.
-            const boletosBD = await trx('boletos_estado')
+            const marcaTiempoReserva = new Date();
+            const boletosActualizados = await trx('boletos_estado')
                 .whereIn('numero', boletosOrdenados)
-                .select('numero', 'estado', 'numero_orden')
-                .orderBy('numero', 'asc')
+                .where('estado', 'disponible')
+                .whereNull('numero_orden')
                 .timeout(10000)
-                .forUpdate();
+                .update({
+                    numero_orden: ordenId,
+                    estado: 'apartado',
+                    updated_at: marcaTiempoReserva
+                });
 
-            const boletosEncontrados = new Set(boletosBD.map((boleto) => Number(boleto.numero)));
-            const boletosFaltantes = boletosOrdenados.filter((numero) => !boletosEncontrados.has(numero));
-            const boletosNoDisponibles = boletosBD.filter((b) =>
-                b.estado !== 'disponible' || b.numero_orden !== null
-            );
+            if (boletosActualizados !== boletosOrdenados.length) {
+                const boletosBD = await trx('boletos_estado')
+                    .whereIn('numero', boletosOrdenados)
+                    .select('numero', 'estado', 'numero_orden')
+                    .orderBy('numero', 'asc')
+                    .timeout(10000);
 
-            if (boletosNoDisponibles.length > 0 || boletosFaltantes.length > 0) {
-                // Calcular qué boletos SÍ están disponibles
+                const boletosEncontrados = new Set(boletosBD.map((boleto) => Number(boleto.numero)));
+                const boletosFaltantes = boletosOrdenados.filter((numero) => !boletosEncontrados.has(numero));
+                const boletosNoDisponibles = boletosBD.filter((boleto) =>
+                    boleto.estado !== 'disponible' || boleto.numero_orden !== null
+                );
                 const numerosConflictivos = Array.from(new Set([
-                    ...boletosNoDisponibles.map((b) => Number(b.numero)),
+                    ...boletosNoDisponibles.map((boleto) => Number(boleto.numero)),
                     ...boletosFaltantes
                 ])).sort((a, b) => a - b);
-                const boletosDisponibles = boletosValidos.filter(n => !numerosConflictivos.includes(n));
-                
+
                 throw {
                     code: 'BOLETOS_CONFLICTO',
                     boletosConflicto: numerosConflictivos,
-                    boletosDisponibles: boletosDisponibles,  // ← NUEVO: para mostrar alternativas
-                    message: `${boletosNoDisponibles.length} boleto(s) no disponible(s)`
+                    boletosDisponibles: boletosValidos.filter((numero) => !numerosConflictivos.includes(numero)),
+                    message: boletosFaltantes.length > 0
+                        ? 'Algunos boletos no existen en el inventario actual'
+                        : 'Algunos boletos cambiaron de estado mientras se procesaba la orden'
                 };
             }
 
@@ -4038,40 +4046,6 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
             };
 
             await trx('ordenes').insert(ordenData).timeout(10000);
-
-            // PASO 4: Reservar boletos de forma condicional.
-            // Si algo cambió entre validación y update, la transacción se revierte.
-            const boletosActualizados = await trx('boletos_estado')
-                .whereIn('numero', boletosOrdenados)
-                .where('estado', 'disponible')
-                .whereNull('numero_orden')
-                .timeout(10000)
-                .update({
-                    numero_orden: ordenId,
-                    estado: 'apartado',
-                    updated_at: new Date()
-                });
-
-            if (boletosActualizados !== boletosOrdenados.length) {
-                const boletosConflictoBD = await trx('boletos_estado')
-                    .whereIn('numero', boletosOrdenados)
-                    .where(function() {
-                        this.whereNot('estado', 'disponible').orWhereNotNull('numero_orden');
-                    })
-                    .timeout(10000)
-                    .select('numero');
-
-                const numerosConflictivos = Array.from(new Set(
-                    boletosConflictoBD.map((boleto) => Number(boleto.numero))
-                )).sort((a, b) => a - b);
-
-                throw {
-                    code: 'BOLETOS_CONFLICTO',
-                    boletosConflicto: numerosConflictivos,
-                    boletosDisponibles: boletosValidos.filter((n) => !numerosConflictivos.includes(n)),
-                    message: 'Algunos boletos cambiaron de estado mientras se procesaba la orden'
-                };
-            }
 
             if (oportunidadesHabilitadas) {
                 if (!oportunidadesConfig.configuracionCompleta || !oportunidadesConfig.configuracionConsistente) {
