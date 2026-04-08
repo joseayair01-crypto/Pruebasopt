@@ -9,6 +9,10 @@ test('Flujo completo: compra -> guardar orden -> admin confirma', async ({ page,
 
   // 2) Generar números con la máquina: indicar cantidad 3 y generar
   await page.fill('#cantidadNumeros', '3');
+  await page.waitForFunction(() => {
+    const btn = document.getElementById('btnGenerarNumeros');
+    return btn && btn.disabled === false;
+  }, null, { timeout: 15000 });
   await page.click('#btnGenerarNumeros');
 
   // Esperar resultado de la máquina
@@ -28,21 +32,26 @@ test('Flujo completo: compra -> guardar orden -> admin confirma', async ({ page,
     }
   });
 
-  // 4) Proceder a compra (abrir modal contacto)
-  await page.click('#btnComprar');
+  // 4) Abrir carrito y proceder a compra (flujo actual)
+  await page.click('#carritoNav');
+  await expect(page.locator('#carritoModal')).toBeVisible({ timeout: 5000 });
+  await expect(page.locator('#btnProcederCarrito')).toBeEnabled({ timeout: 5000 });
+  await page.click('#btnProcederCarrito');
   await expect(page.locator('#modalContacto')).toHaveClass(/show/);
 
   // 5) Completar el formulario de contacto
   await page.fill('#clienteNombre', 'Automated');
   await page.fill('#clienteApellidos', 'Tester');
-  await page.fill('#clienteWhatsapp', '+524599111111');
+  await page.fill('#clienteWhatsapp', '4499111111');
+  await page.selectOption('#clienteEstado', 'Querétaro');
+  await page.fill('#clienteCiudad', 'Queretaro');
 
   // Patch guardarClienteEnStorage to append a valid email to localStorage
   await page.evaluate(() => {
     try {
       const original = window.guardarClienteEnStorage;
-      window.guardarClienteEnStorage = function(nombre, apellidos, whatsapp) {
-        const result = original(nombre, apellidos, whatsapp);
+      window.guardarClienteEnStorage = function(...args) {
+        const result = original(...args);
         try {
           const clave = 'rifaplus_cliente';
           const c = JSON.parse(localStorage.getItem(clave) || '{}');
@@ -60,9 +69,10 @@ test('Flujo completo: compra -> guardar orden -> admin confirma', async ({ page,
 
   await page.click('#btnContinuarContacto');
 
-  // 6) Esperar navegación a orden.html
-  await page.waitForURL('**/orden.html', { timeout: 5000 });
-  await expect(page.locator('#ordenNumero')).toBeVisible();
+  // 6) Seleccionar cuenta de pago y abrir orden formal
+  await expect(page.locator('#modalSeleccionCuenta')).toHaveClass(/show/, { timeout: 5000 });
+  await page.locator('#modalSeleccionCuenta .stack-label').first().click();
+  await expect(page.locator('#modalOrdenFormal')).toBeVisible({ timeout: 5000 });
 
   // Asegurar que el cliente tenga un email válido para pasar validaciones del backend
   await page.evaluate(() => {
@@ -72,18 +82,12 @@ test('Flujo completo: compra -> guardar orden -> admin confirma', async ({ page,
     localStorage.setItem(clave, JSON.stringify(cliente));
   });
 
-  // 7) Seleccionar el primer método de pago (si existe)
-  const pagoCard = page.locator('.pago-card').first();
-  await expect(pagoCard).toBeVisible();
-  await pagoCard.click();
-
-  // 8) Generar orden (abre modal formal)
+  // 7) Confirmar orden formal
   // Debug: comprobar rifaplus_cliente en localStorage antes de generar orden
   const clienteStorage = await page.evaluate(() => localStorage.getItem('rifaplus_cliente'));
   console.log('DEBUG rifaplus_cliente BEFORE generar orden:', clienteStorage);
 
-  await page.click('#btnGenerarOrden');
-  await expect(page.locator('#modalOrdenFormal')).toHaveClass(/show/);
+  await page.click('#btnContinuarOrdenFormal');
 
   // Ensure ordenActual and localStorage contain a valid email before sending to backend
   await page.evaluate(() => {
@@ -109,19 +113,17 @@ test('Flujo completo: compra -> guardar orden -> admin confirma', async ({ page,
   });
   console.log('DEBUG ordenEnMemoria=', ordenEnMemoria);
 
-  // 9) El navegador a veces bloquea fetch. En su lugar, leer la orden preparada en localStorage y crearla vía API desde el contexto de tests
-  const ordenLocal = await page.evaluate(() => JSON.parse(localStorage.getItem('rifaplus_orden_actual') || '{}'));
-  const crearResp = await request.post('http://localhost:3000/api/ordenes', { data: ordenLocal });
-  expect(crearResp.ok()).toBeTruthy();
-  const crearJson = await crearResp.json();
-  console.log('POST /api/ordenes (via request) status=', crearResp.status(), 'body=', crearJson);
-  expect(crearJson.success).toBe(true);
-  expect(crearJson.url).toBeTruthy();
-
-  // Extraer ordenId desde la URL devuelta (ej: .../api/ordenes/RIFA-00001)
-  const urlParts = crearJson.url.split('/');
-  const ordenId = urlParts[urlParts.length - 1];
+  // 8) Reutilizar la orden creada por el propio flujo del frontend
+  const ordenId = ordenEnMemoria?.ordenId;
   expect(ordenId).toBeTruthy();
+
+  await expect.poll(async () => {
+    const resp = await request.get(`http://localhost:3000/api/ordenes/${ordenId}`);
+    return resp.status();
+  }, {
+    timeout: 15000,
+    message: `La orden ${ordenId} no quedó visible en la API a tiempo`
+  }).toBe(200);
 
   // 10) Loguear en admin vía API para obtener token
   const loginResp = await request.post('http://localhost:3000/api/admin/login', {
