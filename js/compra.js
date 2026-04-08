@@ -793,7 +793,10 @@ async function inicializarSistemaCompra() {
         try {
             const arrayGuardado = JSON.parse(guardado);
             selectedNumbersGlobal.clear();
-            arrayGuardado.forEach(num => selectedNumbersGlobal.add(num));
+            arrayGuardado
+                .map(num => parseInt(num, 10))
+                .filter(num => !Number.isNaN(num))
+                .forEach(num => selectedNumbersGlobal.add(num));
             // Actualizar el contador inmediatamente después de sincronizar
             if (window.actualizarContadorCarritoGlobal) {
                 window.actualizarContadorCarritoGlobal();

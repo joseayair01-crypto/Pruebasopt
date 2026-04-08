@@ -2195,7 +2195,7 @@
                         Boletos Disponibles
                     </div>
                     <div class="stat-value" id="statAvailable">0</div>
-                    <div class="stat-subtext">De <span id="totalTickets">500</span> boletos</div>
+                    <div class="stat-subtext">De <span id="totalTickets">0</span> boletos</div>
                 </div>
 
                 <div class="stat-card">
@@ -2731,6 +2731,29 @@
             return usuario && usuario.rol === 'administrador';
         }
 
+        function obtenerTotalBoletosDashboard() {
+            const config = window.rifaplusConfig || {};
+
+            if (typeof config.obtenerTotalBoletos === 'function') {
+                const totalConfig = Number(config.obtenerTotalBoletos());
+                if (Number.isFinite(totalConfig) && totalConfig > 0) {
+                    return Math.floor(totalConfig);
+                }
+            }
+
+            const totalRifa = Number(config.rifa?.totalBoletos || 0);
+            if (Number.isFinite(totalRifa) && totalRifa > 0) {
+                return Math.floor(totalRifa);
+            }
+
+            const totalDom = Number(document.getElementById('totalTickets')?.textContent?.replace(/,/g, '') || 0);
+            if (Number.isFinite(totalDom) && totalDom > 0) {
+                return Math.floor(totalDom);
+            }
+
+            return 1000;
+        }
+
         function actualizarResumenEjecutivo({
             vendidos = 0,
             apartados = 0,
@@ -2869,7 +2892,7 @@
                 }
 
                 const boletosVendidos = parseInt(statVendidos.textContent.replace(/,/g, '') || 0);
-                const totalBoletos = parseInt(statTotal.textContent.replace(/,/g, '') || 500);
+                const totalBoletos = obtenerTotalBoletosDashboard();
                 const statReserved = document.getElementById('statReserved');
                 const apartados = parseInt(statReserved?.textContent?.replace(/,/g, '') || 0);
                 const precioBoleto = Number(window.rifaplusConfig?.rifa?.precioBoleto || 0);
@@ -3119,7 +3142,7 @@
 
                 const estadisticas = datosEstadisticas.data;
                 const config = window.rifaplusConfig || {};
-                const totalBoletosDisponibles = Number(config.rifa?.totalBoletos || 500);
+                const totalBoletosDisponibles = obtenerTotalBoletosDashboard();
 
                 // Obtener datos resumidos de boletos desde endpoint liviano
                 let vendidos = 0, apartados = 0;
@@ -3344,7 +3367,7 @@
                     const datosBoletosStats = await respBoletosStats.json();
                     if (datosBoletosStats.success && datosBoletosStats.data) {
                         const config = window.rifaplusConfig || {};
-                        const totalBoletosDisponibles = config.rifa?.totalBoletos || 500;
+                        const totalBoletosDisponibles = obtenerTotalBoletosDashboard();
                         vendidos = Number(datosBoletosStats.data?.vendidos || 0);
                         apartados = Number(datosBoletosStats.data?.apartados || 0);
                         disponibles = Math.max(0, totalBoletosDisponibles - (vendidos + apartados));

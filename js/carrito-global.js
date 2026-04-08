@@ -125,6 +125,11 @@ function obtenerRefsResumenCarrito() {
     };
 }
 
+function carritoModalEstaActivo() {
+    const carritoModal = document.getElementById('carritoModal');
+    return Boolean(carritoModal && carritoModal.classList.contains('active'));
+}
+
 function leerBoletosGuardadosCarrito() {
     try {
         const stored = getItemSafeCarrito('rifaplusSelectedNumbers');
@@ -754,6 +759,7 @@ function removerBoletoSeleccionado(numero) {
     
     // Asegurar que numero es un integer
     numero = parseInt(numero, 10);
+    const numeroComoTexto = String(numero);
 
     if (typeof window.cancelarValidacionSeleccionPendienteCompra === 'function') {
         window.cancelarValidacionSeleccionPendienteCompra(numero);
@@ -762,6 +768,7 @@ function removerBoletoSeleccionado(numero) {
     // 1. Remover del Set global - INMEDIATO
     if (typeof selectedNumbersGlobal !== 'undefined') {
         selectedNumbersGlobal.delete(numero);
+        selectedNumbersGlobal.delete(numeroComoTexto);
     }
     
     // 2. Desmarcar en la boletera - INMEDIATO
@@ -769,7 +776,7 @@ function removerBoletoSeleccionado(numero) {
     
     // 3. Actualizar localStorage INMEDIATO (es rápido)
     let numbers = leerBoletosGuardadosCarrito();
-    numbers = numbers.filter(n => n !== numero);
+    numbers = numbers.filter(n => Number(n) !== numero);
     setItemSafeCarrito('rifaplusSelectedNumbers', JSON.stringify(numbers));
     
     // 4. Actualizar resultados si está visible
@@ -935,7 +942,9 @@ function sincronizarCarritoAlLocalStorage() {
     sincronizarTimeout = setTimeout(() => {
         if (typeof selectedNumbersGlobal !== 'undefined') {
             try {
-                const numbers = Array.from(selectedNumbersGlobal);
+                const numbers = Array.from(selectedNumbersGlobal)
+                    .map((n) => parseInt(n, 10))
+                    .filter((n) => !Number.isNaN(n));
                 setItemSafeCarrito('rifaplusSelectedNumbers', JSON.stringify(numbers));
             } catch (e) {
                 console.warn('[CARRITO] Error sincronizando a localStorage:', e.message);
@@ -990,8 +999,7 @@ function actualizarCarritoConDebounceAgresivo() {
         actualizarContadorCarritoGlobal();
         
         // Actualizar carrito visual pero SOLO si está abierto (no bloquea si está cerrado)
-        const carritoModal = document.querySelector('.modal-carrito');
-        if (carritoModal && carritoModal.classList.contains('active')) {
+        if (carritoModalEstaActivo()) {
             // Solo actualizar si carrito está visible
             actualizarVistaCarritoGlobal();
         }
