@@ -364,8 +364,17 @@ const limiterGeneral = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     skip: (req, res) => {
-        // Solo skippear en desarrollo
-        return process.env.NODE_ENV !== 'production';
+        if (process.env.NODE_ENV !== 'production') {
+            return true;
+        }
+
+        const publicReadSafePaths = new Set([
+            '/api/health',
+            '/api/public/ordenes-stats',
+            '/api/public/boletos/stats'
+        ]);
+
+        return publicReadSafePaths.has(req.path);
     }
 });
 
