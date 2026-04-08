@@ -25,6 +25,7 @@
     "prod": "NODE_ENV=production node backend/server.js",
     "health-check": "node scripts/health-check.js",
     "load:public": "node scripts/load-test-public.js",
+    "load:orders": "node scripts/load-test-orders.js",
     "validate": "node -r dotenv/config backend/validate-db.js",
     "validate:launch": "node -r dotenv/config backend/pre-deploy-validate.js",
     "audit:bd": "node -r dotenv/config backend/audit-bd-supabase.js",
