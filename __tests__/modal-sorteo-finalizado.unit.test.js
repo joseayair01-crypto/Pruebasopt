@@ -35,7 +35,7 @@ describe('Modal sorteo finalizado', () => {
 
         document.body.innerHTML = `
             <div id="modalSorteoFinalizadoOverlay">
-                <button id="btnVerMisBoletos" class="btn btn-verificar">Verificar</button>
+                <a id="btnVerMisBoletos" class="btn btn-verificar" href="mis-boletos-restringido.html">Verificar</a>
             </div>
         `;
 
@@ -48,5 +48,31 @@ describe('Modal sorteo finalizado', () => {
         document.getElementById('btnVerMisBoletos').click();
 
         expect(navegarSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('genera el boton verificar con enlace nativo al destino restringido', () => {
+        const ModalSorteoFinalizado = cargarModalEnContexto();
+        const instancia = new ModalSorteoFinalizado();
+
+        const html = instancia.generarHTMLModal({
+            documentos: {},
+            fechaCierre: new Date().toISOString(),
+            fechaCierreFormato: 'Hoy',
+            mensajeAgradecimiento: 'Gracias'
+        }, {
+            sorteoActivo: {
+                nombreSorteo: 'Sorteo Test'
+            },
+            cliente: {
+                nombre: 'Organizador Test'
+            }
+        }, {
+            sorteo: [],
+            presorteo: [],
+            ruletazos: []
+        });
+
+        expect(html).toContain('id="btnVerMisBoletos"');
+        expect(html).toContain('href="mis-boletos-restringido.html"');
     });
 });

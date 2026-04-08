@@ -416,10 +416,10 @@ class ModalSorteoFinalizado {
 
                     <!-- BOTONES DE ACCIÓN -->
                             <div class="sorteo-acciones">
-                                <button id="btnVerMisBoletos" class="btn btn-verificar">
+                                <a id="btnVerMisBoletos" class="btn btn-verificar" href="mis-boletos-restringido.html">
                                     <span>VERIFICAR MIS BOLETOS</span>
                                     <span class="btn-verificar-arrow" aria-hidden="true">→</span>
-                                </button>
+                                </a>
                         ${sorteo.documentos.actaURL ? `
                             <a href="${sorteo.documentos.actaURL}" download class="btn btn-descargar">
                                 <i class="fas fa-download"></i> Descargar Acta
