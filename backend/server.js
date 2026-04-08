@@ -3696,6 +3696,12 @@ function logOrdenesDebug(...args) {
     }
 }
 
+function logOrdenesPerf(label, data = {}) {
+    if (process.env.DEBUG_ORDENES_PERF === 'true') {
+        console.log(`[ORDEN-PERF] ${label}`, data);
+    }
+}
+
 async function obtenerOCrearCounterOrden(trx, clienteId) {
     let counter = await trx('order_id_counter')
         .where('cliente_id', clienteId)
@@ -3848,6 +3854,9 @@ app.post('/api/verify-payment', async (req, res) => {
 app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
     const startTime = Date.now();
     let ordenId = '';
+    const perfMarks = {
+        requestStart: startTime
+    };
     
     try {
         logOrdenesDebug('\n📨 [POST /api/ordenes] REQUEST RECIBIDO');
@@ -3941,6 +3950,7 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
             totalesCliente,
             config
         );
+        perfMarks.validacionesMs = Date.now() - startTime;
 
         if (!auditoria.sonIguales) {
             console.warn(`⚠️ [AUDITORÍA] Diferencia cliente/servidor en orden ${ordenId}:`);
@@ -3955,27 +3965,38 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
         const oportunidadesHabilitadas = oportunidadesConfig.enabled === true;
 
         const resultado = await db.transaction(async (trx) => {
+            const trxStart = Date.now();
             await trx.raw("SET LOCAL lock_timeout = '5s'");
             await trx.raw("SET LOCAL statement_timeout = '15s'");
+            perfMarks.trxSetupMs = Date.now() - trxStart;
 
             if (!ordenId) {
+                const counterStart = Date.now();
                 ordenId = await generarSiguienteOrdenId(clienteIdActual, trx);
+                perfMarks.counterMs = (perfMarks.counterMs || 0) + (Date.now() - counterStart);
             }
 
             // PASO 1: Verificar orden duplicada
+            const duplicateStart = Date.now();
             const ordenExistente = await trx('ordenes')
                 .where('numero_orden', ordenId)
                 .timeout(10000)
                 .first();
+            perfMarks.duplicateCheckMs = (perfMarks.duplicateCheckMs || 0) + (Date.now() - duplicateStart);
 
             if (ordenExistente) {
                 const cantidadOportunidadesExistente = oportunidadesHabilitadas
                     ? Number.parseInt(
                         (
-                            await trx('orden_oportunidades')
-                                .where('numero_orden', ordenExistente.numero_orden)
-                                .count('* as total')
-                                .first()
+                            await (async () => {
+                                const oppDuplicateStart = Date.now();
+                                const resultadoOpp = await trx('orden_oportunidades')
+                                    .where('numero_orden', ordenExistente.numero_orden)
+                                    .count('* as total')
+                                    .first();
+                                perfMarks.duplicateOppCountMs = (perfMarks.duplicateOppCountMs || 0) + (Date.now() - oppDuplicateStart);
+                                return resultadoOpp;
+                            })()
                         )?.total,
                         10
                     ) || 0
@@ -3991,12 +4012,14 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
 
             // PASO 2: Bloquear boletos objetivo y verificar disponibilidad real
             // El orden consistente reduce riesgo de deadlocks en compras concurrentes.
+            const ticketLockStart = Date.now();
             const boletosBD = await trx('boletos_estado')
                 .whereIn('numero', boletosOrdenados)
                 .select('numero', 'estado', 'numero_orden')
                 .orderBy('numero', 'asc')
                 .timeout(10000)
                 .forUpdate();
+            perfMarks.ticketLockMs = (perfMarks.ticketLockMs || 0) + (Date.now() - ticketLockStart);
 
             const boletosEncontrados = new Set(boletosBD.map((boleto) => Number(boleto.numero)));
             const boletosFaltantes = boletosOrdenados.filter((numero) => !boletosEncontrados.has(numero));
@@ -4042,10 +4065,13 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                 updated_at: new Date()
             };
 
+            const insertOrderStart = Date.now();
             await trx('ordenes').insert(ordenData).timeout(10000);
+            perfMarks.insertOrderMs = (perfMarks.insertOrderMs || 0) + (Date.now() - insertOrderStart);
 
             // PASO 4: Reservar boletos de forma condicional.
             // Si algo cambió entre validación y update, la transacción se revierte.
+            const reserveTicketsStart = Date.now();
             const boletosActualizados = await trx('boletos_estado')
                 .whereIn('numero', boletosOrdenados)
                 .where('estado', 'disponible')
@@ -4056,8 +4082,10 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                     estado: 'apartado',
                     updated_at: new Date()
                 });
+            perfMarks.reserveTicketsMs = (perfMarks.reserveTicketsMs || 0) + (Date.now() - reserveTicketsStart);
 
             if (boletosActualizados !== boletosOrdenados.length) {
+                const conflictQueryStart = Date.now();
                 const boletosConflictoBD = await trx('boletos_estado')
                     .whereIn('numero', boletosOrdenados)
                     .where(function() {
@@ -4065,6 +4093,7 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                     })
                     .timeout(10000)
                     .select('numero');
+                perfMarks.conflictQueryMs = (perfMarks.conflictQueryMs || 0) + (Date.now() - conflictQueryStart);
 
                 const numerosConflictivos = Array.from(new Set(
                     boletosConflictoBD.map((boleto) => Number(boleto.numero))
@@ -4094,6 +4123,7 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                     };
                 }
 
+                const oppCountStart = Date.now();
                 const conteosDisponiblesPorBoleto = await trx('orden_oportunidades')
                     .whereIn('numero_boleto', boletosValidos)
                     .where('estado', 'disponible')
@@ -4102,6 +4132,7 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                     .timeout(10000)
                     .count('* as total')
                     .groupBy('numero_boleto');
+                perfMarks.oppCountMs = (perfMarks.oppCountMs || 0) + (Date.now() - oppCountStart);
 
                 const mapaConteos = new Map(
                     conteosDisponiblesPorBoleto.map((row) => [
@@ -4128,6 +4159,7 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                     };
                 }
 
+                const oppReserveStart = Date.now();
                 const oportunidadesActualizadas = await trx('orden_oportunidades')
                     .whereIn('numero_boleto', boletosValidos)
                     .where('estado', 'disponible')
@@ -4137,6 +4169,7 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                         numero_orden: ordenId,
                         estado: 'apartado'
                     });
+                perfMarks.oppReserveMs = (perfMarks.oppReserveMs || 0) + (Date.now() - oppReserveStart);
 
                 const oportunidadesEsperadasOrden = boletosValidos.length * oportunidadesConfig.multiplicador;
                 if (oportunidadesActualizadas !== oportunidadesEsperadasOrden) {
@@ -4180,6 +4213,13 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                     totalFinal: total
                 };
             }
+        });
+        perfMarks.totalMs = Date.now() - startTime;
+        logOrdenesPerf('POST /api/ordenes ok', {
+            ordenId,
+            cantidadBoletos: boletosOrdenados.length,
+            oportunidadesHabilitadas,
+            ...perfMarks
         });
 
         // Respuesta
@@ -4302,6 +4342,12 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
         
         // Errores específicos
         if (error.code === 'BOLETOS_CONFLICTO') {
+            perfMarks.totalMs = Date.now() - startTime;
+            logOrdenesPerf('POST /api/ordenes conflicto', {
+                ordenId,
+                conflictos: error.boletosConflicto?.length || 0,
+                ...perfMarks
+            });
             log('warn', 'Boletos en conflicto detectados', { ordenId, conflictos: error.boletosConflicto.length });
             logOperacionHttp('POST /api/ordenes (conflicto)', startTime, {
                 ordenId,
@@ -4318,6 +4364,11 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
         }
 
         if (error.code === 'OPORTUNIDADES_INCONSISTENTES') {
+            perfMarks.totalMs = Date.now() - startTime;
+            logOrdenesPerf('POST /api/ordenes oportunidades_inconsistentes', {
+                ordenId,
+                ...perfMarks
+            });
             log('error', 'Inconsistencia de oportunidades detectada al crear orden', {
                 ordenId,
                 detalles: error.detalles || null
@@ -4331,6 +4382,11 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
         }
 
         if (error.code === '23505' && /numero_orden/i.test(String(error.detail || error.constraint || error.message || ''))) {
+            perfMarks.totalMs = Date.now() - startTime;
+            logOrdenesPerf('POST /api/ordenes colision_id', {
+                ordenId,
+                ...perfMarks
+            });
             log('warn', 'Colisión de numero_orden detectada', {
                 ordenId,
                 errorCode: error.code || null,
@@ -4350,6 +4406,12 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
         }
 
         if (['40P01', '55P03', '57014'].includes(error.code) || /lock timeout|statement timeout|deadlock/i.test(String(error.message || ''))) {
+            perfMarks.totalMs = Date.now() - startTime;
+            logOrdenesPerf('POST /api/ordenes timeout', {
+                ordenId,
+                errorCode: error.code || null,
+                ...perfMarks
+            });
             log('warn', 'POST /api/ordenes saturado o en contencion', {
                 ordenId,
                 errorCode: error.code || null,
@@ -4369,6 +4431,13 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
         }
 
         // Error genérico
+        perfMarks.totalMs = Date.now() - startTime;
+        logOrdenesPerf('POST /api/ordenes error', {
+            ordenId,
+            errorCode: error.code || null,
+            errorId,
+            ...perfMarks
+        });
         log('error', 'POST /api/ordenes error', { errorId, error: error.message, ordenId });
         logOperacionHttp('POST /api/ordenes (error)', startTime, {
             ordenId,
