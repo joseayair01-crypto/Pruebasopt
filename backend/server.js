@@ -148,10 +148,13 @@ const serverCache = {
     boletosPublicosCached: null,
     boletosPublicosCachedTime: 0,
     boletosPublicosByRange: new Map(),
+    ordenesStatsCached: null,
+    ordenesStatsCachedTime: 0,
     publicConfigCached: null,
     publicConfigCachedTime: 0,
     clienteConfigCached: null,
-    clienteConfigCachedTime: 0
+    clienteConfigCachedTime: 0,
+    publicRequestFlights: new Map()
 };
 
 function limpiarCacheConfiguracionPublica() {
@@ -164,9 +167,52 @@ function limpiarCacheConfiguracionPublica() {
 function limpiarCacheBoletosPublicos() {
     global.boletosStatsCache = null;
     global.boletosStatsCacheTime = null;
+    global.boletosPublicRangeStatsCache = null;
+    global.boletosPublicRangeStatsCacheTime = null;
     serverCache.boletosPublicosCached = null;
     serverCache.boletosPublicosCachedTime = 0;
     serverCache.boletosPublicosByRange.clear();
+    serverCache.ordenesStatsCached = null;
+    serverCache.ordenesStatsCachedTime = 0;
+}
+
+function refrescarCachesTrasCambioInventario() {
+    limpiarCacheBoletosPublicos();
+}
+
+function obtenerTtlCachePublico({ productionMs = 60000, developmentMs = 5000 } = {}) {
+    return process.env.NODE_ENV === 'production' ? productionMs : developmentMs;
+}
+
+function obtenerCacheMemoriaVigente(payload, cachedTime, ttlMs) {
+    if (!payload || !cachedTime) {
+        return null;
+    }
+
+    const ageMs = Date.now() - cachedTime;
+    if (ageMs < 0 || ageMs >= ttlMs) {
+        return null;
+    }
+
+    return { payload, ageMs };
+}
+
+async function resolverSingleFlightPublico(cacheKey, taskFactory) {
+    const existingFlight = serverCache.publicRequestFlights.get(cacheKey);
+    if (existingFlight) {
+        return existingFlight;
+    }
+
+    const flight = Promise.resolve()
+        .then(taskFactory)
+        .finally(() => {
+            if (serverCache.publicRequestFlights.get(cacheKey) === flight) {
+                serverCache.publicRequestFlights.delete(cacheKey);
+            }
+        });
+
+    serverCache.publicRequestFlights.set(cacheKey, flight);
+    return flight;
 }
 
 // 🔌 VARIABLE GLOBAL: Instancia de eventos WebSocket (se inicializa al arrancar el servidor)
@@ -3850,6 +3896,8 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Boletos duplicados en la orden' });
         }
 
+        const boletosOrdenados = [...boletosValidos].sort((a, b) => a - b);
+
         const totalesCliente = {
             subtotal: parseFloat(orden.totales?.subtotal) || 0,
             descuento: parseFloat(orden.totales?.descuento) || 0,
@@ -3890,6 +3938,9 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
         const oportunidadesHabilitadas = oportunidadesConfig.enabled === true;
 
         const resultado = await db.transaction(async (trx) => {
+            await trx.raw("SET LOCAL lock_timeout = '5s'");
+            await trx.raw("SET LOCAL statement_timeout = '15s'");
+
             if (!ordenId) {
                 ordenId = await generarSiguienteOrdenId(clienteIdActual, trx);
             }
@@ -3897,6 +3948,7 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
             // PASO 1: Verificar orden duplicada
             const ordenExistente = await trx('ordenes')
                 .where('numero_orden', ordenId)
+                .timeout(10000)
                 .first();
 
             if (ordenExistente) {
@@ -3922,11 +3974,11 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
 
             // PASO 2: Bloquear boletos objetivo y verificar disponibilidad real
             // El orden consistente reduce riesgo de deadlocks en compras concurrentes.
-            const boletosOrdenados = [...boletosValidos].sort((a, b) => a - b);
             const boletosBD = await trx('boletos_estado')
                 .whereIn('numero', boletosOrdenados)
                 .select('numero', 'estado', 'numero_orden')
                 .orderBy('numero', 'asc')
+                .timeout(10000)
                 .forUpdate();
 
             const boletosEncontrados = new Set(boletosBD.map((boleto) => Number(boleto.numero)));
@@ -3969,12 +4021,12 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                 numero_referencia: sanitizar(orden.cuenta?.numero_referencia || orden.cuenta?.referencia || '').slice(0, 100),
                 nombre_beneficiario: sanitizar(orden.cuenta?.beneficiary || '').slice(0, 150),
                 estado: 'pendiente',
-                boletos: JSON.stringify(boletosValidos),
+                boletos: JSON.stringify(boletosOrdenados),
                 created_at: new Date(),
                 updated_at: new Date()
             };
 
-            await trx('ordenes').insert(ordenData);
+            await trx('ordenes').insert(ordenData).timeout(10000);
 
             // PASO 4: Reservar boletos de forma condicional.
             // Si algo cambió entre validación y update, la transacción se revierte.
@@ -3982,6 +4034,7 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                 .whereIn('numero', boletosOrdenados)
                 .where('estado', 'disponible')
                 .whereNull('numero_orden')
+                .timeout(10000)
                 .update({
                     numero_orden: ordenId,
                     estado: 'apartado',
@@ -3994,6 +4047,7 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                     .where(function() {
                         this.whereNot('estado', 'disponible').orWhereNotNull('numero_orden');
                     })
+                    .timeout(10000)
                     .select('numero');
 
                 const numerosConflictivos = Array.from(new Set(
@@ -4029,6 +4083,7 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                     .where('estado', 'disponible')
                     .whereNull('numero_orden')
                     .select('numero_boleto')
+                    .timeout(10000)
                     .count('* as total')
                     .groupBy('numero_boleto');
 
@@ -4061,6 +4116,7 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                     .whereIn('numero_boleto', boletosValidos)
                     .where('estado', 'disponible')
                     .whereNull('numero_orden')
+                    .timeout(10000)
                     .update({
                         numero_orden: ordenId,
                         estado: 'apartado'
@@ -4169,6 +4225,8 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
         }
 
         const host = req.headers.host || `localhost:${PORT}`;
+        refrescarCachesTrasCambioInventario();
+
         log('info', 'Orden creada exitosamente', { ordenId, cantidad: resultado.cantidad, total: resultado.total });
         logOperacionHttp('POST /api/ordenes', startTime, {
             ordenId,
@@ -4188,7 +4246,7 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                 wsEvents.emitirNuevaOrdenAdmin({
                     numero_orden: resultado.ordenId,
                     nombre_cliente: nombre,
-                    telefono_cliente: telefono,
+                    telefono_cliente: whatsapp,
                     estado: 'pendiente',
                     cantidad_boletos: resultado.cantidad,
                     total: resultado.totalFinal,
@@ -4253,6 +4311,25 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                 code: 'OPORTUNIDADES_INCONSISTENTES',
                 message: error.message,
                 detalles: error.detalles || null
+            });
+        }
+
+        if (['40P01', '55P03', '57014'].includes(error.code) || /lock timeout|statement timeout|deadlock/i.test(String(error.message || ''))) {
+            log('warn', 'POST /api/ordenes saturado o en contencion', {
+                ordenId,
+                errorCode: error.code || null,
+                error: error.message
+            });
+            logOperacionHttp('POST /api/ordenes (timeout)', startTime, {
+                ordenId,
+                errorCode: error.code || null,
+                statusCode: 503
+            }, { slowMs: 1200, warnMs: 2500 });
+
+            return res.status(503).json({
+                success: false,
+                code: 'ORDEN_TEMPORALMENTE_BLOQUEADA',
+                message: 'Estamos procesando demasiadas compras al mismo tiempo. Intenta de nuevo en unos segundos.'
             });
         }
 
@@ -5021,6 +5098,8 @@ app.post('/api/public/ordenes-cliente/:numero_orden/comprobante', async (req, re
                 console.warn(`⚠️  Error emitiendo actualización admin de comprobante:`, wsError.message);
             }
         }
+
+        refrescarCachesTrasCambioInventario();
 
         // 🔒 NO retornar URL completa al cliente (solo confirmación)
         return res.json({
@@ -5924,26 +6003,75 @@ app.get('/api/admin/boleto/:numero', verificarToken, async (req, res) => {
  * Usado por el countdown para mostrar progreso de venta
  */
 app.get('/api/public/ordenes-stats', async (req, res) => {
+    const startTime = Date.now();
+    const cacheTtl = obtenerTtlCachePublico({ productionMs: 30000, developmentMs: 5000 });
+    const cached = obtenerCacheMemoriaVigente(
+        serverCache.ordenesStatsCached,
+        serverCache.ordenesStatsCachedTime,
+        cacheTtl
+    );
+
     try {
-        // Obtener solo órdenes confirmadas y completadas (boletos vendidos)
-        const stats = await db('ordenes')
-            .whereIn('estado', ['confirmada', 'completada'])
-            .select(
-                db.raw('COUNT(*) as total_ordenes'),
-                db.raw('SUM(cantidad_boletos) as total_boletos_vendidos')
-            )
-            .first();
+        setHttpCacheHeaders(res, Math.max(5, Math.floor(cacheTtl / 1000)), true);
+
+        if (cached) {
+            return res.json({
+                success: true,
+                data: {
+                    total_ordenes: cached.payload.total_ordenes,
+                    total_boletos_vendidos: cached.payload.total_boletos_vendidos,
+                    porcentaje_vendido: 0,
+                    queryTime: cached.ageMs,
+                    cached: true
+                }
+            });
+        }
+
+        const stats = await resolverSingleFlightPublico('public:ordenes-stats', async () => {
+            const result = await db('ordenes')
+                .whereIn('estado', ['confirmada', 'completada'])
+                .select(
+                    db.raw('COUNT(*) as total_ordenes'),
+                    db.raw('SUM(cantidad_boletos) as total_boletos_vendidos')
+                )
+                .first();
+
+            return {
+                total_ordenes: Number(result?.total_ordenes) || 0,
+                total_boletos_vendidos: Number(result?.total_boletos_vendidos) || 0
+            };
+        });
+
+        serverCache.ordenesStatsCached = stats;
+        serverCache.ordenesStatsCachedTime = Date.now();
 
         return res.json({
             success: true,
             data: {
-                total_ordenes: stats.total_ordenes || 0,
-                total_boletos_vendidos: stats.total_boletos_vendidos || 0,
-                porcentaje_vendido: 0 // Será calculado en el frontend
+                total_ordenes: stats.total_ordenes,
+                total_boletos_vendidos: stats.total_boletos_vendidos,
+                porcentaje_vendido: 0,
+                queryTime: Date.now() - startTime,
+                cached: false
             }
         });
     } catch (error) {
         console.error('GET /api/public/ordenes-stats error:', error);
+
+        if (serverCache.ordenesStatsCached) {
+            return res.json({
+                success: true,
+                data: {
+                    total_ordenes: serverCache.ordenesStatsCached.total_ordenes,
+                    total_boletos_vendidos: serverCache.ordenesStatsCached.total_boletos_vendidos,
+                    porcentaje_vendido: 0,
+                    queryTime: 0,
+                    cached: true,
+                    stale: true
+                }
+            });
+        }
+
         return res.status(500).json({
             success: false,
             message: 'Error al obtener estadísticas',
@@ -5967,8 +6095,7 @@ app.get('/api/public/ordenes-stats', async (req, res) => {
  * 🧹 Limpiar caché de stats (debug/desarrollo)
  */
 app.get('/api/admin/clear-cache', verificarToken, (req, res) => {
-    global.boletosStatsCache = null;
-    global.boletosStatsCacheTime = null;
+    limpiarCacheBoletosPublicos();
     console.log('🧹 [Admin] Caché limpia');
     res.json({ success: true, message: 'Caché limpia correctamente' });
 });
@@ -5986,34 +6113,34 @@ app.get('/api/public/boletos/stats', async (req, res) => {
         const startTime = Date.now();
         const config = cargarConfigSorteo();
         const totalBoletos = config.totalBoletos;
-        
-        // ⭐ CACHÉ LOCAL EN MEMORIA (5 segundos en desarrollo, 60 en producción)
-        const cacheKey = 'boletosStats';
-        const now = Date.now();
-        const CACHE_TTL = process.env.NODE_ENV === 'production' ? 60000 : 5000; // 5s dev, 60s prod
-        
-        if (global.boletosStatsCache && global.boletosStatsCacheTime && (now - global.boletosStatsCacheTime) < CACHE_TTL) {
-            // Usar caché si existe y no es viejo
-            const cached = global.boletosStatsCache;
-            const age = now - global.boletosStatsCacheTime;
+        const cacheTtl = obtenerTtlCachePublico({ productionMs: 30000, developmentMs: 5000 });
+        const cached = obtenerCacheMemoriaVigente(
+            global.boletosStatsCache,
+            global.boletosStatsCacheTime,
+            cacheTtl
+        );
+
+        setHttpCacheHeaders(res, Math.max(5, Math.floor(cacheTtl / 1000)), true);
+
+        if (cached) {
             logOperacionHttp('GET /api/public/boletos/stats (cache)', startTime, {
                 cached: true,
-                cacheAgeMs: age,
+                cacheAgeMs: cached.ageMs,
                 statusCode: 200
             }, { slowMs: 250, warnMs: 800 });
             return res.json({
                 success: true,
                 data: {
-                    vendidos: cached.vendidos,
-                    apartados: cached.apartados,
-                    disponibles: cached.disponibles,
+                    vendidos: cached.payload.vendidos,
+                    apartados: cached.payload.apartados,
+                    disponibles: cached.payload.disponibles,
                     total: totalBoletos,
-                    queryTime: age,
+                    queryTime: cached.ageMs,
                     cached: true
                 }
             });
         }
-        
+
         // Función para obtener stats desde BD con estrategia más rápida
         const fetchStats = async () => {
             try {
@@ -6038,15 +6165,14 @@ app.get('/api/public/boletos/stats', async (req, res) => {
                 throw dbError;
             }
         };
-        
-        // Obtener desde BD (con timeout más corto)
-        const stats = await fetchStats();
+
+        const stats = await resolverSingleFlightPublico('public:boletos-stats', fetchStats);
         const disponibles = totalBoletos - stats.vendidos - stats.apartados;
         const queryTime = Date.now() - startTime;
 
-        // ⭐ GUARDAR EN CACHÉ (20 segundos)
+        // Guardar en caché local de servidor
         global.boletosStatsCache = { vendidos: stats.vendidos, apartados: stats.apartados, disponibles: disponibles };
-        global.boletosStatsCacheTime = now;
+        global.boletosStatsCacheTime = Date.now();
         logOperacionHttp('GET /api/public/boletos/stats', startTime, {
             cached: false,
             vendidos: stats.vendidos,
@@ -6104,11 +6230,11 @@ app.get('/api/public/boletos/stats', async (req, res) => {
 });
 
 app.get('/api/public/boletos', async (req, res) => {
-    try {
-        const inicioQuery = req.query.inicio !== undefined ? parseInt(req.query.inicio, 10) : null;
-        const finQuery = req.query.fin !== undefined ? parseInt(req.query.fin, 10) : null;
-        const usarRango = Number.isInteger(inicioQuery) && Number.isInteger(finQuery);
+    const inicioQuery = req.query.inicio !== undefined ? parseInt(req.query.inicio, 10) : null;
+    const finQuery = req.query.fin !== undefined ? parseInt(req.query.fin, 10) : null;
+    const usarRango = Number.isInteger(inicioQuery) && Number.isInteger(finQuery);
 
+    try {
         if (usarRango && inicioQuery > finQuery) {
             return res.status(400).json({
                 success: false,
@@ -6116,21 +6242,26 @@ app.get('/api/public/boletos', async (req, res) => {
             });
         }
 
+        const rangeCacheTtl = obtenerTtlCachePublico({ productionMs: 10000, developmentMs: 5000 });
+        const fullCacheTtl = obtenerTtlCachePublico({ productionMs: 10000, developmentMs: 5000 });
+        setHttpCacheHeaders(res, Math.max(5, Math.floor((usarRango ? rangeCacheTtl : fullCacheTtl) / 1000)), true);
+
         if (usarRango) {
             const cacheKey = `${inicioQuery}-${finQuery}`;
             const cachedRange = serverCache.boletosPublicosByRange.get(cacheKey);
-            if (cachedRange && (Date.now() - cachedRange.time) < 5000) {
+            if (cachedRange && (Date.now() - cachedRange.time) < rangeCacheTtl) {
                 return res.json(cachedRange.payload);
             }
         }
 
-        // ⭐ CACHE EN MEMORIA: Reutilizar datos por 3 segundos
-        if (!usarRango && serverCache.boletosPublicosCached && serverCache.boletosPublicosCachedTime) {
-            const age = Date.now() - serverCache.boletosPublicosCachedTime;
-            if (age < 5000) { // 5 segundos - caché más agresivo para reducir carga
-                console.debug(`[PublicBoletos] Usando cache (${age}ms viejo)`);
-                return res.json(serverCache.boletosPublicosCached);
-            }
+        const cachedFull = obtenerCacheMemoriaVigente(
+            serverCache.boletosPublicosCached,
+            serverCache.boletosPublicosCachedTime,
+            fullCacheTtl
+        );
+
+        if (!usarRango && cachedFull) {
+            return res.json(cachedFull.payload);
         }
         
         const startTime = Date.now();
@@ -6185,72 +6316,79 @@ app.get('/api/public/boletos', async (req, res) => {
             global.boletosPublicRangeStatsCacheTime = Date.now();
         }
 
-        let sold = [];
-        let reserved = [];
-        let oportunidades = [];
+        const fetchPayload = async () => {
+            let sold = [];
+            let reserved = [];
+            let oportunidades = [];
 
-        if (usarRango) {
-            const estadoRango = await BoletoService.obtenerEstadoNoDisponibleEnRango(inicioQuery, finQuery);
-            sold = estadoRango.sold;
-            reserved = estadoRango.reserved;
-        } else {
-            const [estadoCompleto, oportunidadesList, oportunidadesDisponiblesCount] = await Promise.all([
-                db('boletos_estado')
-                    .whereIn('estado', ['vendido', 'apartado'])
-                    .select('numero', 'estado')
-                    .timeout(15000)
-                    .orderBy('numero'),
-                db('orden_oportunidades')
-                    .where('estado', 'apartado')
-                    .select('numero_oportunidad')
-                    .timeout(15000)
-                    .orderBy('numero_oportunidad'),
-                boletosOcultos > 0
-                    ? Promise.resolve({ rows: [{ count: boletosOcultos }] })
-                    : db.raw(`
-                        SELECT COUNT(*)::int as count FROM orden_oportunidades 
-                        WHERE estado = 'disponible'
-                    `).timeout(10000)
-            ]);
+            if (usarRango) {
+                const estadoRango = await BoletoService.obtenerEstadoNoDisponibleEnRango(inicioQuery, finQuery);
+                sold = estadoRango.sold;
+                reserved = estadoRango.reserved;
+            } else {
+                const [estadoCompleto, oportunidadesList, oportunidadesDisponiblesCount] = await Promise.all([
+                    db('boletos_estado')
+                        .whereIn('estado', ['vendido', 'apartado'])
+                        .select('numero', 'estado')
+                        .timeout(15000)
+                        .orderBy('numero'),
+                    db('orden_oportunidades')
+                        .where('estado', 'apartado')
+                        .select('numero_oportunidad')
+                        .timeout(15000)
+                        .orderBy('numero_oportunidad'),
+                    boletosOcultos > 0
+                        ? Promise.resolve({ rows: [{ count: boletosOcultos }] })
+                        : db.raw(`
+                            SELECT COUNT(*)::int as count FROM orden_oportunidades
+                            WHERE estado = 'disponible'
+                        `).timeout(10000)
+                ]);
 
-            estadoCompleto.forEach((b) => {
-                if (b.estado === 'vendido') {
-                    sold.push(Number(b.numero));
-                } else {
-                    reserved.push(Number(b.numero));
-                }
-            });
+                estadoCompleto.forEach((b) => {
+                    if (b.estado === 'vendido') {
+                        sold.push(Number(b.numero));
+                    } else {
+                        reserved.push(Number(b.numero));
+                    }
+                });
 
-            oportunidades = oportunidadesList.map((o) => Number(o.numero_oportunidad));
-            boletosOcultos = parseInt(oportunidadesDisponiblesCount.rows?.[0]?.count || 0, 10) || boletosOcultos;
-        }
-
-        const vendidos = statsGlobales.vendidos || 0;
-        const reservados = statsGlobales.apartados || 0;
-        boletosOcultos = Number(statsGlobales.boletosOcultos || boletosOcultos || 0);
-        const totalApartados = reservados;
-        const disponibles = Math.max(0, statsGlobales.disponibles ?? (totalBoletos - vendidos - reservados));
-        const queryTime = Date.now() - startTime;
-        
-        const payload = {
-            success: true,
-            data: {
-                sold: sold,
-                reserved: reserved,
-                oportunidades: oportunidades
-            },
-            stats: {
-                vendidos: vendidos,
-                reservados: reservados,
-                boletosOcultos: boletosOcultos,
-                totalApartados: totalApartados,
-                disponibles: disponibles,
-                total: totalBoletos,
-                rango: usarRango ? { inicio: inicioQuery, fin: finQuery } : null,
-                queryTime: queryTime,
-                cached: false
+                oportunidades = oportunidadesList.map((o) => Number(o.numero_oportunidad));
+                boletosOcultos = parseInt(oportunidadesDisponiblesCount.rows?.[0]?.count || 0, 10) || boletosOcultos;
             }
+
+            const vendidos = statsGlobales.vendidos || 0;
+            const reservados = statsGlobales.apartados || 0;
+            boletosOcultos = Number(statsGlobales.boletosOcultos || boletosOcultos || 0);
+            const totalApartados = reservados;
+            const disponibles = Math.max(0, statsGlobales.disponibles ?? (totalBoletos - vendidos - reservados));
+            const queryTime = Date.now() - startTime;
+
+            return {
+                success: true,
+                data: {
+                    sold: sold,
+                    reserved: reserved,
+                    oportunidades: oportunidades
+                },
+                stats: {
+                    vendidos: vendidos,
+                    reservados: reservados,
+                    boletosOcultos: boletosOcultos,
+                    totalApartados: totalApartados,
+                    disponibles: disponibles,
+                    total: totalBoletos,
+                    rango: usarRango ? { inicio: inicioQuery, fin: finQuery } : null,
+                    queryTime: queryTime,
+                    cached: false
+                }
+            };
         };
+
+        const payload = await resolverSingleFlightPublico(
+            usarRango ? `public:boletos:${inicioQuery}-${finQuery}` : 'public:boletos:full',
+            fetchPayload
+        );
 
         // ⭐ GUARDAR EN CACHÉ para siguiente request
         if (usarRango) {
@@ -6267,7 +6405,12 @@ app.get('/api/public/boletos', async (req, res) => {
             serverCache.boletosPublicosCachedTime = Date.now();
         }
 
-        if (queryTime > 1000 || Math.random() < 0.05) {
+        if ((payload.stats?.queryTime || 0) > 1000 || Math.random() < 0.05) {
+            const vendidos = payload.stats?.vendidos || 0;
+            const reservados = payload.stats?.reservados || 0;
+            const totalApartados = payload.stats?.totalApartados || 0;
+            const queryTime = payload.stats?.queryTime || 0;
+            const ocultos = payload.stats?.boletosOcultos || 0;
             console.log(`[PublicBoletos] Vendidos: ${vendidos}, Apartados: ${reservados}, Oportunidades: ${boletosOcultos}, Total apartados: ${totalApartados}, Time: ${queryTime}ms, Rango: ${usarRango ? `${inicioQuery}-${finQuery}` : 'completo'}`);
         }
 
@@ -7549,6 +7692,8 @@ app.patch('/api/ordenes/:id/estado', verificarToken, async (req, res) => {
             console.log(`✅ Orden ${id} actualizada a estado: ${estado} (${resultado.boletosActualizados} boletos actualizados)`);
         }
 
+        refrescarCachesTrasCambioInventario();
+
         if (wsEvents) {
             try {
                 const ordenActualizada = await db('ordenes')
@@ -8149,6 +8294,8 @@ app.post('/api/admin/ordenes-manual', verificarToken, async (req, res) => {
             updated_at: new Date(),
             total: 0 // Venta en efectivo, sin registro de pago en sistema
         });
+
+        refrescarCachesTrasCambioInventario();
 
         if (wsEvents) {
             try {

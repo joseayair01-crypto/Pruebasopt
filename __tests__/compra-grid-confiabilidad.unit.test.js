@@ -40,6 +40,7 @@ describe('Confiabilidad del grid de compra', () => {
                 debug: jest.fn(),
                 warn: jest.fn()
             },
+            logCompraDebug: jest.fn(),
             encodeURIComponent,
             fetch: jest.fn().mockResolvedValue({
                 ok: true,
