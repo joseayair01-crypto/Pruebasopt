@@ -74,7 +74,7 @@ function ensureSafeTarget(baseUrl, options) {
     return url.toString().replace(/\/$/, '');
 }
 
-function buildOrderPayload({ orderId, orderIndex, tickets, pricePerTicket }) {
+function buildOrderPayload({ orderId = '', orderIndex, tickets, pricePerTicket }) {
     const subtotal = tickets.length * pricePerTicket;
     return {
         ordenId: orderId,
@@ -209,28 +209,8 @@ async function createOrder(baseUrl, options, orderIndex, tickets) {
             }
         };
     }
-
-    const counterResult = await fetchJson(`${baseUrl}/api/public/order-counter/next`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            accept: 'application/json'
-        },
-        body: JSON.stringify({ cliente_id: options.clienteId || null })
-    });
-
-    if (!counterResult.response.ok || !counterResult.json?.orden_id) {
-        return {
-            ok: false,
-            stage: 'order-counter',
-            status: counterResult.response.status,
-            body: counterResult.json
-        };
-    }
-
-    const orderId = String(counterResult.json.orden_id).trim().toUpperCase();
     const payload = buildOrderPayload({
-        orderId,
+        orderId: '',
         orderIndex,
         tickets,
         pricePerTicket: options.pricePerTicket
@@ -249,7 +229,7 @@ async function createOrder(baseUrl, options, orderIndex, tickets) {
         ok: orderResult.response.ok && orderResult.json?.success === true,
         stage: 'create-order',
         status: orderResult.response.status,
-        orderId,
+        orderId: orderResult.json?.ordenId || orderResult.json?.data?.ordenId || '',
         tickets,
         body: orderResult.json
     };
@@ -297,8 +277,8 @@ function percentile(values, p) {
 async function main() {
     const options = parseArgs(process.argv.slice(2));
     const baseUrl = ensureSafeTarget(options.baseUrl, options);
-    const stopAt = Date.now() + (options.durationSec * 1000);
     const availableTickets = await preloadAvailableTickets(baseUrl, options);
+    const stopAt = Date.now() + (options.durationSec * 1000);
     const state = {
         total: 0,
         failures: 0,
