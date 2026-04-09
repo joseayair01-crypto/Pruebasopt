@@ -65,6 +65,33 @@ function logOrdenFormalDebug(...args) {
     }
 }
 
+function crearErrorOrdenFormal(message, options = {}) {
+    const error = new Error(String(message || 'Error desconocido'));
+    if (options && typeof options === 'object') {
+        if (options.code) error.code = options.code;
+        if (options.status) error.status = options.status;
+        if (options.userMessage) error.userMessage = options.userMessage;
+        if (options.serverMessage) error.serverMessage = options.serverMessage;
+    }
+    return error;
+}
+
+function resolverMensajeUsuarioOrdenFormal(error) {
+    const code = String(error?.code || '').trim().toUpperCase();
+    const status = Number(error?.status || 0);
+    const rawMessage = String(error?.userMessage || error?.message || '').trim();
+
+    if (code === 'ORDEN_TEMPORALMENTE_BLOQUEADA' || (status === 503 && /procesando demasiadas compras|intenta de nuevo en unos segundos/i.test(rawMessage))) {
+        return 'Hay mucha actividad en este momento y tu apartado no pudo completarse todavia. Intenta nuevamente en unos segundos. No se genero una orden incompleta.';
+    }
+
+    if (code === 'ORDEN_ID_EN_CONTENCION') {
+        return 'Tu compra se cruzo con otra operacion en ese instante. Intenta nuevamente en unos segundos para generar una orden valida.';
+    }
+
+    return rawMessage || 'Error desconocido';
+}
+
 function obtenerOportunidadesValidadasOrdenActual(boletos) {
     const oportunidadesAlCarrito = [];
     const oportunidadesVistas = new Set();
@@ -1123,13 +1150,25 @@ async function guardarOrden() {
                                 `Boletos conflictivos: ${errorData.boletosConflicto.join(', ')}. Intenta otros.`
                             );
                         }
-                        throw new Error('Error 409: Conflicto al guardar de orden.');
+                        throw crearErrorOrdenFormal('Error 409: Conflicto al guardar la orden.', {
+                            code: errorData.code || 'BOLETOS_CONFLICTO',
+                            status: response.status,
+                            serverMessage: mensajeError
+                        });
                     }
                     if (response.status >= 400 && response.status < 500) {
-                        throw new Error(`Error en los datos: ${mensajeError}`);
+                        throw crearErrorOrdenFormal(`Error en los datos: ${mensajeError}`, {
+                            code: errorData.code || 'ERROR_DATOS_ORDEN',
+                            status: response.status,
+                            serverMessage: mensajeError
+                        });
                     }
 
-                    throw new Error(`Error del servidor: ${mensajeError}`);
+                    throw crearErrorOrdenFormal(`Error del servidor: ${mensajeError}`, {
+                        code: errorData.code || 'ERROR_SERVIDOR_ORDEN',
+                        status: response.status,
+                        serverMessage: mensajeError
+                    });
                 }
 
                 // ÉXITO - Procesar respuesta (incluye 200 OK para órdenes duplicadas idempotentes)
@@ -1315,7 +1354,9 @@ async function guardarOrden() {
                     continue;
                 }
 
-                throw ultimoError;
+                throw (typeof ultimoError === 'string'
+                    ? crearErrorOrdenFormal(ultimoError)
+                    : ultimoError);
             }
         }
 
@@ -1324,22 +1365,22 @@ async function guardarOrden() {
         
         // Detectar tipo de error para mensaje más específico
         let mensajeFinal = 'Error desconocido';
-        
+
         if (typeof error === 'string') {
             if (error === 'PAYLOAD_INTEGRITY_CHECK_FAILED') {
-                mensajeFinal = '❌ Error de integridad en datos de orden. Por favor, intenta de nuevo.';
+                mensajeFinal = 'Error de integridad en datos de orden. Por favor, intenta de nuevo.';
                 console.error('   El payload contiene datos inválidos o corruptos.');
             } else {
                 mensajeFinal = error;
             }
         } else if (error?.message) {
             if (error.message.includes('PAYLOAD_INTEGRITY_CHECK_FAILED')) {
-                mensajeFinal = '❌ Los datos de la orden se corrompieron durante el procesamiento. Por favor, intenta de nuevo.';
+                mensajeFinal = 'Los datos de la orden se corrompieron durante el procesamiento. Por favor, intenta de nuevo.';
             } else {
-                mensajeFinal = error.message;
+                mensajeFinal = resolverMensajeUsuarioOrdenFormal(error);
             }
         }
-        
+
         rifaplusUtils.showFeedback(`❌ ${mensajeFinal}`, 'error');
         console.error('   Detalles:', error);
         
