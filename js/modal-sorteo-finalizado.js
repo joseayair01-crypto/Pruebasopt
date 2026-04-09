@@ -228,7 +228,25 @@ class ModalSorteoFinalizado {
         const estado = config?.rifa?.estado || config?.sorteoActivo?.estado || 'activo';
         const snapshot = config?.rifa?.modalFinalizadoSnapshot;
         if (estado !== 'finalizado') return null;
-        return snapshot && typeof snapshot === 'object' ? snapshot : null;
+        if (!snapshot || typeof snapshot !== 'object') return null;
+        return this.snapshotCorrespondeARifaActual(snapshot, config) ? snapshot : null;
+    }
+
+    crearHuellaRifaActual(config = {}) {
+        const rifa = config?.rifa || {};
+        return JSON.stringify({
+            edicionNombre: String(rifa.edicionNombre || '').trim(),
+            nombreSorteo: String(rifa.nombreSorteo || '').trim(),
+            fechaSorteo: String(rifa.fechaSorteo || '').trim(),
+            totalBoletos: Number(rifa.totalBoletos) || 0,
+            precioBoleto: Number(rifa.precioBoleto) || 0
+        });
+    }
+
+    snapshotCorrespondeARifaActual(snapshot, config = {}) {
+        const huellaSnapshot = String(snapshot?.meta?.huellaRifa || '').trim();
+        if (!huellaSnapshot) return false;
+        return huellaSnapshot === this.crearHuellaRifaActual(config);
     }
 
     resolverContextoModal(config) {
@@ -622,7 +640,7 @@ class ModalSorteoFinalizado {
      * Obtener ganadores reales desde GanadoresManager o localStorage
      * Retorna objeto con claves: principal, presorte, ruletazo
      */
-    async obtenerGanadoresReales(snapshot = null) {
+    async obtenerGanadoresReales(snapshot = null, config = window.rifaplusConfig || {}) {
         try {
             this.log('🔍 Intentando obtener ganadores...', 'info');
             
@@ -672,7 +690,7 @@ class ModalSorteoFinalizado {
                 this.log('⚠️ Error al consultar /api/ganadores: ' + (e && e.message), 'warning');
             }
 
-            if (snapshot?.ganadores) {
+            if (snapshot?.ganadores && this.snapshotCorrespondeARifaActual(snapshot, config)) {
                 this.log('ℹ️ Usando snapshot persistido de ganadores', 'info');
                 return {
                     sorteo: snapshot.ganadores.sorteo || [],
@@ -681,35 +699,12 @@ class ModalSorteoFinalizado {
                 };
             }
 
-            this.log('⚠️ Usando GanadoresManager/localStorage como fallback', 'warning');
-
-            // Fallback: GanadoresManager si existe
-            if (window.GanadoresManager && typeof window.GanadoresManager.obtenerFormateados === 'function') {
-                const formateados = window.GanadoresManager.obtenerFormateados() || {};
-                return {
-                    sorteo: formateados.sorteo || [],
-                    presorteo: formateados.presorteo || [],
-                    ruletazos: formateados.ruletazos || []
-                };
-            }
-
-            // Fallback final: localStorage
-            try {
-                const datosJSON = localStorage.getItem('rifaplus_ganadores');
-                if (!datosJSON) return { sorteo: [], presorteo: [], ruletazos: [] };
-                const datos = JSON.parse(datosJSON);
-                return {
-                    sorteo: datos.sorteo || [],
-                    presorteo: datos.presorteo || [],
-                    ruletazos: datos.ruletazos || []
-                };
-            } catch (err) {
-                return { sorteo: [], presorteo: [], ruletazos: [] };
-            }
+            this.log('ℹ️ Sin ganadores oficiales para la rifa actual; se mostrará estado pendiente', 'info');
+            return { sorteo: [], presorteo: [], ruletazos: [] };
 
         } catch (error) {
             this.log('❌ Error obteniendo ganadores: ' + error.message, 'error');
-            return { principal: [], presorte: [], ruletazo: [] };
+            return { sorteo: [], presorteo: [], ruletazos: [] };
         }
     }
 

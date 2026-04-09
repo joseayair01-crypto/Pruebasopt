@@ -9118,6 +9118,19 @@ app.post('/api/admin/nueva-rifa/ejecutar', verificarToken, async (req, res) => {
 
         const resultado = await NuevaRifaService.ejecutarReset(req.body || {});
 
+        const configLimpia = obtenerConfigActual();
+        if (configLimpia?.rifa) {
+            configLimpia.rifa.modalFinalizadoSnapshot = null;
+        }
+        if (configLimpia?.sorteoActivo) {
+            configLimpia.sorteoActivo.ganadores = {
+                principal: [],
+                presorte: [],
+                ruletazo: []
+            };
+        }
+        await persistirConfigActualizada(configLimpia, req.usuario?.username || 'SYSTEM');
+
         limpiarCacheBoletosPublicos();
         limpiarCacheConfiguracionPublica();
 
