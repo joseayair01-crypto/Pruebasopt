@@ -18,7 +18,7 @@
 }
 
 .modal-contenido-orden-confirmada {
-    background: linear-gradient(180deg, #ffffff 0%, #faf4ec 100%);
+    background: #ffffff;
     border-radius: 16px;
     padding: 1.15rem;
     max-width: 430px;
@@ -45,7 +45,7 @@
 .checkmark-confirmada {
     width: 60px;
     height: 60px;
-    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    background: #16a34a;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -140,7 +140,7 @@
 }
 
 .resumen-hero-item--oportunidades {
-    background: linear-gradient(180deg, #fff6eb 0%, #fdf0df 100%);
+    background: #fff4e6;
     border-color: #ead4b4;
 }
 
@@ -209,7 +209,7 @@
 .btn-ir-pagar {
     width: 100%;
     padding: 0.9rem 1rem;
-    background: linear-gradient(135deg, var(--primary, #0F3A7D), var(--primary-dark, #0b2235));
+    background: var(--primary, #0F3A7D);
     color: #ffffff;
     border: none;
     border-radius: 12px;
@@ -236,7 +236,7 @@
 }
 
 .btn-ir-pagar:hover {
-    background: linear-gradient(135deg, var(--primary-dark, #0b2235), var(--primary, #0F3A7D));
+    background: var(--primary-dark, #0b2235);
     transform: translateY(-2px);
     box-shadow: 0 14px 28px rgba(var(--primary-rgb, 15, 58, 125), 0.32);
     animation-play-state: paused;

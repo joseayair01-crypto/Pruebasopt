@@ -400,7 +400,7 @@ function marcarBoletoComoSeleccionadoEnGrid(numero, opciones = {}) {
     botonEnGrid.classList.add('selected');
 
     if (enfatizar) {
-        enfatizarNumeroSeleccionado(botonEnGrid, numero);
+        enfatizarNumeroSeleccionado(botonEnGrid);
     }
 
     return botonEnGrid;
@@ -1624,7 +1624,7 @@ function agregarNumerosSuerteAlCarrito() {
         }
         if (botonNumero) {
             setTimeout(() => {
-                enfatizarNumeroSeleccionado(botonNumero, numero);
+                enfatizarNumeroSeleccionado(botonNumero);
             }, Math.min(280, index * 55));
         }
     });
@@ -1874,7 +1874,7 @@ function manejarClickNumero(boton) {
         boton.setAttribute('title', 'Seleccionado');
         boton.disabled = true;
         marcarNumeroComoSeleccionadoEnBusqueda(numero);
-        enfatizarNumeroSeleccionado(boton, numero);
+        enfatizarNumeroSeleccionado(boton);
 
         const token = registrarValidacionSeleccionPendiente(numero);
         void validarSeleccionOptimista(numero, boton, token);
@@ -3472,22 +3472,70 @@ function configurarColoresAnimacionCarrito(colorBase) {
     root.style.setProperty('--cart-confirm-shadow', colorConAlpha(colorPrincipal, 0.48));
 }
 
-function enfatizarNumeroSeleccionado(boton, numeroDelBoleto = 0) {
+const selectionEffectControllers = new WeakMap();
+
+function enfatizarNumeroSeleccionado(boton) {
     if (!boton || boton.nodeType !== 1) {
         return;
     }
 
-    boton.classList.remove('selection-emphasis');
-    void boton.offsetWidth;
-    boton.classList.add('selection-emphasis');
-    boton.style.setProperty('--selection-ticket-number', `"${numeroDelBoleto}"`);
+    const previous = selectionEffectControllers.get(boton);
+    if (previous) {
+        if (previous.rafStart) {
+            cancelAnimationFrame(previous.rafStart);
+        }
+        if (previous.rafCommit) {
+            cancelAnimationFrame(previous.rafCommit);
+        }
+        if (previous.timeoutId) {
+            clearTimeout(previous.timeoutId);
+        }
+        if (previous.onAnimationEnd) {
+            boton.removeEventListener('animationend', previous.onAnimationEnd);
+        }
+    }
 
     const cleanup = () => {
+        const current = selectionEffectControllers.get(boton);
+        if (!current) {
+            return;
+        }
+
         boton.classList.remove('selection-emphasis');
-        boton.style.removeProperty('--selection-ticket-number');
+        boton.removeEventListener('animationend', current.onAnimationEnd);
+        selectionEffectControllers.delete(boton);
     };
 
-    setTimeout(cleanup, 760);
+    boton.classList.remove('selection-emphasis');
+
+    const onAnimationEnd = (event) => {
+        if (event.target !== boton || event.animationName !== 'selectedNumberPop') {
+            return;
+        }
+        cleanup();
+    };
+
+    const controller = {
+        rafStart: 0,
+        rafCommit: 0,
+        timeoutId: 0,
+        onAnimationEnd
+    };
+
+    selectionEffectControllers.set(boton, controller);
+    boton.addEventListener('animationend', onAnimationEnd);
+
+    controller.rafStart = requestAnimationFrame(() => {
+        controller.rafCommit = requestAnimationFrame(() => {
+            if (!boton.isConnected) {
+                cleanup();
+                return;
+            }
+
+            boton.classList.add('selection-emphasis');
+            controller.timeoutId = window.setTimeout(cleanup, 480);
+        });
+    });
 }
 
 function crearEstallidoCarrito(carritoNav, colorSeleccionado) {
@@ -3532,7 +3580,7 @@ function animarAgregarAlCarrito(botonElemento = null, numeroDelBoleto = 0, conAn
             botonElemento.textContent = '✅ ¡Agregado!';
             botonElemento.style.backgroundColor = colorSeleccionado;
             botonElemento.style.color = 'white';
-            enfatizarNumeroSeleccionado(botonElemento, numeroDelBoleto);
+            enfatizarNumeroSeleccionado(botonElemento);
             
             setTimeout(() => {
                 botonElemento.classList.remove('being-added');

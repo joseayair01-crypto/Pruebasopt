@@ -2483,15 +2483,15 @@
 
                     <div class="form-group-single">
                         <label class="form-label">Total de boletos <span class="required">*</span></label>
-                        <input type="number" class="form-input" id="sorteo-total-boletos" min="1" max="10000000" step="1" placeholder="Ej: 1000000">
-                        <div class="form-helper">Este valor debe coincidir con la escala real del sorteo. Si ya tienes los boletos inicializados en BD, aquí defines el universo activo.</div>
+                        <input type="number" class="form-input" id="sorteo-total-boletos" min="1" max="10000000" step="1" placeholder="Ej: 1000000" data-number-guard="strict" data-number-mode="integer" inputmode="numeric" autocomplete="off">
+                        <div class="form-helper">Este valor debe coincidir con la escala real del sorteo. Si ya tienes los boletos inicializados en BD, aquí defines el universo activo. Ejemplo: si configuras 100000 boletos, el último número válido en rangos será 99999.</div>
                     </div>
 
                     <div style="margin-top: var(--spacing-xl); display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
                         <div class="form-group-single" style="margin: 0;">
                             <label class="form-label">Tiempo de apartado <span class="required">*</span></label>
                             <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                <input type="number" class="form-input" id="tiempo-apartado-horas" min="0.5" step="0.5" required style="flex: 1;">
+                                <input type="number" class="form-input" id="tiempo-apartado-horas" min="0.5" step="0.5" required style="flex: 1;" data-number-guard="strict" data-number-mode="step" inputmode="decimal" autocomplete="off">
                                 <span style="color: #6B7280; font-size: 0.95rem;">horas</span>
                             </div>
                             <div class="form-helper">Tiempo máximo que un boleto permanece apartado sin pago antes de liberarse.</div>
@@ -2499,7 +2499,7 @@
 
                         <div class="form-group-single" style="margin: 0;">
                             <label class="form-label" for="maquina-suerte-limite">Máximo de boletos por intento</label>
-                            <input type="number" class="form-input" id="maquina-suerte-limite" min="1" step="1" placeholder="500">
+                            <input type="number" class="form-input" id="maquina-suerte-limite" min="1" step="1" placeholder="500" data-number-guard="strict" data-number-mode="integer" inputmode="numeric" autocomplete="off">
                             <div class="form-helper" id="maquina-suerte-limite-help">La máquina podrá generar hasta 500 boletos por intento.</div>
                         </div>
                     </div>
@@ -2535,8 +2535,8 @@
                         <div>
                             <label class="form-label">Rango visible de oportunidades</label>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                                <input type="number" class="form-input" id="oportunidades-rango-visible-inicio" min="0" step="1" placeholder="Inicio">
-                                <input type="number" class="form-input" id="oportunidades-rango-visible-fin" min="0" step="1" placeholder="Fin">
+                                <input type="number" class="form-input" id="oportunidades-rango-visible-inicio" min="0" step="1" placeholder="Inicio" data-number-guard="strict" data-number-mode="integer" inputmode="numeric" autocomplete="off">
+                                <input type="number" class="form-input" id="oportunidades-rango-visible-fin" min="0" step="1" placeholder="Fin" data-number-guard="strict" data-number-mode="integer" inputmode="numeric" autocomplete="off">
                             </div>
                             <div class="form-helper">Si está vacío, la compra usa los rangos públicos normales.</div>
                         </div>
@@ -2544,8 +2544,8 @@
                         <div>
                             <label class="form-label">Rango oculto de oportunidades</label>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                                <input type="number" class="form-input" id="oportunidades-rango-oculto-inicio" min="0" step="1" placeholder="Inicio">
-                                <input type="number" class="form-input" id="oportunidades-rango-oculto-fin" min="0" step="1" placeholder="Fin">
+                                <input type="number" class="form-input" id="oportunidades-rango-oculto-inicio" min="0" step="1" placeholder="Inicio" data-number-guard="strict" data-number-mode="integer" inputmode="numeric" autocomplete="off">
+                                <input type="number" class="form-input" id="oportunidades-rango-oculto-fin" min="0" step="1" placeholder="Fin" data-number-guard="strict" data-number-mode="integer" inputmode="numeric" autocomplete="off">
                             </div>
                             <div class="form-helper">Útil si manejas oportunidades fuera del rango visible principal.</div>
                         </div>
@@ -3229,11 +3229,15 @@
                                            class="form-input" 
                                            placeholder="10000" 
                                            min="1" 
-                                           step="100"
+                                           step="0.01"
+                                           data-number-guard="strict"
+                                           data-number-mode="money"
+                                           inputmode="decimal"
+                                           autocomplete="off"
                                            oninput="actualizarPrecioPreview()"
                                            style="font-size: 1.25rem; font-weight: 600; padding: 0.85rem;">
                                 </div>
-                                <small style="color: var(--text-light); font-size: 0.8rem;">Ingresa el precio sin separadores</small>
+                                <small style="color: var(--text-light); font-size: 0.8rem;">Ingresa el precio sin separadores. El campo queda protegido contra cambios accidentales por scroll o flechas.</small>
                             </div>
                             <button class="btn btn-primary" id="btn-guardar-precio" style="min-width: 160px; white-space: nowrap; height: fit-content;">
                                 <i class="fas fa-check-circle"></i> Actualizar Precio
@@ -6397,8 +6401,11 @@
                         mostrarAlerta('⚠️ Se detectaron URLs de imagen inválidas y fueron omitidas en la vista previa del admin', 'warning');
                     }
 
-                    cargarConfiguracionBoletajeYRangos();
-                    guardarValoresOriginaleSorteo();
+                    const actualizoBoletaje = cargarConfiguracionBoletajeYRangos({ origen: 'servidor' });
+                    if (actualizoBoletaje) {
+                        guardarValoresOriginaleSorteo();
+                        restaurarBorradorBoletajeYRangosSiExiste();
+                    }
                     
                     // Renderizar imágenes en el admin si están
                     if (typeof cargarImagenesSorteo === 'function') {
@@ -7373,6 +7380,7 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             volcarDebugVolumenPendiente();
+            bloquearCambiosAccidentalesPorScrollEnNumeros();
 
             // Decodificar token y establecer usuario actual
             const usuario = decodificarJWT();
@@ -7490,10 +7498,27 @@
                 if (Number.isInteger(index) && index >= 0) {
                     rangosActuales.splice(index, 1);
                     renderizarRangosPublicosEditor(rangosActuales);
+                    manejarCambioBoletajeYRangos();
                 }
             });
 
             document.getElementById('btn-guardar-boletaje-rangos')?.addEventListener('click', guardarBoletajeYRangos);
+
+            document.getElementById('card-sorteo-boletaje')?.addEventListener('input', (event) => {
+                if (!event.target.matches('input, select, textarea')) return;
+                manejarCambioBoletajeYRangos();
+            });
+
+            document.getElementById('card-sorteo-boletaje')?.addEventListener('change', (event) => {
+                if (!event.target.matches('input, select, textarea')) return;
+                manejarCambioBoletajeYRangos();
+            });
+
+            window.addEventListener('beforeunload', (event) => {
+                if (!hayCambiosPendientesBoletajeYRangos()) return;
+                event.preventDefault();
+                event.returnValue = '';
+            });
             
             // Password
             document.getElementById('btn-cambiar-password')?.addEventListener('click', cambiarPassword);
@@ -7594,8 +7619,10 @@
                         cargarResumenInventarioOportunidades().catch(() => {});
                     }
                     if (data.tipo === 'sincronizacion_backend') {
-                        cargarConfiguracionBoletajeYRangos();
-                        guardarValoresOriginaleSorteo();
+                        const actualizoBoletaje = cargarConfiguracionBoletajeYRangos({ origen: 'sincronizacion_backend' });
+                        if (actualizoBoletaje) {
+                            guardarValoresOriginaleSorteo();
+                        }
                         cargarResumenInventarioBoletos().catch(() => {});
                     }
                     renderizarAlertasConfiguracion();
@@ -7694,6 +7721,7 @@
             // Guardar valores originales del sorteo (para detectar cambios)
             setTimeout(() => {
                 guardarValoresOriginaleSorteo();
+                restaurarBorradorBoletajeYRangosSiExiste();
                 cargarResumenInventarioBoletos().catch((error) => {
                     console.warn('⚠️ No se pudo cargar el resumen inicial del inventario:', error.message);
                 });
@@ -7812,11 +7840,11 @@
                     </div>
                     <div>
                         <label class="form-label" style="margin-bottom:0.35rem;">Inicio</label>
-                        <input type="number" class="form-input rango-publico-inicio" min="0" step="1" value="${rango.inicio}">
+                        <input type="number" class="form-input rango-publico-inicio" min="0" step="1" value="${rango.inicio}" data-number-guard="strict" data-number-mode="integer" inputmode="numeric" autocomplete="off">
                     </div>
                     <div>
                         <label class="form-label" style="margin-bottom:0.35rem;">Fin</label>
-                        <input type="number" class="form-input rango-publico-fin" min="0" step="1" value="${rango.fin}">
+                        <input type="number" class="form-input rango-publico-fin" min="0" step="1" value="${rango.fin}" data-number-guard="strict" data-number-mode="integer" inputmode="numeric" autocomplete="off">
                     </div>
                     <button type="button" class="btn btn-secondary rango-publico-eliminar" data-index="${index}" style="white-space:nowrap;">
                         <i class="fas fa-trash"></i> Quitar
@@ -7826,7 +7854,22 @@
             });
         }
 
-        function cargarConfiguracionBoletajeYRangos() {
+        function cargarConfiguracionBoletajeYRangos(options = {}) {
+            const origen = options?.origen || 'carga';
+            const forzar = options?.forzar === true;
+            const tieneOriginales = !!window.sorteoValoresOriginales;
+
+            if (!forzar && tieneOriginales && hayCambiosPendientesBoletajeYRangos()) {
+                if (origen === 'sincronizacion_backend') {
+                    const ahora = Date.now();
+                    if ((ahora - ultimoAvisoSyncBoletajeTs) > 15000) {
+                        ultimoAvisoSyncBoletajeTs = ahora;
+                        mostrarAlerta('⚠️ Se detectó una sincronización automática, pero se respetaron tus cambios sin guardar en boletaje y rangos', 'warning');
+                    }
+                }
+                return false;
+            }
+
             const rifa = window.rifaplusConfig?.rifa || {};
             const totalBoletos = Number(rifa.totalBoletos) || '';
             const tiempoApartadoHoras = Number(rifa.tiempoApartadoHoras) || '';
@@ -7869,6 +7912,7 @@
                 inventarioFin.value = Math.max(0, totalBoletos - 1);
             }
             actualizarCantidadRangoInventarioBoletos();
+            return true;
         }
 
         let inventarioBoletosEstado = {
@@ -7876,6 +7920,220 @@
             preview: null,
             resumen: null
         };
+
+        const BOLETAJE_RANGOS_DRAFT_KEY = 'rifaplus_admin_boletaje_rangos_draft_v1';
+        let ultimoAvisoSyncBoletajeTs = 0;
+        let borradorBoletajeRestaurado = false;
+
+        function obtenerSnapshotBoletajeYRangos() {
+            return {
+                totalBoletos: document.getElementById('sorteo-total-boletos')?.value?.trim() || '',
+                tiempoApartadoHoras: document.getElementById('tiempo-apartado-horas')?.value?.trim() || '',
+                maquinaSuerteLimite: document.getElementById('maquina-suerte-limite')?.value?.trim() || '',
+                busquedaBoletosModoAvanzado: document.getElementById('busqueda-boletos-modo-avanzado')?.checked ? 'true' : 'false',
+                rangos: obtenerRangosPublicosDesdeDOM(),
+                rangoVisible: serializarRangoSimpleAdmin('oportunidades-rango-visible-inicio', 'oportunidades-rango-visible-fin'),
+                rangoOculto: serializarRangoSimpleAdmin('oportunidades-rango-oculto-inicio', 'oportunidades-rango-oculto-fin')
+            };
+        }
+
+        function obtenerSnapshotBoletajeYRangosOriginal() {
+            const originales = window.sorteoValoresOriginales || {};
+            return {
+                totalBoletos: originales.totalBoletos || '',
+                tiempoApartadoHoras: originales.tiempoApartadoHoras || '',
+                maquinaSuerteLimite: originales.maquinaSuerteLimite || '',
+                busquedaBoletosModoAvanzado: originales.busquedaBoletosModoAvanzado || 'false',
+                rangos: JSON.parse(originales.rangos || '[]'),
+                rangoVisible: originales.rangoVisible || '',
+                rangoOculto: originales.rangoOculto || ''
+            };
+        }
+
+        function hayCambiosPendientesBoletajeYRangos() {
+            if (!window.sorteoValoresOriginales) {
+                return false;
+            }
+
+            const actual = obtenerSnapshotBoletajeYRangos();
+            const original = obtenerSnapshotBoletajeYRangosOriginal();
+
+            return JSON.stringify(actual) !== JSON.stringify(original);
+        }
+
+        function guardarBorradorBoletajeYRangos() {
+            try {
+                const snapshot = obtenerSnapshotBoletajeYRangos();
+                localStorage.setItem(BOLETAJE_RANGOS_DRAFT_KEY, JSON.stringify({
+                    version: 1,
+                    timestamp: Date.now(),
+                    data: snapshot
+                }));
+            } catch (error) {
+                console.warn('⚠️ No se pudo guardar el borrador local de boletaje/rangos:', error.message);
+            }
+        }
+
+        function eliminarBorradorBoletajeYRangos() {
+            try {
+                localStorage.removeItem(BOLETAJE_RANGOS_DRAFT_KEY);
+                borradorBoletajeRestaurado = false;
+            } catch (error) {
+                console.warn('⚠️ No se pudo limpiar el borrador local de boletaje/rangos:', error.message);
+            }
+        }
+
+        function aplicarSnapshotBoletajeYRangos(snapshot = {}) {
+            const totalInput = document.getElementById('sorteo-total-boletos');
+            if (totalInput) totalInput.value = snapshot.totalBoletos || '';
+
+            const tiempoApartadoInput = document.getElementById('tiempo-apartado-horas');
+            if (tiempoApartadoInput) tiempoApartadoInput.value = snapshot.tiempoApartadoHoras || '';
+
+            const inputLimite = document.getElementById('maquina-suerte-limite');
+            if (inputLimite) inputLimite.value = snapshot.maquinaSuerteLimite || '';
+
+            const toggleBusqueda = document.getElementById('busqueda-boletos-modo-avanzado');
+            if (toggleBusqueda) toggleBusqueda.checked = snapshot.busquedaBoletosModoAvanzado === 'true';
+
+            renderizarRangosPublicosEditor(Array.isArray(snapshot.rangos) ? snapshot.rangos : []);
+
+            const rangoVisible = snapshot.rangoVisible ? JSON.parse(snapshot.rangoVisible) : null;
+            const rangoOculto = snapshot.rangoOculto ? JSON.parse(snapshot.rangoOculto) : null;
+
+            const visibleInicio = document.getElementById('oportunidades-rango-visible-inicio');
+            const visibleFin = document.getElementById('oportunidades-rango-visible-fin');
+            const ocultoInicio = document.getElementById('oportunidades-rango-oculto-inicio');
+            const ocultoFin = document.getElementById('oportunidades-rango-oculto-fin');
+
+            if (visibleInicio) visibleInicio.value = Number.isInteger(Number(rangoVisible?.inicio)) ? Number(rangoVisible.inicio) : '';
+            if (visibleFin) visibleFin.value = Number.isInteger(Number(rangoVisible?.fin)) ? Number(rangoVisible.fin) : '';
+            if (ocultoInicio) ocultoInicio.value = Number.isInteger(Number(rangoOculto?.inicio)) ? Number(rangoOculto.inicio) : '';
+            if (ocultoFin) ocultoFin.value = Number.isInteger(Number(rangoOculto?.fin)) ? Number(rangoOculto.fin) : '';
+
+            maquinaSuerteLimiteTemporal = obtenerLimiteMaquinaSuerteNormalizado(
+                snapshot.maquinaSuerteLimite,
+                maquinaSuerteLimiteTemporal || 500
+            );
+            actualizarAyudaLimiteMaquinaSuerte();
+            actualizarCantidadRangoInventarioBoletos();
+        }
+
+        function restaurarBorradorBoletajeYRangosSiExiste() {
+            try {
+                if (borradorBoletajeRestaurado) return false;
+
+                const raw = localStorage.getItem(BOLETAJE_RANGOS_DRAFT_KEY);
+                if (!raw) return false;
+
+                const draft = JSON.parse(raw);
+                if (!draft?.data) return false;
+                if (!hayCambiosPendientesBoletajeYRangos() && JSON.stringify(draft.data) === JSON.stringify(obtenerSnapshotBoletajeYRangosOriginal())) {
+                    eliminarBorradorBoletajeYRangos();
+                    return false;
+                }
+
+                aplicarSnapshotBoletajeYRangos(draft.data);
+                borradorBoletajeRestaurado = true;
+                mostrarAlerta('📝 Recuperamos tu borrador local de boletaje y rangos para que no tengas que empezar de nuevo', 'info');
+                return true;
+            } catch (error) {
+                console.warn('⚠️ No se pudo restaurar el borrador local de boletaje/rangos:', error.message);
+                return false;
+            }
+        }
+
+        function manejarCambioBoletajeYRangos() {
+            if (hayCambiosPendientesBoletajeYRangos()) {
+                guardarBorradorBoletajeYRangos();
+            } else {
+                eliminarBorradorBoletajeYRangos();
+            }
+        }
+
+        function bloquearCambiosAccidentalesPorScrollEnNumeros() {
+            const contenedor = document.body;
+            if (!contenedor || contenedor.dataset.numberWheelGuardReady === 'true') {
+                return;
+            }
+
+            const esInputNumero = (elemento) =>
+                elemento instanceof HTMLInputElement
+                && elemento.type === 'number'
+                && !elemento.disabled
+                && !elemento.readOnly;
+
+            const esInputProtegido = (elemento) =>
+                esInputNumero(elemento)
+                && elemento.dataset.numberGuard === 'strict';
+
+            const normalizarValorNumericoProtegido = (input) => {
+                if (!esInputProtegido(input)) return;
+
+                const raw = String(input.value || '').trim();
+                if (raw === '') return;
+
+                const numero = Number(raw);
+                if (!Number.isFinite(numero)) return;
+
+                const min = Number(input.min);
+                const max = Number(input.max);
+                const step = Number(input.step);
+                const mode = String(input.dataset.numberMode || '').trim();
+                let normalizado = numero;
+
+                if (mode === 'money') {
+                    normalizado = Math.round(normalizado * 100) / 100;
+                } else if (mode === 'step' && Number.isFinite(step) && step > 0) {
+                    normalizado = Math.round(normalizado / step) * step;
+                    normalizado = Number(normalizado.toFixed(4));
+                } else {
+                    return;
+                }
+
+                if (Number.isFinite(min)) normalizado = Math.max(min, normalizado);
+                if (Number.isFinite(max)) normalizado = Math.min(max, normalizado);
+
+                if (mode === 'money') {
+                    input.value = normalizado.toFixed(2);
+                } else if (mode === 'step' && Number.isFinite(step) && step > 0) {
+                    const decimales = (() => {
+                        const textoStep = String(input.step || '');
+                        const partes = textoStep.split('.');
+                        return partes[1] ? partes[1].length : 0;
+                    })();
+                    input.value = decimales > 0 ? normalizado.toFixed(decimales) : String(normalizado);
+                }
+            };
+
+            contenedor.addEventListener('wheel', (event) => {
+                const target = event.target;
+                if (!esInputProtegido(target)) return;
+
+                event.preventDefault();
+
+                if (document.activeElement === target) {
+                    target.blur();
+                }
+            }, { passive: false });
+
+            contenedor.addEventListener('keydown', (event) => {
+                const target = event.target;
+                if (!esInputProtegido(target)) return;
+
+                if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'].includes(event.key)) {
+                    event.preventDefault();
+                }
+            });
+
+            contenedor.addEventListener('blur', (event) => {
+                const target = event.target;
+                if (!esInputProtegido(target)) return;
+                normalizarValorNumericoProtegido(target);
+            }, true);
+
+            contenedor.dataset.numberWheelGuardReady = 'true';
+        }
 
         function formatearNumeroAdmin(valor) {
             const numero = Number(valor);
@@ -8658,6 +8916,7 @@
                 actualizarAyudaLimiteMaquinaSuerte();
 
                 guardarValoresOriginaleSorteo();
+                eliminarBorradorBoletajeYRangos();
                 cargarResumenInventarioBoletos().catch((error) => {
                     console.warn('⚠️ No se pudo refrescar el resumen de inventario tras guardar boletaje:', error.message);
                 });
@@ -8728,6 +8987,7 @@
                 rangoVisible: serializarRangoSimpleAdmin('oportunidades-rango-visible-inicio', 'oportunidades-rango-visible-fin'),
                 rangoOculto: serializarRangoSimpleAdmin('oportunidades-rango-oculto-inicio', 'oportunidades-rango-oculto-fin')
             };
+            manejarCambioBoletajeYRangos();
             console.log('📝 Valores originales del sorteo guardados:', window.sorteoValoresOriginales);
         }
 
@@ -12626,8 +12886,11 @@
 
             cargarModalidadSorteoFormulario();
 
-            cargarConfiguracionBoletajeYRangos();
-            guardarValoresOriginaleSorteo();
+            const actualizoBoletaje = cargarConfiguracionBoletajeYRangos({ origen: 'reset' });
+            if (actualizoBoletaje) {
+                guardarValoresOriginaleSorteo();
+            }
+            eliminarBorradorBoletajeYRangos();
 
             mostrarAlerta('↩️ Cambios descartados', 'info');
         }
@@ -13103,8 +13366,11 @@
             cargarModalidadSorteoFormulario();
             
             cargarImagenesSorteo();
-            cargarConfiguracionBoletajeYRangos();
-            guardarValoresOriginaleSorteo();
+            const actualizoBoletaje = cargarConfiguracionBoletajeYRangos({ origen: 'carga_inicial' });
+            if (actualizoBoletaje) {
+                guardarValoresOriginaleSorteo();
+                restaurarBorradorBoletajeYRangosSiExiste();
+            }
         }, 1000);
         
         // ========================================================== //

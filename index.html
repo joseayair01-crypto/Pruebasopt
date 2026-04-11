@@ -19,7 +19,7 @@
     <meta name="twitter:title" content="Sorteos" />
     <meta name="twitter:description" content="Participa en nuestro sorteo." />
     <meta name="twitter:image" content="images/placeholder-cover.svg" />
-    <link rel="stylesheet" href="css/styles.css?v=20260408.3">
+    <link rel="stylesheet" href="css/styles.css?v=20260410.7">
     <script src="js/image-delivery.js"></script>
     <script>
         (function() {
@@ -98,10 +98,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/modal-contacto.css">
     <link rel="stylesheet" href="css/orden-formal.css">
-    <link rel="stylesheet" href="css/sistema-premios.css">
+    <link rel="stylesheet" href="css/sistema-premios.css?v=20260410.1">
     <!-- ✅ PRIMERO: Inyector de metadatos (se ejecuta ANTES que todo) -->
     <script src="js/deploy-config.js"></script>
-    <script src="js/config.js?v=20260407.1"></script>
+    <script src="js/config.js?v=20260410.1"></script>
     <script src="js/config-sync.js"></script>
     <script src="js/meta-inyector.js"></script>
     <!-- ⚙️ Detectar entorno -->
@@ -163,7 +163,7 @@
         })();
     </script>
     <script src="js/theme-loader.js?v=20251228.15"></script>
-    <script src="js/theme-dynamic.js"></script>
+    <script src="js/theme-dynamic.js?v=20260410.1"></script>
     <script>
         (function debugConfigIndex() {
             const indexDebug = ['localhost', '127.0.0.1'].includes(window.location.hostname);
@@ -423,29 +423,15 @@
         </div>
     </section>
 
-    <!-- INFORMACIÓN DEL SORTEO -->
-    <section class="rifa-descripcion-formal perf-defer-mobile perf-defer-mobile--large">
+    <!-- DETALLES DEL SORTEO -->
+    <section class="detalles-sorteo-section perf-defer-mobile perf-defer-mobile--large" id="detallesSorteoSection">
         <div class="container">
-            <div class="descripcion-content">
-                <div class="descripcion-header">
-                    <span class="descripcion-eyebrow">Informacion Importante</span>
-                    <h2 class="descripcion-titulo">Información del Sorteo</h2>
-                    <p class="descripcion-bajada">Consulta aquí las condiciones, detalles y aclaraciones más importantes antes de participar.</p>
-                </div>
-                <div class="descripcion-intro" id="descripcionIntro">
-                    <!-- Se carga dinámicamente desde config -->
-                </div>
-                
-                <div class="descripcion-texto" id="descripcionTextoDinamico">
-                    <!-- Se carga dinámicamente desde admin -->
-                </div>
-
-                <!-- Información del Sorteo (Tarjetas) -->
-                <div class="info-rifa-cards">
-                    <h3 class="info-rifa-subtitle">Detalles del Sorteo</h3>
-                    <div class="info-grid" id="infoRifaGrid">
-                        <!-- Se carga dinámicamente desde config.js -->
-                    </div>
+            <div class="detalles-sorteo-content">
+                <span class="detalles-sorteo-eyebrow">Informacion Clave</span>
+                <h2 class="section-title">Detalles del Sorteo</h2>
+                <p class="detalles-sorteo-subtitle">Aquí puedes revisar fechas, dinámicas y datos esenciales para participar con claridad.</p>
+                <div class="info-grid" id="infoRifaGrid">
+                    <!-- Se carga dinámicamente desde config.js -->
                 </div>
             </div>
         </div>
@@ -496,9 +482,10 @@
 
         .descripcion-bajada {
             margin: 0;
-            color: #475569;
-            font-size: 1rem;
-            line-height: 1.7;
+            color: #334155;
+            font-size: 1.04rem;
+            line-height: 1.72;
+            font-weight: 500;
         }
 
         .descripcion-intro {
@@ -508,14 +495,16 @@
             margin-bottom: 2rem;
             border: 1px solid rgba(15, 23, 42, 0.08);
             border-left: 4px solid var(--primary);
-            box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
+            box-shadow:
+                0 14px 30px rgba(var(--primary-rgb), 0.08),
+                0 4px 10px rgba(var(--primary-rgb), 0.03);
         }
 
         .descripcion-intro p {
             margin: 0;
             font-size: 1.04rem;
-            line-height: 1.8;
-            color: #1e293b;
+            line-height: 1.82;
+            color: #243548;
         }
 
         .descripcion-intro strong {
@@ -526,9 +515,9 @@
         .descripcion-texto {
             display: grid;
             gap: 1rem;
-            font-size: 1rem;
-            line-height: 1.8;
-            color: #334155;
+            font-size: 1.02rem;
+            line-height: 1.82;
+            color: #2b3e52;
         }
 
         .descripcion-texto p {
@@ -548,7 +537,9 @@
             border-radius: 18px;
             margin-bottom: 0;
             border: 1px solid rgba(15, 23, 42, 0.08);
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+            box-shadow:
+                0 14px 30px rgba(var(--primary-rgb), 0.08),
+                0 4px 10px rgba(var(--primary-rgb), 0.03);
             overflow: hidden;
         }
 
@@ -573,7 +564,7 @@
 
         .descripcion-seccion p {
             margin: 0;
-            color: #475569;
+            color: #334155;
             line-height: 1.75;
         }
 
@@ -586,19 +577,44 @@
             color: #d4a574;
         }
 
-        .info-rifa-cards {
-            margin-top: 3.2rem;
-            padding-top: 2.1rem;
+        .detalles-sorteo-section {
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            padding: 3.2rem 1.5rem 3.8rem;
             border-top: 1px solid rgba(15, 23, 42, 0.08);
         }
 
-        .info-rifa-subtitle {
-            font-size: 1.2rem;
-            color: #0f172a;
-            margin-bottom: 1.6rem;
+        .detalles-sorteo-content {
+            max-width: 980px;
+            margin: 0 auto;
             text-align: center;
-            font-weight: 700;
-            letter-spacing: -0.02em;
+        }
+
+        .detalles-sorteo-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.38rem 0.86rem;
+            margin-bottom: 0.84rem;
+            border-radius: 999px;
+            background: rgba(15, 58, 125, 0.08);
+            border: 1px solid rgba(15, 58, 125, 0.12);
+            color: var(--primary);
+            font-size: 0.76rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .detalles-sorteo-subtitle {
+            margin: 0 auto;
+            max-width: 720px;
+            color: #334155;
+            font-size: 1rem;
+            line-height: 1.7;
+        }
+
+        .detalles-sorteo-section .info-grid {
+            margin-top: 1.55rem;
         }
 
         @media (max-width: 768px) {
@@ -633,6 +649,10 @@
             .descripcion-seccion h3 {
                 font-size: 1rem;
             }
+
+            .detalles-sorteo-section {
+                padding: 2.5rem 1rem 3rem;
+            }
         }
 
         @media (max-width: 480px) {
@@ -649,6 +669,15 @@
             .descripcion-seccion p {
                 font-size: 0.94rem;
                 line-height: 1.7;
+            }
+
+            .detalles-sorteo-eyebrow {
+                font-size: 0.72rem;
+                padding: 0.34rem 0.75rem;
+            }
+
+            .detalles-sorteo-subtitle {
+                font-size: 0.92rem;
             }
         }
     </style>
@@ -786,7 +815,9 @@
             border: 1px solid rgba(15, 23, 42, 0.09);
             transition: all var(--transition-normal);
             overflow: hidden;
-            box-shadow: 0 16px 34px rgba(15, 23, 42, 0.05);
+            box-shadow:
+                0 14px 30px rgba(var(--primary-rgb), 0.08),
+                0 4px 10px rgba(var(--primary-rgb), 0.03);
         }
 
         .bono-card::before {
@@ -802,7 +833,9 @@
         .bono-card:hover {
             border-color: var(--bono-color-start);
             transform: translateY(-3px);
-            box-shadow: 0 20px 38px rgba(15, 23, 42, 0.08);
+            box-shadow:
+                0 20px 36px rgba(var(--primary-rgb), 0.12),
+                0 8px 18px rgba(var(--primary-rgb), 0.04);
         }
 
         .bono-icono {
@@ -891,57 +924,6 @@
 
         .bono-btn-whatsapp i {
             font-size: 1.2rem;
-        }
-
-        .bono-btn-redes {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.42rem;
-            padding: 0.8rem 1.15rem;
-            background: var(--primary);
-            color: #ffffff;
-            border: 1px solid rgba(var(--primary-rgb), 0.28);
-            border-radius: 999px;
-            font-weight: 700;
-            font-size: 0.84rem;
-            cursor: pointer;
-            transition: transform 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease, background 0.25s ease;
-            white-space: nowrap;
-            text-decoration: none;
-            box-shadow: 0 12px 22px rgba(var(--primary-rgb), 0.2);
-            animation: bonoBtnPulse 2.8s ease-in-out infinite;
-        }
-
-        .bono-btn-redes:hover {
-            transform: translateY(-2px);
-            background: var(--primary-dark);
-            border-color: rgba(var(--primary-rgb), 0.38);
-            box-shadow: 0 16px 30px rgba(var(--primary-rgb), 0.28);
-            filter: brightness(1.03);
-        }
-
-        @keyframes bonoBtnPulse {
-            0%, 100% {
-                transform: translateY(0) scale(1);
-                box-shadow: 0 12px 22px rgba(var(--primary-rgb), 0.2);
-            }
-            12% {
-                transform: translateY(-1px) scale(1.02);
-                box-shadow: 0 16px 28px rgba(var(--primary-rgb), 0.28);
-            }
-            18% {
-                transform: translateY(0) scale(1);
-            }
-            24% {
-                transform: translateX(-1px);
-            }
-            30% {
-                transform: translateX(1px);
-            }
-            36% {
-                transform: translateX(0);
-            }
         }
 
         .contacto-section {
@@ -1038,8 +1020,7 @@
                 font-size: 0.84rem;
             }
 
-            .bono-btn-whatsapp,
-            .bono-btn-redes {
+            .bono-btn-whatsapp {
                 width: 100%;
                 padding: 0.72rem 1rem;
                 font-size: 0.78rem;
@@ -1053,6 +1034,26 @@
     </style>
 
     <!-- Logica publica movida a js/index-public.js -->
+
+    <!-- INFORMACIÓN DEL SORTEO -->
+    <section class="rifa-descripcion-formal perf-defer-mobile perf-defer-mobile--large" id="informacionSorteoSection">
+        <div class="container">
+            <div class="descripcion-content">
+                <div class="descripcion-header">
+                    <span class="descripcion-eyebrow">Informacion Importante</span>
+                    <h2 class="descripcion-titulo">Información del Sorteo</h2>
+                    <p class="descripcion-bajada">Consulta aquí las condiciones, aclaraciones y puntos clave antes de participar.</p>
+                </div>
+                <div class="descripcion-intro" id="descripcionIntro">
+                    <!-- Se carga dinámicamente desde config -->
+                </div>
+                
+                <div class="descripcion-texto" id="descripcionTextoDinamico">
+                    <!-- Se carga dinámicamente desde admin -->
+                </div>
+            </div>
+        </div>
+    </section>
 
     <!-- POR QUÉ CONFIAR EN NOSOTROS -->
     <section class="por-que-confiar-section perf-defer-mobile perf-defer-mobile--large" id="confianzaSection">

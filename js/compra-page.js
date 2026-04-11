@@ -1,6 +1,6 @@
 (() => {
-    const HERO_SUBTITULO = 'Selecciona los boletos que quieras o deja que la maquina de la suerte elija por ti. ¡Mucha Suerte!';
-    const HERO_TITULO_DEFAULT = 'Elige tus boletos y participa ahora';
+    const HERO_SUBTITULO = 'Elige tus boletos y participa ahora';
+    const HERO_TITULO_DEFAULT = 'Estás a un paso de ser el próximo ganador';
     const FOOTER_ESLOGAN_DEFAULT = 'Rifas 100% Transparentes y Seguras';
     const REMOTE_PRICE_TTL_MS = 15000;
     const LOCAL_PRICE_CACHE_KEY = 'rifaplus_compra_precio_cache_v1';
@@ -31,27 +31,63 @@
 
     function obtenerUtilidadesHeroCompra() {
         const heroUtils = window.__RIFAPLUS_COMPRA_HERO_UTILS__;
-        if (heroUtils?.resolverOrganizador && heroUtils?.construirTitulo) {
+        if (heroUtils?.resolverNombreSorteo && heroUtils?.construirTitulo) {
             return heroUtils;
         }
 
-        const placeholderRegex = /^(sorteo|sorteos|sorteo actual|sorteo en vivo|sorteo demo|organizador|cliente|rifaplus)$/i;
         return {
-            resolverOrganizador(...candidatos) {
+            normalizarTexto(valor) {
+                return String(valor || '').replace(/\s+/g, ' ').trim();
+            },
+            limpiarEmojis(valor) {
+                return this.normalizarTexto(valor)
+                    .replace(/[\p{Extended_Pictographic}\p{Regional_Indicator}\uFE0F\u200D]/gu, '')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+            },
+            resolverNombreSorteo(...candidatos) {
                 for (const candidato of candidatos) {
-                    const nombre = String(candidato || '').replace(/\s+/g, ' ').trim();
-                    if (nombre && !placeholderRegex.test(nombre)) {
+                    const nombre = this.limpiarEmojis(candidato);
+                    if (nombre) {
                         return nombre;
                     }
                 }
 
                 return '';
             },
-            construirTitulo(organizador, fallback = HERO_TITULO_DEFAULT) {
-                const nombre = this.resolverOrganizador(organizador);
+            construirTitulo(nombreSorteo, fallback = HERO_TITULO_DEFAULT) {
+                const nombre = this.resolverNombreSorteo(nombreSorteo);
                 return nombre
-                    ? `¿Listo para ser el proximo ganador de ${nombre}? Elige tus boletos y participa ahora`
+                    ? `Estás a un paso de ser el próximo ganador de ${nombre}`
                     : fallback;
+            },
+            construirEstadoHero(nombreSorteo, subtitulo = HERO_SUBTITULO) {
+                const nombre = this.resolverNombreSorteo(nombreSorteo);
+                return {
+                    nombreSorteo: nombre,
+                    titulo: this.construirTitulo(nombre, HERO_TITULO_DEFAULT),
+                    subtitulo,
+                    tieneNombreSorteo: Boolean(nombre)
+                };
+            },
+            debeActualizarHero(actual, siguiente) {
+                const actualNombre = this.resolverNombreSorteo(actual?.nombreSorteo);
+                const siguienteNombre = this.resolverNombreSorteo(siguiente?.nombreSorteo);
+                const actualTitulo = this.normalizarTexto(actual?.titulo);
+
+                if (!actualTitulo) {
+                    return true;
+                }
+
+                if (!actualNombre && siguienteNombre) {
+                    return true;
+                }
+
+                if (actualNombre && siguienteNombre && actualNombre !== siguienteNombre) {
+                    return true;
+                }
+
+                return !this.normalizarTexto(actual?.subtitulo) && Boolean(this.normalizarTexto(siguiente?.subtitulo));
             }
         };
     }
@@ -119,15 +155,15 @@
         }
     }
 
-    function obtenerNombreOrganizadorInicialCompra() {
+    function obtenerNombreSorteoInicialCompra() {
         const heroUtils = obtenerUtilidadesHeroCompra();
         const config = obtenerConfigCompra();
         try {
-            return heroUtils.resolverOrganizador(
-                config?.cliente?.nombre,
-                obtenerConfigLocalCompartida()?.cliente?.nombre,
-                window.__RIFAPLUS_COMPRA_HERO__?.organizador,
-                localStorage.getItem('rifaplus_compra_hero_organizador')
+            return heroUtils.resolverNombreSorteo(
+                config?.rifa?.nombreSorteo,
+                obtenerConfigLocalCompartida()?.rifa?.nombreSorteo,
+                window.__RIFAPLUS_COMPRA_HERO__?.nombreSorteo,
+                localStorage.getItem('rifaplus_compra_hero_sorteo')
             );
         } catch (error) {
             return '';
@@ -143,29 +179,42 @@
         }
 
         const heroUtils = obtenerUtilidadesHeroCompra();
-        const organizador = obtenerNombreOrganizadorInicialCompra();
-        const textoTitulo = heroUtils.construirTitulo(organizador, HERO_TITULO_DEFAULT);
+        const nombreSorteo = obtenerNombreSorteoInicialCompra();
+        const estadoSiguiente = heroUtils.construirEstadoHero(nombreSorteo, HERO_SUBTITULO);
+        const estadoActual = {
+            nombreSorteo: window.__RIFAPLUS_COMPRA_HERO__?.nombreSorteo,
+            titulo: title.textContent,
+            subtitulo: subtitle?.textContent || ''
+        };
 
-        title.textContent = textoTitulo;
-
-        if (subtitle) {
-            subtitle.textContent = HERO_SUBTITULO;
+        if (!heroUtils.debeActualizarHero(estadoActual, estadoSiguiente)) {
+            if (subtitle && !subtitle.textContent.trim()) {
+                subtitle.textContent = estadoSiguiente.subtitulo;
+            }
+            return;
         }
 
-        if (!organizador) {
+        title.textContent = estadoSiguiente.titulo;
+
+        if (subtitle) {
+            subtitle.textContent = estadoSiguiente.subtitulo;
+        }
+
+        if (!estadoSiguiente.nombreSorteo) {
             return;
         }
 
         try {
-            localStorage.setItem('rifaplus_compra_hero_organizador', organizador);
+            localStorage.setItem('rifaplus_compra_hero_sorteo', estadoSiguiente.nombreSorteo);
         } catch (error) {
             // Ignorar errores de storage para no romper la UI.
         }
 
         if (window.__RIFAPLUS_COMPRA_HERO__) {
-            window.__RIFAPLUS_COMPRA_HERO__.organizador = organizador;
-            window.__RIFAPLUS_COMPRA_HERO__.titulo = textoTitulo;
-            window.__RIFAPLUS_COMPRA_HERO__.subtitulo = HERO_SUBTITULO;
+            window.__RIFAPLUS_COMPRA_HERO__ = {
+                ...window.__RIFAPLUS_COMPRA_HERO__,
+                ...estadoSiguiente
+            };
         }
     }
 

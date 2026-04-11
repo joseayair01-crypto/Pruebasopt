@@ -42,7 +42,7 @@
 .modal-contacto {
     width: 100%;
     max-width: 500px;
-    background: linear-gradient(180deg, #ffffff, #fbfcfe);
+    background: #ffffff;
     border-radius: 24px;
     box-shadow:
         0 28px 70px rgba(0, 0, 0, 0.24),
@@ -77,7 +77,7 @@
     align-items: center;
     padding: 1.15rem 1rem 0.95rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    background: var(--primary);
     color: white;
     border-radius: 24px 24px 0 0;
     position: relative;
@@ -156,7 +156,7 @@
     margin-bottom: 0.85rem;
     padding: 0.65rem 0.75rem;
     border-radius: 14px;
-    background: linear-gradient(180deg, rgba(15, 23, 42, 0.03), rgba(15, 23, 42, 0.015));
+    background: rgba(15, 23, 42, 0.03);
     border: 1px solid rgba(15, 23, 42, 0.06);
     color: var(--text-dark);
     font-size: 0.82rem;
@@ -394,7 +394,7 @@
     gap: 0.65rem;
     padding: 0.85rem 0.95rem 0.95rem;
     border-top: 1px solid rgba(15, 23, 42, 0.08);
-    background: linear-gradient(180deg, rgba(248,250,252,0.98), rgba(255,255,255,0.98));
+    background: #ffffff;
     border-radius: 0 0 24px 24px;
     justify-content: flex-end;
     flex-direction: row;
@@ -432,7 +432,7 @@
 .modal-footer-contacto .btn-continuar {
     order: 2;
     transition: all var(--transition-normal);
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    background: var(--primary);
     border: none;
     color: white;
     font-weight: 700;
@@ -468,7 +468,7 @@
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    background: rgba(255, 255, 255, 0.16);
     transition: left 0.5s ease;
 }
 
@@ -476,7 +476,7 @@
 .modal-footer-contacto .btn-continuar:hover {
     transform: translateY(-3px);
     box-shadow: 0 14px 26px rgba(15, 58, 125, 0.28);
-    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+    background: var(--primary-dark);
 }
 
 .modal-footer-contacto .btn-primary:hover::before,

@@ -18,7 +18,7 @@
     <meta name="twitter:title" content="Compra tus boletos" />
     <meta name="twitter:description" content="Selecciona tus boletos y participa en el sorteo activo." />
     <meta name="twitter:image" content="images/placeholder-cover.svg" />
-    <link rel="stylesheet" href="css/styles.css?v=20260408.3">
+    <link rel="stylesheet" href="css/styles.css?v=20260410.6">
     <script src="js/image-delivery.js"></script>
     <script>
         (function() {
@@ -38,32 +38,59 @@
                 || fallbackLogo;
             const cachedLogo = imageDelivery?.resolverUrlImagen(rawLogo, 'logoPreload') || rawLogo;
             const heroUtils = window.__RIFAPLUS_COMPRA_HERO_UTILS__ || {
-                normalizarOrganizador(valor) {
+                normalizarTexto(valor) {
                     return String(valor || '').replace(/\s+/g, ' ').trim();
                 },
-                esOrganizadorGenerico(valor) {
-                    const nombre = this.normalizarOrganizador(valor).toLowerCase();
-                    if (!nombre) {
-                        return true;
-                    }
-
-                    return /^(sorteo|sorteos|sorteo actual|sorteo en vivo|sorteo demo|organizador|cliente|rifaplus|sadev)$/i.test(nombre);
+                limpiarEmojis(valor) {
+                    return this.normalizarTexto(valor)
+                        .replace(/[\p{Extended_Pictographic}\p{Regional_Indicator}\uFE0F\u200D]/gu, '')
+                        .replace(/\s+/g, ' ')
+                        .trim();
                 },
-                resolverOrganizador() {
+                resolverNombreSorteo() {
                     for (let i = 0; i < arguments.length; i += 1) {
-                        const nombre = this.normalizarOrganizador(arguments[i]);
-                        if (!this.esOrganizadorGenerico(nombre)) {
+                        const nombre = this.limpiarEmojis(arguments[i]);
+                        if (nombre) {
                             return nombre;
                         }
                     }
 
                     return '';
                 },
-                construirTitulo(organizador) {
-                    const nombre = this.resolverOrganizador(organizador);
+                construirTitulo(nombreSorteo) {
+                    const nombre = this.resolverNombreSorteo(nombreSorteo);
                     return nombre
-                        ? `¿Listo para ser el proximo ganador de ${nombre}? Elige tus boletos y participa ahora`
-                        : 'Elige tus boletos y participa ahora';
+                        ? `Estás a un paso de ser el próximo ganador de ${nombre}`
+                        : 'Estás a un paso de ser el próximo ganador';
+                },
+                construirEstadoHero(nombreSorteo, subtitulo) {
+                    const nombre = this.resolverNombreSorteo(nombreSorteo);
+                    return {
+                        nombreSorteo: nombre,
+                        titulo: this.construirTitulo(nombre),
+                        subtitulo: subtitulo || 'Elige tus boletos y participa ahora',
+                        tieneNombreSorteo: Boolean(nombre)
+                    };
+                },
+                debeActualizarHero(actual, siguiente) {
+                    const actualNombre = this.resolverNombreSorteo(actual?.nombreSorteo);
+                    const siguienteNombre = this.resolverNombreSorteo(siguiente?.nombreSorteo);
+                    const actualTitulo = this.normalizarTexto(actual?.titulo);
+                    const siguienteTitulo = this.normalizarTexto(siguiente?.titulo);
+
+                    if (!actualTitulo) {
+                        return true;
+                    }
+
+                    if (!actualNombre && siguienteNombre) {
+                        return true;
+                    }
+
+                    if (actualNombre && siguienteNombre && actualNombre !== siguienteNombre) {
+                        return true;
+                    }
+
+                    return !this.normalizarTexto(actual?.subtitulo) && Boolean(this.normalizarTexto(siguiente?.subtitulo));
                 }
             };
             window.__RIFAPLUS_COMPRA_HERO_UTILS__ = heroUtils;
@@ -123,18 +150,14 @@
             };
 
             window.__RIFAPLUS_COMPRA_HERO__ = (function() {
-                const subtitulo = 'Selecciona los boletos que quieras o deja que la máquina de la suerte elija por ti. ¡Mucha Suerte!';
-                const organizador = heroUtils.resolverOrganizador(
-                    window.rifaplusConfig?.cliente?.nombre,
-                    configLocal?.cliente?.nombre,
-                    localStorage.getItem('rifaplus_compra_hero_organizador')
+                const subtitulo = 'Elige tus boletos y participa ahora';
+                const nombreSorteo = heroUtils.resolverNombreSorteo(
+                    window.rifaplusConfig?.rifa?.nombreSorteo,
+                    configLocal?.rifa?.nombreSorteo,
+                    localStorage.getItem('rifaplus_compra_hero_sorteo')
                 );
 
-                return {
-                    organizador,
-                    titulo: heroUtils.construirTitulo(organizador),
-                    subtitulo
-                };
+                return heroUtils.construirEstadoHero(nombreSorteo, subtitulo);
             })();
             document.write('<link rel="preload" as="image" href="' + cachedLogo + '" fetchpriority="high">');
             document.write('<link rel="icon" href="' + (imageDelivery?.resolverUrlImagen(rawLogo, 'logoIcon') || rawLogo) + '" sizes="32x32">');
@@ -148,7 +171,7 @@
     <link rel="stylesheet" href="css/modal-orden-confirmada.css">
     <!-- ✅ PRIMERO: Core config (se ejecuta ANTES que todo) -->
     <script src="js/deploy-config.js"></script>
-    <script src="js/config.js?v=20260407.1"></script>
+    <script src="js/config.js?v=20260410.1"></script>
     <script src="js/config-sync.js"></script>
     <script src="js/meta-inyector.js"></script>
     <script>
@@ -162,7 +185,8 @@
                 'rifaplus_sorteo_fecha',
                 'countdown_lastDate',
                 'countdown_eventTime',
-                'rifaplus_fecha_cierre_backup'
+                'rifaplus_fecha_cierre_backup',
+                'rifaplus_compra_hero_organizador'
             ];
             keysABorrar.forEach(k => {
                 if (localStorage.getItem(k)) {
@@ -171,7 +195,7 @@
             });
         })();
     </script>
-    <script src="js/theme-dynamic.js?v=20260219"></script>
+    <script src="js/theme-dynamic.js?v=20260410.1"></script>
     <script src="js/modal-scroll-lock.js"></script>
     <script src="js/modal-sorteo-finalizado.js?v=20260408.1"></script>
     <!-- ✅ CRÍTICO: storage-manager + carrito (debe estar antes que compra.js) -->
@@ -262,8 +286,8 @@
     <section class="compra-hero compra-hero--purple">
         <div class="container">
             <div class="compra-hero-inner">
-                <h1 class="compra-hero-title" id="compraHeroTitle"><script>document.write((window.__RIFAPLUS_COMPRA_HERO__ && window.__RIFAPLUS_COMPRA_HERO__.titulo) || 'Elige tus boletos y participa ahora');</script></h1>
-                <p class="compra-hero-sub" id="compraHeroSub"><script>document.write((window.__RIFAPLUS_COMPRA_HERO__ && window.__RIFAPLUS_COMPRA_HERO__.subtitulo) || 'Selecciona los boletos que quieras o deja que la máquina de la suerte elija por ti. ¡Mucha Suerte!');</script></p>
+                <h1 class="compra-hero-title" id="compraHeroTitle"><script>document.write((window.__RIFAPLUS_COMPRA_HERO__ && window.__RIFAPLUS_COMPRA_HERO__.titulo) || 'Estás a un paso de ser el próximo ganador');</script></h1>
+                <p class="compra-hero-sub" id="compraHeroSub"><script>document.write((window.__RIFAPLUS_COMPRA_HERO__ && window.__RIFAPLUS_COMPRA_HERO__.subtitulo) || 'Elige tus boletos y participa ahora');</script></p>
                 <div class="compra-hero-cta">
                     <a href="#numerosGrid" class="btn btn-seleccionar">
                         <span class="cta-icon" aria-hidden="true"><i class="fas fa-ticket-alt"></i></span>
@@ -271,7 +295,10 @@
                     </a>
                     <button id="btnProbarMaquina" class="btn btn-maquina">
                         <span class="cta-icon" aria-hidden="true">🎰</span>
-                        <span class="cta-title">Quiero numeros al azar</span>
+                        <span class="cta-copy">
+                            <span class="cta-eyebrow">Opción rápida</span>
+                            <span class="cta-title">Quiero números al azar</span>
+                        </span>
                     </button>
                 </div>
             </div>

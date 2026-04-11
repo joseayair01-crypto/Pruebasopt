@@ -15,9 +15,9 @@
  *   node maintenance.js cloudinary         # Solo test de Cloudinary
  */
 
-require('dotenv').config();
-const db = require('./db');
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+const db = require('./db');
 
 // ============================================================================
 // TEST 1: Conflicto de boletos (código correcto + boletos disponibles)
@@ -142,20 +142,33 @@ async function testCloudinary() {
     console.log('╚════════════════════════════════════════════════════════╝\n');
 
     try {
+        const hasCloudinaryUrl = Boolean(String(process.env.CLOUDINARY_URL || '').trim());
         const requiredVars = ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'];
-        const missingVars = requiredVars.filter(v => !process.env[v]);
+        const missingVars = hasCloudinaryUrl
+            ? []
+            : requiredVars.filter(v => !process.env[v]);
 
         if (missingVars.length > 0) {
             console.log(`   ❌ Variables faltando: ${missingVars.join(', ')}`);
-            console.log('   Agrega al .env: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET\n');
+            console.log('   Agrega al .env CLOUDINARY_URL o CLOUDINARY_CLOUD_NAME/CLOUDINARY_API_KEY/CLOUDINARY_API_SECRET\n');
             return false;
         }
 
-        const cloudinary = require('cloudinary').v2;
+        const cloudinary = require('./cloudinary-config');
         const config = cloudinary.config();
+        const cloudNameOk = Boolean(config.cloud_name);
+        const apiKeyOk = Boolean(config.api_key);
+
+        if (!cloudNameOk || !apiKeyOk) {
+            console.log(`   ❌ Cloud: ${config.cloud_name || 'NO'}`);
+            console.log(`   ❌ API Key: ${apiKeyOk ? '***' : 'NO'}`);
+            console.log('   ❌ Cloudinary: MAL CONFIGURADO\n');
+            return false;
+        }
 
         console.log(`   ✅ Cloud: ${config.cloud_name}`);
-        console.log(`   ✅ API Key: ${config.api_key ? '***' : 'NO'}`);
+        console.log(`   ✅ API Key: ***`);
+        console.log(`   ✅ Origen: ${hasCloudinaryUrl ? 'CLOUDINARY_URL' : 'Variables separadas'}`);
         console.log(`   ✅ Cloudinary: CONFIGURADO\n`);
 
         return true;

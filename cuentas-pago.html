@@ -6,7 +6,7 @@
     <meta name="rifaplus-api-base" content="">
     <!-- METADATOS DINÁMICOS - Inyectados por js/meta-inyector.js desde config.js -->
     <title>Cuentas de Pago</title>
-    <link rel="stylesheet" href="css/styles.css?v=20260408.3">
+    <link rel="stylesheet" href="css/styles.css?v=20260410.6">
     <script src="js/image-delivery.js"></script>
     <script>
         (function() {
@@ -25,7 +25,7 @@
     <link rel="stylesheet" href="css/orden-formal.css">
     <!-- ✅ PRIMERO: Inyector de metadatos (se ejecuta ANTES que todo) -->
     <script src="js/deploy-config.js"></script>
-    <script src="js/config.js?v=20260407.1"></script>
+    <script src="js/config.js?v=20260410.1"></script>
     <script src="js/config-sync.js"></script>
     <script src="js/meta-inyector.js"></script>
     <style>
@@ -45,7 +45,7 @@
         
         .payment-page-header {
             max-width: 760px;
-            margin: 0 auto 2.5rem;
+            margin: 0 auto 2.1rem;
             text-align: center;
         }
 
@@ -65,31 +65,34 @@
         }
 
         .payment-instructions-warning {
-            margin: 1.5rem auto 0;
+            margin: 1.35rem auto 0;
             max-width: 760px;
-            padding: 1.15rem 1.35rem;
-            border: 1px solid rgba(208, 167, 84, 0.24);
-            border-radius: 16px;
-            background: linear-gradient(180deg, rgba(255, 249, 238, 0.96) 0%, rgba(255, 255, 255, 0.98) 100%);
-            box-shadow: 0 14px 30px rgba(36, 42, 54, 0.05);
+            padding: 1.2rem 1.35rem 1.15rem;
+            border: 1px solid rgba(208, 167, 84, 0.28);
+            border-left: 4px solid #d4a63d;
+            border-radius: 18px;
+            background: linear-gradient(180deg, rgba(255, 249, 238, 0.98) 0%, rgba(255, 255, 255, 0.99) 100%);
+            box-shadow:
+                0 16px 30px rgba(36, 42, 54, 0.05),
+                0 4px 12px rgba(36, 42, 54, 0.03);
         }
         
         .payment-instructions-main {
-            font-size: 0.82rem;
-            font-weight: 700;
+            font-size: 0.78rem;
+            font-weight: 800;
             color: #9a6b13;
-            margin: 0 0 0.55rem 0;
+            margin: 0 0 0.48rem 0;
             line-height: 1.4;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.1em;
             text-transform: uppercase;
             text-align: left;
         }
         
         .payment-instructions-important {
-            font-size: 1rem;
+            font-size: 1.02rem;
             color: #2e3746;
             margin: 0;
-            line-height: 1.7;
+            line-height: 1.65;
             text-align: left;
         }
         
@@ -102,17 +105,21 @@
             max-width: 980px;
             margin: 0 auto;
             padding: 0 1rem;
+            text-align: center;
         }
 
         .section-title {
-            margin-bottom: 0.45rem;
+            margin-bottom: 0.38rem;
         }
 
         .section-description {
             margin: 0;
             color: #697386;
-            font-size: 0.98rem;
-            line-height: 1.65;
+            font-size: 0.96rem;
+            line-height: 1.62;
+            max-width: 72ch;
+            margin-left: auto;
+            margin-right: auto;
         }
         
         @media (max-width: 768px) {
@@ -143,7 +150,7 @@
         }
         
         .payment-section {
-            margin: 0 auto;
+            margin: 0 auto 0.35rem;
             width: 100%;
         }
         
@@ -151,9 +158,9 @@
         .efectivo-grid {
             display: flex;
             flex-wrap: wrap;
-            gap: 2rem;
+            gap: 1.5rem;
             justify-content: center;
-            margin: 2rem auto;
+            margin: 1.45rem auto 1.8rem;
             width: 100%;
             padding: 0 1rem;
             box-sizing: border-box;
@@ -223,14 +230,16 @@
         }
         
         .efectivo-card {
-            flex: 0 1 320px;
-            width: 320px;
+            flex: 0 1 420px;
+            width: 420px;
             min-width: 0;
             background: white;
-            border: 1px solid #e0e0e0;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(15, 23, 42, 0.09);
+            border-radius: 18px;
+            padding: 1.45rem;
+            box-shadow:
+                0 12px 28px rgba(15, 23, 42, 0.06),
+                0 4px 10px rgba(15, 23, 42, 0.03);
             transition: all 0.3s ease;
             position: relative;
             color: #1a1a1a;
@@ -256,8 +265,10 @@
         }
         
         .efectivo-card:hover {
-            border-color: var(--secondary);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            border-color: rgba(var(--secondary-rgb), 0.42);
+            box-shadow:
+                0 18px 34px rgba(15, 23, 42, 0.08),
+                0 6px 14px rgba(15, 23, 42, 0.04);
             transform: translateY(-2px);
         }
         
@@ -266,15 +277,15 @@
             align-items: flex-start;
             justify-content: flex-start;
             gap: 0;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 2px solid var(--secondary);
+            margin-bottom: 1.3rem;
+            padding-bottom: 0.9rem;
+            border-bottom: 2px solid rgba(var(--secondary-rgb), 0.8);
         }
         
         .efectivo-card-titulo {
             margin: 0;
-            font-size: 1.25rem;
-            font-weight: 700;
+            font-size: 1.35rem;
+            font-weight: 800;
             color: #1a1a1a;
             flex: 1;
         }
@@ -282,11 +293,12 @@
         .efectivo-card-badge {
             background: var(--secondary);
             color: white;
-            padding: 0.35rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
+            padding: 0.38rem 0.78rem;
+            border-radius: 999px;
+            font-size: 0.76rem;
+            font-weight: 700;
             text-transform: uppercase;
+            letter-spacing: 0.04em;
             white-space: nowrap;
             position: absolute;
             top: 1rem;
@@ -296,7 +308,7 @@
         .efectivo-card-content {
             display: flex;
             flex-direction: column;
-            gap: 1.25rem;
+            gap: 1rem;
         }
         
         .efectivo-info-row {
@@ -306,11 +318,11 @@
         }
         
         .efectivo-info-label {
-            font-size: 0.85rem;
-            font-weight: 600;
+            font-size: 0.78rem;
+            font-weight: 700;
             color: #999;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.06em;
         }
         
         .efectivo-info-value-group {
@@ -320,9 +332,9 @@
         }
         
         .efectivo-info-value {
-            font-size: 0.95rem;
+            font-size: 1rem;
             color: #1a1a1a;
-            font-weight: 500;
+            font-weight: 600;
             word-break: break-all;
             flex: 1;
         }
@@ -890,7 +902,7 @@
     <!-- MODAL LOADING -->
     <div id="modalLoadingOrden" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center; flex-direction: column;">
         <div style="background: white; padding: 40px; border-radius: 12px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
-            <div style="width: 60px; height: 60px; border: 4px solid #f0f0f0; border-top: 4px solid #7c3aed; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;" id="spinnerOrden"></div>
+            <div style="width: 60px; height: 60px; border: 4px solid #e7eef4; border-top: 4px solid #1fd1c2; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;" id="spinnerOrden"></div>
             <h3 style="margin: 0 0 10px 0; color: #333; font-size: 18px;">⏳ Apartando tu orden...</h3>
             <p style="margin: 5px 0 15px 0; color: #666; font-size: 14px;">Por favor espera, esto puede tomar algunos segundos</p>
             <p id="tiempoTranscurrido" style="margin: 0; color: #999; font-size: 12px;">Tiempo: 0s</p>
@@ -933,7 +945,7 @@
             ['rifaplus_fecha_sorteo','rifaplus_timestamp_sorteo','rifaplus_fecha_cierre'].forEach(k => localStorage.removeItem(k));
         })();
     </script>
-    <script defer src="js/theme-dynamic.js"></script>
+    <script defer src="js/theme-dynamic.js?v=20260410.1"></script>
     <script defer src="js/main.js?v=20260408.2"></script>
     <script defer src="js/calculo-precios.js?v=20251230.1"></script>
 

@@ -90,11 +90,10 @@
             socketScriptUrl: SOCKET_CDN_URL
         },
         production: {
-            // Produccion actual:
-            // Backend: Railway
-            // Frontend: Cloudflare Pages
-            apiBase: 'https://aleahot1-production.up.railway.app',
-            publicBase: 'https://aleahot1.pages.dev',
+            // Esta copia queda neutral por defecto.
+            // Si algun dia se despliega, configura estas URLs manualmente.
+            apiBase: '',
+            publicBase: '',
             socketScriptUrl: SOCKET_CDN_URL
         }
     };

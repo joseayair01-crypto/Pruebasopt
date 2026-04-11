@@ -7,7 +7,7 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:* http://localhost:*; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://fonts.googleapis.com http://localhost:5001 http://127.0.0.1:5001; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' http://127.0.0.1:* http://localhost:* https: http://localhost:5001 http://127.0.0.1:5001 ws: wss: ws://localhost:5001 wss://localhost:5001 ws://127.0.0.1:5001 wss://127.0.0.1:5001; img-src 'self' data: https:;">
     <!-- METADATOS DINÁMICOS - Inyectados por js/meta-inyector.js desde config.js -->
     <title>Mis Boletos</title>
-    <link rel="stylesheet" href="css/styles.css?v=20260408.3">
+    <link rel="stylesheet" href="css/styles.css?v=20260410.6">
     <script src="js/image-delivery.js"></script>
 
     <script>
@@ -28,7 +28,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- ✅ PRIMERO: Inyector de metadatos (se ejecuta ANTES que todo) -->
     <script src="js/deploy-config.js"></script>
-    <script src="js/config.js?v=20260407.1"></script>
+    <script src="js/config.js?v=20260410.1"></script>
     <script src="js/config-sync.js"></script>
     <script src="js/meta-inyector.js"></script>
     <!-- ⚙️ Detectar entorno -->
@@ -39,7 +39,7 @@
             ['rifaplus_fecha_sorteo','rifaplus_timestamp_sorteo','rifaplus_fecha_cierre'].forEach(k => localStorage.removeItem(k));
         })();
     </script>
-    <script src="js/theme-dynamic.js"></script>
+    <script src="js/theme-dynamic.js?v=20260410.1"></script>
     <script src="js/boletos-loader.js"></script>
     <script src="js/modal-scroll-lock.js"></script>
     <!-- ⚡ PERFORMANCE OPTIMIZATION: Rendering optimizer for 50+ cards -->
@@ -614,6 +614,12 @@
             overflow: hidden;
         }
 
+        .mis-boletos-section.has-results .busqueda-destacada {
+            padding: 1.7rem 1.8rem 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 16px 40px rgba(15, 58, 125, 0.16);
+        }
+
         /* Elemento decorativo de fondo */
         .busqueda-destacada::before {
             content: '';
@@ -648,12 +654,21 @@
             margin-bottom: 2.5rem;
         }
 
+        .mis-boletos-section.has-results .busqueda-header {
+            margin-bottom: 1.15rem;
+        }
+
         .busqueda-titulo {
             font-size: 2.2rem;
             font-weight: 700;
             margin: 0 0 0.75rem 0;
             color: white;
             letter-spacing: -0.5px;
+        }
+
+        .mis-boletos-section.has-results .busqueda-titulo {
+            font-size: 1.7rem;
+            margin-bottom: 0.45rem;
         }
 
         .busqueda-subtitulo {
@@ -665,6 +680,12 @@
             margin: 0 auto;
         }
 
+        .mis-boletos-section.has-results .busqueda-subtitulo {
+            font-size: 0.95rem;
+            line-height: 1.5;
+            max-width: 520px;
+        }
+
         .busqueda-input-group {
             display: flex;
             flex-direction: column;
@@ -674,6 +695,11 @@
             max-width: 100%;
             margin-bottom: 1rem;
             height: fit-content;
+        }
+
+        .mis-boletos-section.has-results .busqueda-input-group {
+            gap: 0.7rem;
+            margin-bottom: 0.7rem;
         }
 
         .busqueda-input {
@@ -753,6 +779,10 @@
             font-size: 0.9rem;
             color: rgba(255, 255, 255, 0.85);
             margin: 0;
+        }
+
+        .mis-boletos-section.has-results .busqueda-hint {
+            font-size: 0.82rem;
         }
 
         .validacion-error {
@@ -986,14 +1016,14 @@
         .ordenes-lista {
             display: flex;
             flex-direction: column;
-            gap: 1.5rem;
+            gap: 1.25rem;
         }
 
         .orden-card {
             background: white;
             border-radius: var(--radius-lg);
             border: 1px solid rgba(var(--primary-rgb), 0.1);
-            box-shadow: 0 16px 36px rgba(var(--primary-rgb), 0.08);
+            box-shadow: 0 14px 32px rgba(var(--primary-rgb), 0.08);
             overflow: hidden;
             transition: box-shadow var(--transition-fast), transform var(--transition-fast), border-color var(--transition-fast);
             display: flex;
@@ -1010,10 +1040,14 @@
             border-color: rgba(var(--primary-rgb), 0.18);
         }
 
+        .orden-card--highlighted {
+            animation: highlightAnimation 1.9s ease-out;
+        }
+
         /* Header Superior Compacto */
         .orden-header-top {
             background: linear-gradient(180deg, #ffffff 0%, #fff8fb 100%);
-            padding: 0.78rem 0.92rem;
+            padding: 0.72rem 0.92rem;
             border-bottom: 1px solid rgba(15, 23, 42, 0.08);
             display: flex;
             justify-content: space-between;
@@ -1088,7 +1122,7 @@
             grid-template-rows: auto 1fr auto;
             overflow: hidden;
             position: relative;
-            min-height: 180px;
+            min-height: 154px;
             /* OPTIMIZACION: Evitar reflow de imagen */
         }
 
@@ -1112,7 +1146,7 @@
             width: 100%;
             height: 100%;
             object-fit: contain;
-            padding: 0.5rem 0.75rem 0.65rem;
+            padding: 0.35rem 0.7rem 0.45rem;
             background: transparent;
             display: block;
         }
@@ -1226,7 +1260,7 @@
 
         /* Body de la Orden */
         .orden-body {
-            padding: 0.82rem 0.9rem;
+            padding: 0.74rem 0.86rem;
             background: linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%);
             /* OPTIMIZACION: Evitar reflow en elementos anidados */
             contain: layout;
@@ -1235,11 +1269,11 @@
 
         /* Secciones de Datos */
         .orden-seccion {
-            margin-bottom: 0.6rem;
+            margin-bottom: 0.45rem;
             border: 1px solid rgba(var(--primary-rgb), 0.08);
             border-radius: 14px;
             background: #ffffff;
-            padding: 0.62rem 0.76rem;
+            padding: 0.54rem 0.72rem;
         }
 
         .orden-seccion-titulo {
@@ -1440,7 +1474,7 @@
             background: transparent;
             border: 0;
             border-radius: 0;
-            padding: 0.95rem 0;
+            padding: 0.78rem 0;
             margin-bottom: 0;
         }
 
@@ -1454,14 +1488,14 @@
             letter-spacing: 0.08em;
             text-transform: uppercase;
             color: #24181f;
-            margin-bottom: 0.72rem;
+            margin-bottom: 0.55rem;
             padding-bottom: 0;
             border-bottom: 0;
         }
 
         .orden-card.orden-card--ticket .orden-info {
             grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
-            gap: 0.72rem 1rem;
+            gap: 0.58rem 0.9rem;
             margin-bottom: 0;
         }
 
@@ -1504,10 +1538,10 @@
 
         .orden-card.orden-card--ticket .orden-info-item-total {
             grid-column: 1 / -1;
-            background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.08) 0%, rgba(var(--secondary-rgb), 0.12) 100%);
+            background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.06) 0%, rgba(var(--secondary-rgb), 0.1) 100%);
             border: 1px solid rgba(var(--primary-rgb), 0.12);
             border-radius: 1rem;
-            padding: 0.82rem 0.95rem;
+            padding: 0.68rem 0.88rem;
         }
 
         .orden-card.orden-card--ticket .orden-info-item-total.promocion {
@@ -1520,7 +1554,15 @@
         }
 
         .orden-card.orden-card--ticket .orden-info-item-total .orden-info-value {
-            font-size: 1.08rem;
+            font-size: 1.02rem;
+        }
+
+        .orden-card.orden-card--ticket .orden-imagen-principal + .orden-seccion {
+            padding-top: 0.68rem;
+        }
+
+        .orden-card .orden-estado-badge.cancelada + .orden-id-numero {
+            opacity: 0.92;
         }
 
         .orden-confirmada-panel {
@@ -2587,7 +2629,9 @@
             ordenes: [],
             ordenActualComprobante: null,
             isLoading: false,
-            ordenesDescargando: new Set()
+            ordenesDescargando: new Set(),
+            pendingFocusOrdenId: null,
+            pendingFocusToken: 0
         };
         window.appState = appState;
 
@@ -2965,27 +3009,40 @@
             appState.ordenes = [orden];
             renderizarOrdenes([orden]);
             mostrarListaOrdenes();
-            setTimeout(() => enfocarVistaPrincipalOrden(orden.id || orden.numero_orden, { instant: true }), 120);
+            programarEnfoqueOrden(orden.id || orden.numero_orden, { instant: true, delay: 120 });
             return true;
         }
         window.buscarOrdenObjetivoDesdeUrl = buscarOrdenObjetivoDesdeUrl;
 
         function obtenerOrdenPorId(ordenId) {
+            const ordenIdNormalizado = normalizarIdentificadorOrden(ordenId);
             return Array.isArray(appState.ordenes)
-                ? appState.ordenes.find((orden) => String(orden.id || orden.numero_orden || '') === String(ordenId || ''))
+                ? appState.ordenes.find((orden) => normalizarIdentificadorOrden(orden.id || orden.numero_orden || '') === ordenIdNormalizado)
                 : null;
         }
 
+        function normalizarIdentificadorOrden(ordenId) {
+            return String(ordenId || '').trim().toUpperCase();
+        }
+
+        function encontrarOrdenCard(ordenId) {
+            const ordenIdNormalizado = normalizarIdentificadorOrden(ordenId);
+            if (!ordenIdNormalizado) return null;
+
+            const ordenesCard = document.querySelectorAll('.orden-card[data-orden-id]');
+            return Array.from(ordenesCard).find((card) => (
+                normalizarIdentificadorOrden(card.dataset.ordenId) === ordenIdNormalizado
+            )) || null;
+        }
+
         function enfocarVistaPrincipalOrden(ordenId, options = {}) {
-            if (!ordenId) return;
+            const ordenIdNormalizado = normalizarIdentificadorOrden(ordenId);
+            if (!ordenIdNormalizado) return false;
 
-            const selectorSeguro = typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
-                ? CSS.escape(String(ordenId))
-                : String(ordenId).replace(/"/g, '\\"');
-            const ordenCard = document.querySelector(`.orden-card[data-orden-id="${selectorSeguro}"]`);
-            if (!ordenCard) return;
+            const ordenCard = encontrarOrdenCard(ordenIdNormalizado);
+            if (!ordenCard) return false;
 
-            const objetivo = ordenCard.querySelector('.orden-imagen-principal') || ordenCard;
+            const objetivo = ordenCard;
             const header = document.querySelector('.header');
             const headerOffset = header ? Math.max(72, header.offsetHeight + 12) : 96;
             const rect = objetivo.getBoundingClientRect();
@@ -2994,12 +3051,57 @@
             const behavior = options.instant ? 'auto' : 'smooth';
             window.scrollTo({ top: topObjetivo, behavior });
 
-            if (objetivo instanceof HTMLElement) {
-                if (!objetivo.hasAttribute('tabindex')) {
-                    objetivo.setAttribute('tabindex', '-1');
+            if (ordenCard instanceof HTMLElement) {
+                if (!ordenCard.hasAttribute('tabindex')) {
+                    ordenCard.setAttribute('tabindex', '-1');
                 }
-                objetivo.focus({ preventScroll: true });
+                ordenCard.focus({ preventScroll: true });
+                resaltarOrdenCard(ordenCard);
             }
+
+            if (appState.pendingFocusOrdenId === ordenIdNormalizado) {
+                appState.pendingFocusOrdenId = null;
+            }
+
+            return true;
+        }
+
+        function resaltarOrdenCard(ordenCard) {
+            if (!(ordenCard instanceof HTMLElement)) return;
+
+            ordenCard.classList.remove('orden-card--highlighted');
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    ordenCard.classList.add('orden-card--highlighted');
+                });
+            });
+        }
+
+        function programarEnfoqueOrden(ordenId, options = {}) {
+            const ordenIdNormalizado = normalizarIdentificadorOrden(ordenId);
+            if (!ordenIdNormalizado) return;
+
+            appState.pendingFocusOrdenId = ordenIdNormalizado;
+            const token = ++appState.pendingFocusToken;
+            const delay = Number.isFinite(options.delay) ? options.delay : 60;
+            const maxIntentos = Number.isFinite(options.maxIntentos) ? options.maxIntentos : 8;
+
+            const intentarEnfoque = (intento = 0) => {
+                if (appState.pendingFocusToken !== token || appState.pendingFocusOrdenId !== ordenIdNormalizado) {
+                    return;
+                }
+
+                requestAnimationFrame(() => {
+                    window.setTimeout(() => {
+                        const enfocado = enfocarVistaPrincipalOrden(ordenIdNormalizado, options);
+                        if (!enfocado && intento + 1 < maxIntentos) {
+                            intentarEnfoque(intento + 1);
+                        }
+                    }, delay + (intento * 40));
+                });
+            };
+
+            intentarEnfoque();
         }
 
         function obtenerNombreCompletoOrden(orden) {
@@ -3632,6 +3734,11 @@
                 firmaCache = construirFirmaOrdenes(cachedOrdenes);
                 renderizarOrdenes(cachedOrdenes);
                 mostrarListaOrdenes();
+
+                const primerOrdenCacheId = cachedOrdenes[0]?.id || cachedOrdenes[0]?.numero_orden || '';
+                if (primerOrdenCacheId) {
+                    programarEnfoqueOrden(primerOrdenCacheId);
+                }
                 
                 setTimeout(() => {
                     actualizarImagenesDinamicas();
@@ -3734,22 +3841,10 @@
                                 mostrarListaOrdenes();
                             }
                             
-                            if (!renderDesdeCache) {
-                                // Hacer scroll a los resultados con efecto suave
-                                setTimeout(() => {
-                                    const listaOrdenes = document.getElementById('listaOrdenes');
-                                    if (listaOrdenes) {
-                                        const rect = listaOrdenes.getBoundingClientRect();
-                                        const absoluteTop = rect.top + window.pageYOffset;
-                                        window.scrollTo({ top: absoluteTop - 120, behavior: 'smooth' });
-                                        
-                                        // Resaltar la primera orden brevemente
-                                        const primerCard = listaOrdenes.querySelector('.orden-card');
-                                        if (primerCard) {
-                                            primerCard.style.animation = 'highlightAnimation 2s ease-out';
-                                        }
-                                    }
-                                }, 300);
+                            const primeraOrden = data[0];
+                            const primerOrdenId = primeraOrden?.id || primeraOrden?.numero_orden || '';
+                            if (primerOrdenId) {
+                                programarEnfoqueOrden(primerOrdenId);
                             }
                         } else {
                             const ordenRespaldo = await resolverOrdenObjetivoComoRespaldo(appState.targetOrdenId, whatsapp);
@@ -3763,7 +3858,7 @@
                                 appState.ordenes = [ordenRespaldo];
                                 renderizarOrdenes([ordenRespaldo]);
                                 mostrarListaOrdenes();
-                                setTimeout(() => enfocarVistaPrincipalOrden(ordenRespaldo.id || ordenRespaldo.numero_orden, { instant: true }), 120);
+                                programarEnfoqueOrden(ordenRespaldo.id || ordenRespaldo.numero_orden, { instant: true, delay: 120 });
                                 return;
                             }
 
@@ -3957,7 +4052,7 @@
                 let totalFormato = '0.00';
 
                 // Validar y sanear ID de orden (debe ser formato RIFA-XXXX)
-                const ordenId = String(orden.id || 'UNKNOWN').replace(/[^a-zA-Z0-9\-]/g, '');
+                const ordenId = normalizarIdentificadorOrden(orden.id || orden.numero_orden || 'UNKNOWN').replace(/[^A-Z0-9\-]/g, '');
                 ordenCard.dataset.ordenId = ordenId;
                 const cantidadBoletos = Array.isArray(orden.boletos) ? orden.boletos.length : 0;
 
@@ -4764,11 +4859,7 @@
 
             const ordenIdActual = String(appState.ordenActualComprobante?.id || '').trim();
             if (ordenIdActual) {
-                window.requestAnimationFrame(() => {
-                    window.setTimeout(() => {
-                        enfocarVistaPrincipalOrden(ordenIdActual);
-                    }, 60);
-                });
+                programarEnfoqueOrden(ordenIdActual);
             }
         }
 
@@ -4999,10 +5090,12 @@
         }
         
         function mostrarCarga() {
+            const seccion = document.querySelector('.mis-boletos-section');
             const estadoCarga = document.getElementById('estadoCarga');
             const listaOrdenes = document.getElementById('listaOrdenes');
             const sinOrdenes = document.getElementById('sinOrdenes');
 
+            if (seccion) seccion.classList.remove('has-results');
             if (estadoCarga) estadoCarga.style.display = 'block';
             if (listaOrdenes) listaOrdenes.style.display = 'none';
             if (sinOrdenes) sinOrdenes.style.display = 'none';
@@ -5017,19 +5110,23 @@
         }
 
         function mostrarListaOrdenes() {
+            const seccion = document.querySelector('.mis-boletos-section');
             const listaOrdenes = document.getElementById('listaOrdenes');
             const sinOrdenes = document.getElementById('sinOrdenes');
 
+            if (seccion) seccion.classList.add('has-results');
             if (listaOrdenes) listaOrdenes.style.display = 'flex';
             if (sinOrdenes) sinOrdenes.style.display = 'none';
         }
         window.mostrarListaOrdenes = mostrarListaOrdenes;
 
         function mostrarSinOrdenes(mensaje = 'No se encontraron órdenes con ese WhatsApp.') {
+            const seccion = document.querySelector('.mis-boletos-section');
             const listaOrdenes = document.getElementById('listaOrdenes');
             const sinOrdenes = document.getElementById('sinOrdenes');
             const mensajeSinOrdenes = document.getElementById('mensajeSinOrdenes');
 
+            if (seccion) seccion.classList.remove('has-results');
             if (mensajeSinOrdenes) {
                 mensajeSinOrdenes.textContent = mensaje;
             }

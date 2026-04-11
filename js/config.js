@@ -203,16 +203,16 @@ Object.assign(window.rifaplusConfig, {
         // ✅ ESTRUCTURA LOCAL (no en config.json):
         logo: rifaplusLogoInicial,
         imagenPrincipal: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 675'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%23eaf3fb'/%3E%3Cstop offset='1' stop-color='%23d5e6f5'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1200' height='675' fill='url(%23g)'/%3E%3Ctext x='600' y='330' font-size='46' text-anchor='middle' fill='%231b2a38' font-family='Arial,sans-serif'%3EImagen principal del sorteo%3C/text%3E%3Ctext x='600' y='385' font-size='24' text-anchor='middle' fill='%235e7283' font-family='Arial,sans-serif'%3ECarga una imagen o pega una URL%3C/text%3E%3C/svg%3E",
-        colorPrimario: "#1A1A1A",
-        colorSecundario: "#6d28d9",
-        colorAccento: "#6d28d9",
-        colorExito: "#FF3D3D",
-        colorPeligro: "#FF3D3D",
-        colorAdvertencia: "#FF6B6B",
-        colorTexto: "#1F2937",
-        colorTextoSecundario: "#6B7280",
-        colorFondo: "#FFFFFF",
-        colorFondoSecundario: "#F5F5F5",
+        colorPrimario: "#0b2238",
+        colorSecundario: "#1fd1c2",
+        colorAccento: "#1fd1c2",
+        colorExito: "#1aa772",
+        colorPeligro: "#f3a64a",
+        colorAdvertencia: "#f3a64a",
+        colorTexto: "#102132",
+        colorTextoSecundario: "#5f7486",
+        colorFondo: "#ffffff",
+        colorFondoSecundario: "#f4f8fb",
         anioActual: 2026,
         
         /**
@@ -421,16 +421,16 @@ Object.assign(window.rifaplusConfig, {
     
     tema: {
         colores: {
-            colorPrimario: "#b25379",
-            colorSecundario: "#6d28d9",
-            colorAccento: "#6d28d9",
-            colorExito: "#6d8a76",
-            colorPeligro: "#c87c93",
-            colorAdvertencia: "#d9a4b8",
-            colorTexto: "#392733",
-            colorTextoSecundario: "#786470",
-            colorFondo: "#fdf7fa",
-            colorFondoSecundario: "#fffafd"
+            colorPrimario: "#0b2238",
+            colorSecundario: "#1fd1c2",
+            colorAccento: "#1fd1c2",
+            colorExito: "#1aa772",
+            colorPeligro: "#f3a64a",
+            colorAdvertencia: "#f3a64a",
+            colorTexto: "#102132",
+            colorTextoSecundario: "#5f7486",
+            colorFondo: "#f4f8fb",
+            colorFondoSecundario: "#ffffff"
         }
     },
 
@@ -1580,46 +1580,60 @@ window.rifaplusConfig.actualizarNombreClienteEnUI = function() {
         }
     });
 
-    // 6️⃣ HERO DE COMPRA - mantener sincronizado el nombre actual del organizador
+    // 6️⃣ HERO DE COMPRA - mantener sincronizado el nombre actual del sorteo
     const compraHeroTitle = document.getElementById('compraHeroTitle');
     if (compraHeroTitle) {
         const heroUtils = window.__RIFAPLUS_COMPRA_HERO_UTILS__;
-        const fallbackTitulo = 'Elige tus boletos y participa ahora';
-        let organizadorCache = '';
+        const fallbackTitulo = 'Estás a un paso de ser el próximo ganador';
+        const compraHeroSub = document.getElementById('compraHeroSub');
+        let nombreSorteoCache = '';
 
         try {
-            organizadorCache = String(localStorage.getItem('rifaplus_compra_hero_organizador') || '').trim();
+            nombreSorteoCache = String(localStorage.getItem('rifaplus_compra_hero_sorteo') || '').trim();
         } catch (error) {
             // Ignorar errores de storage para no romper la UI.
         }
 
-        const organizadorHero = heroUtils?.resolverOrganizador
-            ? heroUtils.resolverOrganizador(this.cliente?.nombre, window.__RIFAPLUS_COMPRA_HERO__?.organizador, organizadorCache)
-            : String(this.cliente?.nombre || '').trim();
+        const nombreSorteoHero = heroUtils?.resolverNombreSorteo
+            ? heroUtils.resolverNombreSorteo(this.rifa?.nombreSorteo, window.__RIFAPLUS_COMPRA_HERO__?.nombreSorteo, nombreSorteoCache)
+            : String(this.rifa?.nombreSorteo || '').trim();
+        const estadoSiguiente = heroUtils?.construirEstadoHero
+            ? heroUtils.construirEstadoHero(nombreSorteoHero, 'Elige tus boletos y participa ahora')
+            : {
+                nombreSorteo: nombreSorteoHero,
+                titulo: fallbackTitulo,
+                subtitulo: 'Elige tus boletos y participa ahora'
+            };
+        const estadoActual = {
+            nombreSorteo: window.__RIFAPLUS_COMPRA_HERO__?.nombreSorteo,
+            titulo: compraHeroTitle.textContent,
+            subtitulo: compraHeroSub?.textContent || ''
+        };
+        const debeActualizarHero = heroUtils?.debeActualizarHero
+            ? heroUtils.debeActualizarHero(estadoActual, estadoSiguiente)
+            : !compraHeroTitle.textContent.trim();
 
-        const nuevoTitulo = heroUtils?.construirTitulo
-            ? heroUtils.construirTitulo(organizadorHero, fallbackTitulo)
-            : (
-                organizadorHero
-                    ? `¿Listo para ser el proximo ganador de ${organizadorHero}? Elige tus boletos y participa ahora`
-                    : fallbackTitulo
-            );
-
-        if (organizadorHero && compraHeroTitle.textContent !== nuevoTitulo) {
-            compraHeroTitle.textContent = nuevoTitulo;
+        if (debeActualizarHero && compraHeroTitle.textContent !== estadoSiguiente.titulo) {
+            compraHeroTitle.textContent = estadoSiguiente.titulo;
             console.log('✅ [UI-Update] #compraHeroTitle actualizado');
         }
 
-        if (organizadorHero) {
+        if (compraHeroSub && (!compraHeroSub.textContent.trim() || debeActualizarHero)) {
+            compraHeroSub.textContent = estadoSiguiente.subtitulo;
+        }
+
+        if (estadoSiguiente.nombreSorteo) {
             try {
-                localStorage.setItem('rifaplus_compra_hero_organizador', organizadorHero);
+                localStorage.setItem('rifaplus_compra_hero_sorteo', estadoSiguiente.nombreSorteo);
             } catch (error) {
                 // Ignorar errores de storage para no romper la UI.
             }
 
             if (window.__RIFAPLUS_COMPRA_HERO__) {
-                window.__RIFAPLUS_COMPRA_HERO__.organizador = organizadorHero;
-                window.__RIFAPLUS_COMPRA_HERO__.titulo = nuevoTitulo;
+                window.__RIFAPLUS_COMPRA_HERO__ = {
+                    ...window.__RIFAPLUS_COMPRA_HERO__,
+                    ...estadoSiguiente
+                };
             }
         } else if (!compraHeroTitle.textContent.trim()) {
             compraHeroTitle.textContent = fallbackTitulo;

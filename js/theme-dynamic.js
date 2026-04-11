@@ -306,25 +306,26 @@ function updateCSSVariables(tema) {
         }
     });
 
-    const primaryRgb = hexToRgbSeguro(tema.primary || '#b25379');
+    const primaryRgb = hexToRgbSeguro(tema.primary || '#0b2238');
     root.style.setProperty('--primary-rgb', `${primaryRgb.r}, ${primaryRgb.g}, ${primaryRgb.b}`);
-    const secondaryRgb = hexToRgbSeguro(tema.secondary || '#6d28d9');
+    const secondaryRgb = hexToRgbSeguro(tema.secondary || '#1fd1c2');
     root.style.setProperty('--secondary-rgb', `${secondaryRgb.r}, ${secondaryRgb.g}, ${secondaryRgb.b}`);
     [5, 8, 10, 12, 15, 18, 20, 25, 30, 35, 40].forEach((nivel) => {
         root.style.setProperty(`--primary-${String(nivel).padStart(2, '0')}`, `rgba(${primaryRgb.r}, ${primaryRgb.g}, ${primaryRgb.b}, ${nivel / 100})`);
     });
 
     const bgWhite = normalizarHexColorSeguro(tema.bgWhite || '#ffffff');
-    const bgLight = normalizarHexColorSeguro(tema.bgLight || '#f7fafc');
-    const primary = normalizarHexColorSeguro(tema.primary || '#b25379');
+    const bgLight = normalizarHexColorSeguro(tema.bgLight || '#f4f8fb');
+    const primary = normalizarHexColorSeguro(tema.primary || '#0b2238');
     const primaryDark = normalizarHexColorSeguro(tema.primaryDark || ajustarLuminosidadHex(primary, -0.22));
-    const secondary = normalizarHexColorSeguro(tema.secondary || '#6d28d9');
+    const secondary = normalizarHexColorSeguro(tema.secondary || '#1fd1c2');
+    const headerSolid = primary;
 
     root.style.setProperty('--surface-base', bgWhite);
     root.style.setProperty('--surface-soft', bgLight);
     root.style.setProperty('--surface-tint', mezclarColoresHex(primary, bgWhite, 0.9));
     root.style.setProperty('--surface-accent', mezclarColoresHex(secondary, bgWhite, 0.87));
-    root.style.setProperty('--surface-header', primary);
+    root.style.setProperty('--surface-header', headerSolid);
     root.style.setProperty('--card-bg', bgWhite);
     root.style.setProperty('--card-bg-soft', `linear-gradient(180deg, ${bgWhite}, ${bgLight})`);
     root.style.setProperty(
@@ -339,7 +340,7 @@ function updateCSSVariables(tema) {
         '--section-bg-warm',
         `linear-gradient(180deg, ${mezclarColoresHex(primary, bgWhite, 0.93)} 0%, ${mezclarColoresHex(primary, bgWhite, 0.88)} 100%)`
     );
-    root.style.setProperty('--header-bg', primary);
+    root.style.setProperty('--header-bg', headerSolid);
     root.style.setProperty('--header-border', 'rgba(255, 255, 255, 0.14)');
     root.style.setProperty('--header-ink', asegurarContrasteTexto('#f8fbff', primary, 4.5));
     root.style.setProperty('--header-control-bg', 'rgba(255, 255, 255, 0.08)');
@@ -448,7 +449,7 @@ function limpiarCSSVariablesTemaPublico() {
     variables.forEach((variable) => root.style.removeProperty(variable));
 }
 
-function normalizarHexColorSeguro(valor, fallback = '#b25379') {
+function normalizarHexColorSeguro(valor, fallback = '#0b2238') {
     const limpio = String(valor || '').trim();
     const match = limpio.match(/^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
     if (!match) return fallback;
@@ -525,15 +526,15 @@ function construirTemaNormalizado(temaRaw = {}) {
     const coloresRaw = temaRaw.colores || {};
     const colorPrimario = normalizarHexColorSeguro(
         temaRaw.colorPrimario || coloresRaw.colorPrimario || coloresRaw.primary,
-        '#b25379'
+        '#0b2238'
     );
     const colorAcento = normalizarHexColorSeguro(
         temaRaw.colorAcento || coloresRaw.colorAccento || coloresRaw.colorSecundario || coloresRaw.secondary,
-        '#6d28d9'
+        '#1fd1c2'
     );
     const colorFondo = normalizarHexColorSeguro(
         temaRaw.colorFondo || coloresRaw.colorFondo || coloresRaw.bgLight,
-        '#fdf7fa'
+        '#f4f8fb'
     );
     const colorSuperficie = normalizarHexColorSeguro(
         temaRaw.colorSuperficie || coloresRaw.colorSuperficie || coloresRaw.bgWhite,
@@ -560,8 +561,8 @@ function construirTemaNormalizado(temaRaw = {}) {
         primaryDark: coloresRaw.primaryDark || ajustarLuminosidadHex(colorPrimario, -0.22),
         primaryLight: coloresRaw.primaryLight || mezclarColoresHex(colorPrimario, colorSuperficie, 0.82),
         secondary: coloresRaw.secondary || colorAcento,
-        success: coloresRaw.success || '#6d8a76',
-        danger: coloresRaw.danger || '#c87c93',
+        success: coloresRaw.success || '#1aa772',
+        danger: coloresRaw.danger || '#f3a64a',
         textDark: coloresRaw.textDark || colorTexto,
         textLight: coloresRaw.textLight || colorTextoSecundario,
         bgLight: coloresRaw.bgLight || colorFondo,
