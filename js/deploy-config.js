@@ -122,9 +122,9 @@
 
     const resolvedConfig = {
         mode: isLocal ? 'local' : 'production',
-        apiBase,
-        publicBase,
-        socketScriptUrl
+        apiBase: 'https://sadev-production.up.railway.app',
+        publicBase: 'https://sadev.pages.dev',
+        socketScriptUrl: SOCKET_CDN_URL
     };
 
     window.__RIFAPLUS_DEPLOY__ = Object.assign({}, resolvedConfig, existingOverride || {});
