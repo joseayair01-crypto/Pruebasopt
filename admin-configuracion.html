@@ -2779,6 +2779,20 @@
                             <input type="time" class="form-input" id="sorteo-hora-sorteo" required>
                         </div>
                     </div>
+
+                    <div class="form-group-single" style="margin-top: 1rem;">
+                        <label class="form-label" for="sorteo-timezone">Zona horaria del sorteo <span class="required">*</span></label>
+                        <select class="form-input" id="sorteo-timezone">
+                            <option value="America/Mexico_City">Centro de Mexico - Ciudad de Mexico</option>
+                            <option value="America/Monterrey">Noreste - Monterrey</option>
+                            <option value="America/Chihuahua">Chihuahua</option>
+                            <option value="America/Mazatlan">Pacifico - Mazatlan</option>
+                            <option value="America/Hermosillo">Sonora - Hermosillo</option>
+                            <option value="America/Tijuana">Noroeste - Tijuana</option>
+                            <option value="America/Cancun">Quintana Roo - Cancun</option>
+                        </select>
+                        <div class="form-helper">La fecha, hora y countdown del sorteo se interpretaran con esta zona horaria para todos los usuarios.</div>
+                    </div>
                     
                     <!-- PRESORTEO (SOLO SI EXISTE) -->
                     <div id="presorteo-fechas-contenedor" style="border-top: 1px solid #e5e7eb; padding-top: 1.5rem; margin-top: 1.5rem;">
@@ -2848,10 +2862,15 @@
                     </p>
 
                     <!-- Habilitar/Deshabilitar Bonos -->
-                    <div style="margin-bottom: 1.5rem;">
-                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                            <input type="checkbox" id="bonos-habilitado" onchange="toggleBonos()">
-                            <span style="font-weight: 500;">Habilitar sección de bonos</span>
+                    <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem 1.1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px;">
+                        <div>
+                            <div style="font-weight: 600; color: #334155; margin-bottom: 0.2rem;">Habilitar sección de bonos</div>
+                            <div style="font-size: 0.88rem; color: var(--text-light);">Activa o desactiva la visibilidad de los bonos especiales en el sitio público.</div>
+                        </div>
+                        <label class="toggle-label" for="bonos-habilitado" style="margin: 0;">
+                            <input type="checkbox" class="toggle-input" id="bonos-habilitado" onchange="toggleBonos()">
+                            <span class="toggle-bg"></span>
+                            <span class="toggle-circle"></span>
                         </label>
                     </div>
 
@@ -6406,6 +6425,8 @@
                         guardarValoresOriginaleSorteo();
                         restaurarBorradorBoletajeYRangosSiExiste();
                     }
+
+                    refrescarTarjetasDependientesDeRifa();
                     
                     // Renderizar imágenes en el admin si están
                     if (typeof cargarImagenesSorteo === 'function') {
@@ -7610,6 +7631,9 @@
             // Listener de sincronización para precio
             if (window.rifaplusConfig?.escucharEvento) {
                 window.rifaplusConfig.escucharEvento('configuracionActualizada', async (data) => {
+                    if (['informacionSorteo', 'bonos', 'bonosCompra', 'maquinaSuerte'].includes(data.tipo)) {
+                        refrescarTarjetasDependientesDeRifa();
+                    }
                     if (data.tipo === 'precioBoleto') {
                         await cargarPrecioDelBoleto();
                     }
@@ -7623,6 +7647,7 @@
                         if (actualizoBoletaje) {
                             guardarValoresOriginaleSorteo();
                         }
+                        refrescarTarjetasDependientesDeRifa();
                         cargarResumenInventarioBoletos().catch(() => {});
                     }
                     renderizarAlertasConfiguracion();
@@ -9165,8 +9190,14 @@
                 console.log('📅 Cargando fechas y horarios:', {
                     tieneRifa: !!config,
                     fechaSorteo: config.fechaSorteo,
-                    tiempoApartadoHoras: config.tiempoApartadoHoras
+                    tiempoApartadoHoras: config.tiempoApartadoHoras,
+                    timeZone: config.timeZone || config.zonaHoraria
                 });
+
+                const timeZoneSelect = document.getElementById('sorteo-timezone');
+                if (timeZoneSelect) {
+                    timeZoneSelect.value = normalizarTimeZoneAdmin(config.timeZone || config.zonaHoraria);
+                }
                 
                 // Validar que exista fechaSorteo
                 if (!config.fechaSorteo) {
@@ -9250,11 +9281,47 @@
             }
         }
 
+        const TIMEZONE_OPTIONS_SORTEO = [
+            { value: 'America/Mexico_City', label: 'Hora Centro Mexico' },
+            { value: 'America/Monterrey', label: 'Hora Monterrey' },
+            { value: 'America/Chihuahua', label: 'Hora Chihuahua' },
+            { value: 'America/Mazatlan', label: 'Hora Pacifico Mexico' },
+            { value: 'America/Hermosillo', label: 'Hora Sonora' },
+            { value: 'America/Tijuana', label: 'Hora Tijuana' },
+            { value: 'America/Cancun', label: 'Hora Cancun' }
+        ];
+
+        function normalizarTimeZoneAdmin(valor) {
+            const valorNormalizado = String(valor || '').trim();
+            const alias = {
+                'Hora Centro Mexico': 'America/Mexico_City',
+                'Hora Centro México': 'America/Mexico_City',
+                'Hora Monterrey': 'America/Monterrey',
+                'Hora Chihuahua': 'America/Chihuahua',
+                'Hora Pacifico Mexico': 'America/Mazatlan',
+                'Hora Pacifico México': 'America/Mazatlan',
+                'Hora Sonora': 'America/Hermosillo',
+                'Hora Tijuana': 'America/Tijuana',
+                'Hora Cancun': 'America/Cancun',
+                'Hora Cancún': 'America/Cancun'
+            };
+
+            const encontrado = TIMEZONE_OPTIONS_SORTEO.find((item) => item.value === valorNormalizado);
+            if (encontrado) return encontrado.value;
+            return alias[valorNormalizado] || 'America/Mexico_City';
+        }
+
+        function obtenerEtiquetaTimeZoneAdmin(timeZone) {
+            const normalizado = normalizarTimeZoneAdmin(timeZone);
+            return TIMEZONE_OPTIONS_SORTEO.find((item) => item.value === normalizado)?.label || 'Hora Centro Mexico';
+        }
+
         async function guardarFechasYHorarios() {
             try {
                 // 1️⃣ VALIDAR CAMPOS REQUERIDOS
                 const fechaSorteo = document.getElementById('sorteo-fecha-sorteo').value.trim();
                 const horaSorteo = document.getElementById('sorteo-hora-sorteo').value.trim();
+                const timeZone = normalizarTimeZoneAdmin(document.getElementById('sorteo-timezone')?.value);
                 
                 if (!fechaSorteo) {
                     mostrarAlerta('❌ La fecha del sorteo es requerida', 'error');
@@ -9287,7 +9354,9 @@
                 // 4️⃣ PREPARAR DATOS A ENVIAR
                 const datosAGuardar = {
                     rifa: {
-                        fechaSorteo: `${fechaSorteo}T${horaSorteo}:00`
+                        fechaSorteo: `${fechaSorteo}T${horaSorteo}:00`,
+                        timeZone,
+                        zonaHoraria: obtenerEtiquetaTimeZoneAdmin(timeZone)
                     }
                 };
                 
@@ -9336,6 +9405,8 @@
                     if (window.rifaplusConfig?.rifa) {
                         window.rifaplusConfig.rifa.fechaSorteo = datosAGuardar.rifa.fechaSorteo;
                         window.rifaplusConfig.rifa.horaSorteo = horaSorteo;
+                        window.rifaplusConfig.rifa.timeZone = timeZone;
+                        window.rifaplusConfig.rifa.zonaHoraria = obtenerEtiquetaTimeZoneAdmin(timeZone);
                         if (datosAGuardar.rifa.fechaPresorteo) {
                             window.rifaplusConfig.rifa.fechaPresorteo = datosAGuardar.rifa.fechaPresorteo;
                             window.rifaplusConfig.rifa.horaPresorteo = horaPresorteo;
@@ -13304,6 +13375,7 @@
                     fechaInicio: document.getElementById('sorteo-fecha-inicio').value,
                     fechaCierre: document.getElementById('sorteo-fecha-cierre').value,
                     fechaSorteo: document.getElementById('sorteo-fecha-sorteo').value,
+                    timeZone: normalizarTimeZoneAdmin(document.getElementById('sorteo-timezone')?.value),
                     duracion: document.getElementById('sorteo-duracion').value
                 };
 
@@ -13396,6 +13468,13 @@
                 descripcion: item.descripcion || ''
             }));
             renderizarInformacionSorteo();
+        }
+
+        function refrescarTarjetasDependientesDeRifa() {
+            cargarInformacionSorteo();
+            cargarBonos();
+            cargarBonosCompra();
+            cargarLimiteMaquinaSuerte();
         }
 
         /** Renderizar lista de información del sorteo */
@@ -13584,12 +13663,14 @@
                     window.rifaplusConfig.rifa.informacionSorteoIntro = informacionSorteoIntro;
                     window.rifaplusConfig.rifa.informacionSorteo = elementosValidos;
                 }
-                cargarInformacionSorteo();
                 
                 // Re-sincronizar y emitir evento
                 if (window.rifaplusConfig?.sincronizarConfigDelBackend) {
                     await window.rifaplusConfig.sincronizarConfigDelBackend();
                 }
+
+                await cargarInfoSorteoDelServidor();
+                refrescarTarjetasDependientesDeRifa();
 
                 if (window.rifaplusConfig?.emitirEvento) {
                     window.rifaplusConfig.emitirEvento('configuracionActualizada', {
@@ -13845,12 +13926,14 @@
                         items: elementosValidos
                     };
                 }
-                cargarBonos();
                 
                 // Re-sincronizar y emitir evento
                 if (window.rifaplusConfig?.sincronizarConfigDelBackend) {
                     await window.rifaplusConfig.sincronizarConfigDelBackend();
                 }
+
+                await cargarInfoSorteoDelServidor();
+                refrescarTarjetasDependientesDeRifa();
 
                 if (window.rifaplusConfig?.emitirEvento) {
                     window.rifaplusConfig.emitirEvento('configuracionActualizada', {
@@ -14216,7 +14299,8 @@
                     await window.rifaplusConfig.sincronizarConfigDelBackend();
                 }
 
-                cargarBonosCompra();
+                await cargarInfoSorteoDelServidor();
+                refrescarTarjetasDependientesDeRifa();
 
                 if (window.rifaplusConfig?.emitirEvento) {
                     window.rifaplusConfig.emitirEvento('configuracionActualizada', {

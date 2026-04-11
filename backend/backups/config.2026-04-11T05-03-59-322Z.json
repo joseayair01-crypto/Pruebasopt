@@ -1,23 +1,23 @@
 {
   "seo": {
     "autor": "SADEV",
-    "image": "https://res.cloudinary.com/dxu3imvxt/image/upload/v1773361553/rifaplus/sorteos/qxvschbvl2sslhitqpsi.png",
+    "image": "https://res.cloudinary.com/dhwvxom01/image/upload/v1775793425/rifaplus/sorteos/gallery-1775793422437-clw0B-d14ba54b55d7.webp",
     "title": "De redilas era la nissan 🤠🚛🎰💰",
     "author": "SADEV",
-    "imagen": "https://res.cloudinary.com/dxu3imvxt/image/upload/v1773361553/rifaplus/sorteos/qxvschbvl2sslhitqpsi.png",
+    "imagen": "https://res.cloudinary.com/dhwvxom01/image/upload/v1775793425/rifaplus/sorteos/gallery-1775793422437-clw0B-d14ba54b55d7.webp",
     "titulo": "De redilas era la nissan 🤠🚛🎰💰",
     "twitter": {
       "card": "summary_large_image",
-      "imagen": "https://res.cloudinary.com/dxu3imvxt/image/upload/v1773361553/rifaplus/sorteos/qxvschbvl2sslhitqpsi.png",
+      "imagen": "https://res.cloudinary.com/dhwvxom01/image/upload/v1775793425/rifaplus/sorteos/gallery-1775793422437-clw0B-d14ba54b55d7.webp",
       "titulo": "De redilas era la nissan 🤠🚛🎰💰",
       "creador": "",
       "descripcion": "De redilas era la nissan 🤠🚛🎰💰"
     },
-    "urlBase": "",
+    "urlBase": "https://res.cloudinary.com/dhwvxom01/image/upload/v1775793425/rifaplus/sorteos/gallery-1775793422437-clw0B-d14ba54b55d7.webp",
     "keywords": "Sorteos, sadev, np300 rifas, np300 nueva",
     "openGraph": {
       "tipo": "website",
-      "imagen": "https://res.cloudinary.com/dxu3imvxt/image/upload/v1773361553/rifaplus/sorteos/qxvschbvl2sslhitqpsi.png",
+      "imagen": "https://res.cloudinary.com/dhwvxom01/image/upload/v1775793425/rifaplus/sorteos/gallery-1775793422437-clw0B-d14ba54b55d7.webp",
       "locale": "es_MX",
       "titulo": "Sorteo demo - De redilas era la nissan 🤠🚛🎰💰",
       "descripcion": "Participa en nuestro sorteo por solo 1 peso"
@@ -36,53 +36,73 @@
       ]
     },
     "bonos": {
-      "enabled": true,
       "items": [
         {
           "emoji": "💵",
+          "accion": "ninguna",
           "titulo": "$10,000 pesos adicionales ",
-          "descripcion": "Si resultas ganador del sorteo y compraste mas de 500 boletos te llevas este bono adicional.",
-          "accion": "ninguna"
+          "descripcion": "Si resultas ganador del sorteo y compraste mas de 500 boletos te llevas este bono adicional."
         },
         {
           "emoji": "💵",
+          "accion": "ninguna",
           "titulo": "$5,000 pesos adicionales",
-          "descripcion": "Si resultas ganador llévate este bono adicional si sigues nuestro grupo de Whatsapp",
-          "accion": "ninguna"
+          "descripcion": "Si resultas ganador llévate este bono adicional si sigues nuestro grupo de Whatsapp"
         }
-      ]
+      ],
+      "enabled": true
     },
     "estado": "activo",
     "rangos": [
       {
-        "inicio": 0,
         "fin": 99999,
-        "nombre": "0 - 10K"
+        "inicio": 0,
+        "nombre": "0 - 100K"
       },
       {
-        "inicio": 10000,
-        "fin": 19999,
-        "nombre": "10K - 20K"
+        "fin": 199999,
+        "inicio": 100000,
+        "nombre": "100K - 200K"
       },
       {
-        "inicio": 20000,
-        "fin": 29999,
-        "nombre": "20K - 30K"
+        "fin": 299999,
+        "inicio": 200000,
+        "nombre": "200K - 300K"
       },
       {
-        "inicio": 30000,
-        "fin": 39999,
-        "nombre": "30K - 40K"
+        "fin": 399999,
+        "inicio": 300000,
+        "nombre": "300K - 400K"
       },
       {
-        "inicio": 40000,
-        "fin": 49999,
-        "nombre": "40K - 50K"
+        "fin": 499999,
+        "inicio": 400000,
+        "nombre": "400K - 500K"
       },
       {
-        "inicio": 50000,
-        "fin": 59998,
-        "nombre": "50K - 60K"
+        "fin": 599999,
+        "inicio": 500000,
+        "nombre": "500K - 600K"
+      },
+      {
+        "fin": 699999,
+        "inicio": 600000,
+        "nombre": "600K - 700K"
+      },
+      {
+        "fin": 799999,
+        "inicio": 700000,
+        "nombre": "700K - 800K"
+      },
+      {
+        "fin": 899999,
+        "inicio": 800000,
+        "nombre": "800K - 900K"
+      },
+      {
+        "fin": 999999,
+        "inicio": 900000,
+        "nombre": "900K - 1M"
       }
     ],
     "galeria": {
@@ -91,54 +111,54 @@
         {
           "url": "https://res.cloudinary.com/dhwvxom01/image/upload/v1775793425/rifaplus/sorteos/gallery-1775793422437-clw0B-d14ba54b55d7.webp",
           "titulo": "Imagen 1",
-          "descripcion": "",
-          "publicId": "rifaplus/sorteos/gallery-1775793422437-clw0B-d14ba54b55d7"
+          "publicId": "rifaplus/sorteos/gallery-1775793422437-clw0B-d14ba54b55d7",
+          "descripcion": ""
         },
         {
           "url": "https://res.cloudinary.com/dhwvxom01/image/upload/v1775793436/rifaplus/sorteos/gallery-1775793435089-np300-1-b5929814adf8.webp",
           "titulo": "Imagen 2",
-          "descripcion": "",
-          "publicId": "rifaplus/sorteos/gallery-1775793435089-np300-1-b5929814adf8"
+          "publicId": "rifaplus/sorteos/gallery-1775793435089-np300-1-b5929814adf8",
+          "descripcion": ""
         },
         {
           "url": "https://res.cloudinary.com/dhwvxom01/image/upload/v1775793441/rifaplus/sorteos/gallery-1775793441016-np-300-3-6a44ca1abea0.webp",
           "titulo": "Imagen 3",
-          "descripcion": "",
-          "publicId": "rifaplus/sorteos/gallery-1775793441016-np-300-3-6a44ca1abea0"
+          "publicId": "rifaplus/sorteos/gallery-1775793441016-np-300-3-6a44ca1abea0",
+          "descripcion": ""
         },
         {
           "url": "https://res.cloudinary.com/dhwvxom01/image/upload/v1775793447/rifaplus/sorteos/gallery-1775793446396-np-300-2-c9795a979efb.webp",
           "titulo": "Imagen 4",
-          "descripcion": "",
-          "publicId": "rifaplus/sorteos/gallery-1775793446396-np-300-2-c9795a979efb"
+          "publicId": "rifaplus/sorteos/gallery-1775793446396-np-300-2-c9795a979efb",
+          "descripcion": ""
         }
       ]
     },
     "descuentos": {
       "reglas": [
         {
-          "cantidad": 100,
-          "precio": 95,
           "total": 95,
-          "ahorro": 5
+          "ahorro": 5,
+          "precio": 95,
+          "cantidad": 100
         },
         {
-          "cantidad": 200,
-          "precio": 180,
           "total": 180,
-          "ahorro": 20
+          "ahorro": 20,
+          "precio": 180,
+          "cantidad": 200
         },
         {
-          "cantidad": 500,
-          "precio": 450,
           "total": 450,
-          "ahorro": 50
+          "ahorro": 50,
+          "precio": 450,
+          "cantidad": 500
         },
         {
-          "cantidad": 1000,
-          "precio": 900,
           "total": 900,
-          "ahorro": 100
+          "ahorro": 100,
+          "precio": 900,
+          "cantidad": 1000
         }
       ],
       "enabled": true
@@ -154,125 +174,125 @@
       ],
       "enabled": true
     },
-    "descripcion": "Participa por esta NP 300 Totalmente nueva, ademas en presorteo por iphone 17 pro max con tu mismo boleto",
+    "descripcion": "Participa por ésta NP 300 Totalmente nueva, ademas en presorteo por iphone 17 pro max con tu mismo boleto",
     "fechaSorteo": "2026-05-20T21:15:00",
     "publicacion": {
       "bonos": true,
-      "promociones": true,
-      "confianza": true,
-      "testimonios": false,
       "ruletazo": true,
+      "confianza": true,
       "presorteo": true,
       "progressBar": true,
+      "promociones": true,
+      "testimonios": false,
       "progressStats": true
     },
     "zonaHoraria": "Hora Centro México",
-    "nombreSorteo": "De Redilas era la nissan 🚛🤠🤑",
+    "nombreSorteo": "NP300 Nuevecita 🤠🚛🔥",
     "precioBoleto": 1,
     "totalBoletos": 1000000,
-    "edicionNombre": "Demo 1M SaDev - Edición Demo",
+    "edicionNombre": "Edición No.1 - RifaDemo",
     "horaPresorteo": "21:15",
     "maquinaSuerte": {
       "limiteBoletos": 10
     },
     "oportunidades": {
       "enabled": false,
+      "rango_oculto": null,
       "multiplicador": 3,
-      "rango_visible": false,
-      "rango_oculto": null
+      "rango_visible": false
     },
     "fechaPresorteo": "2026-04-30T21:15:00",
     "sistemaPremios": {
-      "enabled": true,
-      "mensaje": "Múltiples oportunidades de ganar premios extraordinarios",
       "sorteo": [
         {
-          "posicion": 1,
+          "icono": "🥇",
           "nombre": "Primer Lugar",
           "premio": "NP300 2026 Nueva de agencia",
-          "descripcion": "NP300 de redilas completamente nueva",
-          "icono": "🥇"
+          "posicion": 1,
+          "descripcion": "NP300 de redilas completamente nueva"
         }
       ],
+      "enabled": true,
+      "mensaje": "Múltiples oportunidades de ganar premios extraordinarios",
       "presorteo": [
         {
-          "posicion": 1,
+          "icono": "📱",
           "nombre": "Premio presorteo",
           "premio": "Iphone 17 Pro Max",
-          "descripcion": "Iphone 17 Prro Max completamente nuevo",
-          "icono": "📱"
+          "posicion": 1,
+          "descripcion": "Iphone 17 Prro Max completamente nuevo"
         }
       ],
       "ruletazos": [
         {
-          "posicion": 1,
+          "icono": "🎰",
           "nombre": "Ruletazo 1",
           "premio": "Ruletazos de $1,000 pesos cada uno",
-          "descripcion": "Se jugarán 5 en el presorteo y 5 en el sorteo.",
-          "icono": "🎰"
+          "posicion": 1,
+          "descripcion": "Se jugarán 5 en el presorteo y 5 en el sorteo."
         },
         {
-          "posicion": 2,
+          "icono": "🎰",
           "nombre": "Ruletazo 2",
           "premio": "Ruletazos de $1,000 pesos cada uno",
-          "descripcion": "Se jugarán 5 en el presorteo y 5 en el sorteo.",
-          "icono": "🎰"
+          "posicion": 2,
+          "descripcion": "Se jugarán 5 en el presorteo y 5 en el sorteo."
         },
         {
-          "posicion": 3,
+          "icono": "🎰",
           "nombre": "Ruletazo 3",
           "premio": "Ruletazos de $1,000 pesos cada uno",
-          "descripcion": "Se jugarán 5 en el presorteo y 5 en el sorteo.",
-          "icono": "🎰"
+          "posicion": 3,
+          "descripcion": "Se jugarán 5 en el presorteo y 5 en el sorteo."
         },
         {
-          "posicion": 4,
+          "icono": "🎰",
           "nombre": "Ruletazo 4",
           "premio": "Ruletazos de $1,000 pesos cada uno",
-          "descripcion": "Se jugarán 5 en el presorteo y 5 en el sorteo.",
-          "icono": "🎰"
+          "posicion": 4,
+          "descripcion": "Se jugarán 5 en el presorteo y 5 en el sorteo."
         },
         {
-          "posicion": 5,
+          "icono": "🎰",
           "nombre": "Ruletazo 5",
           "premio": "Ruletazos de $1,000 pesos cada uno",
-          "descripcion": "Se jugarán 5 en el presorteo y 5 en el sorteo.",
-          "icono": "🎰"
+          "posicion": 5,
+          "descripcion": "Se jugarán 5 en el presorteo y 5 en el sorteo."
         },
         {
-          "posicion": 6,
+          "icono": "🎰",
           "nombre": "Ruletazo 6",
           "premio": "Ruletazos de $1,000 pesos cada uno",
-          "descripcion": "Se jugarán 5 en el presorteo y 5 en el sorteo.",
-          "icono": "🎰"
+          "posicion": 6,
+          "descripcion": "Se jugarán 5 en el presorteo y 5 en el sorteo."
         },
         {
-          "posicion": 7,
+          "icono": "🎰",
           "nombre": "Ruletazo 7",
           "premio": "Ruletazos de $1,000 pesos cada uno",
-          "descripcion": "Se jugarán 5 en el presorteo y 5 en el sorteo.",
-          "icono": "🎰"
+          "posicion": 7,
+          "descripcion": "Se jugarán 5 en el presorteo y 5 en el sorteo."
         },
         {
-          "posicion": 8,
+          "icono": "🎰",
           "nombre": "Ruletazo 8",
           "premio": "Ruletazos de $1,000 pesos cada uno",
-          "descripcion": "Se jugarán 5 en el presorteo y 5 en el sorteo.",
-          "icono": "🎰"
+          "posicion": 8,
+          "descripcion": "Se jugarán 5 en el presorteo y 5 en el sorteo."
         },
         {
-          "posicion": 9,
+          "icono": "🎰",
           "nombre": "Ruletazo 9",
           "premio": "Ruletazos de $1,000 pesos cada uno",
-          "descripcion": "Se jugarán 5 en el presorteo y 5 en el sorteo.",
-          "icono": "🎰"
+          "posicion": 9,
+          "descripcion": "Se jugarán 5 en el presorteo y 5 en el sorteo."
         },
         {
-          "posicion": 10,
+          "icono": "🎰",
           "nombre": "Ruletazo 10",
           "premio": "Ruletazos de $1,000 pesos cada uno",
-          "descripcion": "Se jugarán 5 en el presorteo y 5 en el sorteo.",
-          "icono": "🎰"
+          "posicion": 10,
+          "descripcion": "Se jugarán 5 en el presorteo y 5 en el sorteo."
         }
       ]
     },
@@ -326,24 +346,24 @@
   "tema": {
     "preset": "dorado",
     "colores": {
-      "colorPrimario": "#d4a017",
-      "colorSecundario": "#3f2d14",
-      "colorAccento": "#3f2d14",
-      "colorFondo": "#f7efe0",
-      "colorSuperficie": "#f7efe0",
-      "colorTexto": "#0f172a",
-      "colorTextoSecundario": "#707276",
-      "primary": "#d4a017",
-      "primaryDark": "#a57d12",
-      "primaryLight": "#f1e1bc",
-      "secondary": "#3f2d14",
-      "success": "#16a34a",
       "danger": "#dc2626",
-      "textDark": "#0f172a",
-      "textLight": "#707276",
       "bgLight": "#f7efe0",
       "bgWhite": "#f7efe0",
-      "borderColor": "#d2ccc3"
+      "primary": "#d4a017",
+      "success": "#16a34a",
+      "textDark": "#0f172a",
+      "secondary": "#3f2d14",
+      "textLight": "#707276",
+      "colorFondo": "#f7efe0",
+      "colorTexto": "#0f172a",
+      "borderColor": "#d2ccc3",
+      "primaryDark": "#a57d12",
+      "colorAccento": "#3f2d14",
+      "primaryLight": "#f1e1bc",
+      "colorPrimario": "#d4a017",
+      "colorSecundario": "#3f2d14",
+      "colorSuperficie": "#f7efe0",
+      "colorTextoSecundario": "#707276"
     },
     "colorFondo": "#f7efe0",
     "colorTexto": "#0f172a",
@@ -377,56 +397,56 @@
     "telefono": "+524591153960",
     "prefijoOrden": "SS",
     "redesSociales": {
-      "whatsapp": "+524591153960",
-      "facebook": "https://www.facebook.com/profile.php?id=61575588613338",
-      "facebookUsuario": "SaDev",
-      "instagram": "https://www.instagram.com/sadev_dig/",
-      "instagramUsuario": "@SaDev_Dig",
       "tiktok": "",
-      "grupoWhatsapp": "ufjdfjiodjiodod",
-      "grupoWhatsappNombre": "Sorteos SaDev",
+      "facebook": "https://www.facebook.com/profile.php?id=61575588613338",
+      "whatsapp": "+524591153960",
+      "instagram": "https://www.instagram.com/sadev_dig/",
       "canalWhatsapp": "https://chat.whatsapp.com/sadev-digital",
-      "canalWhatsappNombre": "Sorteos SaDev"
+      "grupoWhatsapp": "ufjdfjiodjiodod",
+      "facebookUsuario": "SaDev",
+      "instagramUsuario": "@SaDev_Dig",
+      "canalWhatsappNombre": "Sorteos SaDev",
+      "grupoWhatsappNombre": "Sorteos SaDev"
     },
     "imagenPrincipal": "https://res.cloudinary.com/dhwvxom01/image/upload/v1775793463/rifaplus/sorteos/principal-1775793458189-clw0B-a9c0477666dc.webp",
     "mensajesWhatsapp": {
-      "confirmacion": "",
+      "ganador": "",
       "rechazo": "",
-      "recordatorio": "",
-      "ganador": ""
+      "confirmacion": "",
+      "recordatorio": ""
     }
   },
   "tecnica": {
     "bankAccounts": [
       {
         "id": 1,
-        "nombreBanco": "SANTANDER",
-        "accountNumber": "1111 6666 1111 2222",
-        "beneficiary": "Yahir Perez",
+        "phone": "",
         "accountType": "Tarjeta",
+        "beneficiary": "Yahir Perez",
+        "nombreBanco": "SANTANDER",
         "paymentType": "transferencia",
-        "numero_referencia": "",
-        "phone": ""
+        "accountNumber": "1111 6666 1111 2222",
+        "numero_referencia": ""
       },
       {
         "id": 2,
-        "nombreBanco": "BBVA",
-        "accountNumber": "9999 8888 1111 6666",
-        "beneficiary": "Jose Ayair López",
+        "phone": "",
         "accountType": "Tarjeta",
+        "beneficiary": "Jose Ayair López",
+        "nombreBanco": "BBVA",
         "paymentType": "transferencia",
-        "numero_referencia": "",
-        "phone": ""
+        "accountNumber": "9999 8888 1111 6666",
+        "numero_referencia": ""
       },
       {
         "id": 3,
-        "nombreBanco": "OXXO-BBVA",
-        "accountNumber": "1111 6666 1111 2222",
-        "beneficiary": "José López",
+        "phone": "",
         "accountType": "Tarjeta",
+        "beneficiary": "José López",
+        "nombreBanco": "OXXO-BBVA",
         "paymentType": "efectivo",
-        "numero_referencia": "Nombre completo",
-        "phone": ""
+        "accountNumber": "1111 6666 1111 2222",
+        "numero_referencia": "Nombre completo"
       }
     ]
   },

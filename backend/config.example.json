@@ -94,6 +94,7 @@
     "fechaSorteo": "2026-03-31T23:45:00",
     "fechaSorteoFormato": "31 de Marzo del 2026",
     "horaSorteo": "23:45",
+    "timeZone": "America/Mexico_City",
     "zonaHoraria": "Hora Centro México",
     "modalidadSorteo": "Transmisión en Vivo",
     "fechaPresorteo": null,

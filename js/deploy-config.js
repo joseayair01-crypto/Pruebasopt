@@ -90,10 +90,8 @@
             socketScriptUrl: SOCKET_CDN_URL
         },
         production: {
-            // Esta copia queda neutral por defecto.
-            // Si algun dia se despliega, configura estas URLs manualmente.
-            apiBase: '',
-            publicBase: '',
+            apiBase: 'https://sadev-production.up.railway.app',
+            publicBase: 'https://sadev.pages.dev',
             socketScriptUrl: SOCKET_CDN_URL
         }
     };
@@ -122,9 +120,9 @@
 
     const resolvedConfig = {
         mode: isLocal ? 'local' : 'production',
-        apiBase: 'https://sadev-production.up.railway.app',
-        publicBase: 'https://sadev.pages.dev',
-        socketScriptUrl: SOCKET_CDN_URL
+        apiBase,
+        publicBase,
+        socketScriptUrl
     };
 
     window.__RIFAPLUS_DEPLOY__ = Object.assign({}, resolvedConfig, existingOverride || {});

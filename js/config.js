@@ -65,6 +65,28 @@ function normalizarBaseUrl(url) {
 }
 
 const RIFAPLUS_PROMO_TIMEZONE = 'America/Mexico_City';
+const RIFAPLUS_DEFAULT_TIMEZONE = 'America/Mexico_City';
+const RIFAPLUS_TIMEZONE_LABELS = {
+    'America/Mexico_City': 'Hora Centro Mexico',
+    'America/Monterrey': 'Hora Monterrey',
+    'America/Chihuahua': 'Hora Chihuahua',
+    'America/Mazatlan': 'Hora Pacifico Mexico',
+    'America/Hermosillo': 'Hora Sonora',
+    'America/Tijuana': 'Hora Tijuana',
+    'America/Cancun': 'Hora Cancun'
+};
+const RIFAPLUS_TIMEZONE_ALIASES = {
+    'Hora Centro Mexico': 'America/Mexico_City',
+    'Hora Centro México': 'America/Mexico_City',
+    'Hora Monterrey': 'America/Monterrey',
+    'Hora Chihuahua': 'America/Chihuahua',
+    'Hora Pacifico Mexico': 'America/Mazatlan',
+    'Hora Pacifico México': 'America/Mazatlan',
+    'Hora Sonora': 'America/Hermosillo',
+    'Hora Tijuana': 'America/Tijuana',
+    'Hora Cancun': 'America/Cancun',
+    'Hora Cancún': 'America/Cancun'
+};
 
 function obtenerOffsetMinutosEnZonaRifaPlus(fecha, timeZone = RIFAPLUS_PROMO_TIMEZONE) {
     try {
@@ -85,6 +107,18 @@ function obtenerOffsetMinutosEnZonaRifaPlus(fecha, timeZone = RIFAPLUS_PROMO_TIM
     } catch (error) {
         return -360;
     }
+}
+
+function normalizarTimeZoneRifaPlus(timeZone) {
+    const valor = String(timeZone || '').trim();
+    if (RIFAPLUS_TIMEZONE_LABELS[valor]) {
+        return valor;
+    }
+    return RIFAPLUS_TIMEZONE_ALIASES[valor] || RIFAPLUS_DEFAULT_TIMEZONE;
+}
+
+function obtenerEtiquetaTimeZoneRifaPlus(timeZone) {
+    return RIFAPLUS_TIMEZONE_LABELS[normalizarTimeZoneRifaPlus(timeZone)] || RIFAPLUS_TIMEZONE_LABELS[RIFAPLUS_DEFAULT_TIMEZONE];
 }
 
 function parseFechaPromocionRifaPlus(valor, timeZone = RIFAPLUS_PROMO_TIMEZONE) {
@@ -118,6 +152,10 @@ function parseFechaPromocionRifaPlus(valor, timeZone = RIFAPLUS_PROMO_TIMEZONE) 
     const fecha = new Date(utcTentativo - (offsetMinutos * 60 * 1000));
 
     return Number.isNaN(fecha.getTime()) ? null : fecha;
+}
+
+function parseFechaSorteoRifaPlus(valor, timeZone = RIFAPLUS_DEFAULT_TIMEZONE) {
+    return parseFechaPromocionRifaPlus(valor, normalizarTimeZoneRifaPlus(timeZone));
 }
 
 function esFechaPromocionActivaRifaPlus(fechaInicio, fechaFin, ahora = new Date(), timeZone = RIFAPLUS_PROMO_TIMEZONE) {
@@ -254,6 +292,7 @@ Object.assign(window.rifaplusConfig, {
         fechaSorteo: "",  // Se sincroniza desde config.json
         fechaSorteoFormato: "",  // Se sincroniza desde config.json
         horaSorteo: "",  // Se sincroniza desde config.json
+        timeZone: "America/Mexico_City",  // Se sincroniza desde config.json
         zonaHoraria: "Hora Centro México",  // Se sincroniza desde config.json
         modalidadSorteo: "",  // Se sincroniza desde config.json
         modalidadEnlace: {
@@ -332,8 +371,9 @@ Object.assign(window.rifaplusConfig, {
          * Getter dinámico: Lee fechaCierre desde rifa.fechaSorteo
          */
         get fechaCierre() {
-            if (window.rifaplusConfig?.rifa?.fechaSorteo) {
-                return new Date(window.rifaplusConfig.rifa.fechaSorteo);
+            const timestamp = window.rifaplusConfig?.obtenerTimestampSorteo?.();
+            if (timestamp) {
+                return new Date(timestamp);
             }
             return new Date('2999-01-01T00:00:00');
         },
@@ -773,16 +813,36 @@ window.rifaplusConfig.obtenerFechaSorteo = function() {
 };
 
 /**
+ * Obtiene time zone IANA de la rifa
+ */
+window.rifaplusConfig.obtenerTimeZoneRifa = function() {
+    if (!this.rifa) return RIFAPLUS_DEFAULT_TIMEZONE;
+    return normalizarTimeZoneRifaPlus(this.rifa.timeZone || this.rifa.zonaHoraria);
+};
+
+/**
+ * Obtiene etiqueta legible de la zona horaria de la rifa
+ */
+window.rifaplusConfig.obtenerZonaHorariaLabel = function() {
+    return obtenerEtiquetaTimeZoneRifaPlus(this.obtenerTimeZoneRifa?.());
+};
+
+/**
  * Obtiene timestamp en ms del sorteo
  */
 window.rifaplusConfig.obtenerTimestampSorteo = function() {
     const fechaISO = this.obtenerFechaSorteo();
-    if (!fechaISO) return null;
-    
+    const timeZone = this.obtenerTimeZoneRifa?.();
+
+    if (!fechaISO) {
+        return null;
+    }
+
     try {
-        const timestamp = new Date(fechaISO).getTime();
-        if (isNaN(timestamp)) {
-            console.error('❌ No se pudo parsear:', fechaISO);
+        const fecha = parseFechaSorteoRifaPlus(fechaISO, timeZone);
+        const timestamp = fecha?.getTime?.() || null;
+        if (!timestamp || Number.isNaN(timestamp)) {
+            console.error('❌ No se pudo parsear fechaSorteo:', { fechaISO, timeZone });
             return null;
         }
         return timestamp;
@@ -797,7 +857,7 @@ window.rifaplusConfig.obtenerTimestampSorteo = function() {
  */
 window.rifaplusConfig.validarFechaSorteo = function() {
     const fechaISO = this.obtenerFechaSorteo();
-    
+
     if (!fechaISO) {
         return {
             valida: false,
@@ -806,7 +866,7 @@ window.rifaplusConfig.validarFechaSorteo = function() {
             pendiente: true
         };
     }
-    
+
     const timestamp = this.obtenerTimestampSorteo();
     if (!timestamp) {
         return {
@@ -815,79 +875,15 @@ window.rifaplusConfig.validarFechaSorteo = function() {
             timestamp: null
         };
     }
-    
+
     const ahora = new Date().getTime();
     const sorteoYaPaso = timestamp <= ahora;
-    
+
     return {
         valida: true,
         mensaje: sorteoYaPaso ? 'El sorteo ya ha ocurrido' : 'Fecha válida',
-        timestamp: timestamp,
-        sorteoYaPaso: sorteoYaPaso,
-        diasRestantes: Math.floor((timestamp - ahora) / (1000 * 60 * 60 * 24))
-    };
-};
-
-/**
- * Obtiene fecha ISO del sorteo
- */
-window.rifaplusConfig.obtenerFechaSorteo = function() {
-    if (!this.rifa) return null;
-    return this.rifa.fechaSorteo || null;
-};
-
-/**
- * Obtiene timestamp en ms del sorteo
- */
-window.rifaplusConfig.obtenerTimestampSorteo = function() {
-    const fechaISO = this.obtenerFechaSorteo();
-    if (!fechaISO) return null;
-    
-    try {
-        const timestamp = new Date(fechaISO).getTime();
-        if (isNaN(timestamp)) {
-            console.error('❌ No se pudo parsear:', fechaISO);
-            return null;
-        }
-        return timestamp;
-    } catch (error) {
-        console.error('❌ Error calculando timestamp:', error);
-        return null;
-    }
-};
-
-/**
- * Valida la fecha del sorteo
- */
-window.rifaplusConfig.validarFechaSorteo = function() {
-    const fechaISO = this.obtenerFechaSorteo();
-    
-    if (!fechaISO) {
-        return {
-            valida: false,
-            mensaje: '⏳ Sincronizando fecha desde servidor...',
-            timestamp: null,
-            pendiente: true
-        };
-    }
-    
-    const timestamp = this.obtenerTimestampSorteo();
-    if (!timestamp) {
-        return {
-            valida: false,
-            mensaje: `No se pudo parsear fechaSorteo: "${fechaISO}"`,
-            timestamp: null
-        };
-    }
-    
-    const ahora = new Date().getTime();
-    const sorteoYaPaso = timestamp <= ahora;
-    
-    return {
-        valida: true,
-        mensaje: sorteoYaPaso ? 'El sorteo ya ha ocurrido' : 'Fecha válida',
-        timestamp: timestamp,
-        sorteoYaPaso: sorteoYaPaso,
+        timestamp,
+        sorteoYaPaso,
         diasRestantes: Math.floor((timestamp - ahora) / (1000 * 60 * 60 * 24))
     };
 };
@@ -901,20 +897,26 @@ window.rifaplusConfig.formatearFechaISO = function(fechaISO) {
     if (!fechaISO) return '';
     
     try {
-        const fecha = new Date(fechaISO);
-        if (isNaN(fecha.getTime())) {
+        const timeZone = this.obtenerTimeZoneRifa?.();
+        const fecha = parseFechaSorteoRifaPlus(fechaISO, timeZone);
+        if (!fecha || isNaN(fecha.getTime())) {
             console.warn('⚠️ Fecha ISO inválida:', fechaISO);
             return '';
         }
         
-        const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
-                      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-        
-        const dia = fecha.getDate();
-        const mes = meses[fecha.getMonth()];
-        const año = fecha.getFullYear();
-        
-        return `${dia} de ${mes} del ${año}`;
+        const formatter = new Intl.DateTimeFormat('es-MX', {
+            timeZone,
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
+        const parts = formatter.formatToParts(fecha);
+        const day = parts.find((part) => part.type === 'day')?.value || '';
+        const monthRaw = parts.find((part) => part.type === 'month')?.value || '';
+        const year = parts.find((part) => part.type === 'year')?.value || '';
+        const month = monthRaw ? monthRaw.charAt(0).toUpperCase() + monthRaw.slice(1) : '';
+
+        return day && month && year ? `${day} de ${month} del ${year}` : formatter.format(fecha);
     } catch (error) {
         console.error('Error formateando fecha:', error);
         return '';

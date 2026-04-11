@@ -512,17 +512,20 @@
             </div>
             <div class="rango-boxes" id="rangoBoxes"></div>
 
-            <!-- Sección scrolleable de boletos (⭐ OPTIMIZACIÓN: Contenedor con will-change y contain) -->
-            <div class="boletos-container-scrolleable">
+            <div class="boletos-grid-shell" id="boletosGridShell" aria-busy="true">
                 <!-- Loading indicator inicial -->
-                <div id="loadingEstadoBoletos" class="boletos-loading-state">
+                <div id="loadingEstadoBoletos" class="boletos-loading-state is-visible" aria-live="polite">
                     <div class="boletos-loading-spinner" aria-hidden="true"></div>
                     <h4>Cargando estado de los boletos...</h4>
                     <p>Por favor espera, esto puede tomar unos segundos</p>
                 </div>
-                <div class="numeros-grid" id="numerosGrid" data-loading="true"></div>
-                <div id="infiniteScrollSentinel"></div>
-                <div id="busquedaLoadMoreFooter" class="busqueda-load-more-footer" hidden></div>
+
+                <!-- Sección scrolleable de boletos (⭐ OPTIMIZACIÓN: Contenedor con will-change y contain) -->
+                <div class="boletos-container-scrolleable">
+                    <div class="numeros-grid" id="numerosGrid" data-loading="true"></div>
+                    <div id="infiniteScrollSentinel"></div>
+                    <div id="busquedaLoadMoreFooter" class="busqueda-load-more-footer" hidden></div>
+                </div>
             </div>
             <style>
                 @keyframes spin {

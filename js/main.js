@@ -196,32 +196,15 @@ function addPassiveListener(target, eventName, handler, extraOptions) {
  */
 (function normalizarFechaSorteo() {
     try {
-        const fechaSorteo = window.rifaplusConfig?.rifa?.fechaSorteo;
-        if (!fechaSorteo) {
+        const timestampSorteo = window.rifaplusConfig?.obtenerTimestampSorteo?.();
+        if (!timestampSorteo) {
             console.debug('⏳ fechaSorteo aún no sincronizada desde servidor');
             return;
         }
 
-        let fechaParsada = new Date(fechaSorteo);
-
-        // Si no se puede parsear, intentar agregando zona horaria
-        if (isNaN(fechaParsada.getTime())) {
-            const cadena = String(fechaSorteo).trim();
-            const tieneZonaHoraria = /[zZ]|[\+\-][0-9]{2}(:?[0-9]{2})?$/.test(cadena);
-            
-            if (!tieneZonaHoraria) {
-                const formatoISO = cadena.replace(' ', 'T') + '-06:00';
-                fechaParsada = new Date(formatoISO);
-            } else {
-                fechaParsada = new Date(cadena.replace(' ', 'T'));
-            }
-        }
-
-        // Guardar timestamp si es válido
-        if (!isNaN(fechaParsada.getTime())) {
-            window.rifaplusConfig.timestampSorteo = fechaParsada.getTime();
-            console.log('✓ Timestamp del sorteo calculado:', fechaParsada.toISOString(), '(', fechaParsada.getTime(), ')');
-        }
+        const fechaParsada = new Date(timestampSorteo);
+        window.rifaplusConfig.timestampSorteo = timestampSorteo;
+        console.log('✓ Timestamp del sorteo calculado:', fechaParsada.toISOString(), '(', timestampSorteo, ')');
     } catch (error) {
         console.warn('⚠️ Error normalizando fecha del sorteo:', error);
     }
@@ -237,18 +220,18 @@ function addPassiveListener(target, eventName, handler, extraOptions) {
     try {
         const rifaFecha = window.rifaplusConfig?.rifa?.fechaSorteo;
         const sorteo = window.rifaplusConfig?.sorteoActivo;
+        const timestampRifa = window.rifaplusConfig?.obtenerTimestampSorteo?.();
 
-        if (!rifaFecha || !sorteo) return;
+        if (!rifaFecha || !sorteo || !timestampRifa) return;
 
-        const fechaRifa = new Date(rifaFecha);
-        if (isNaN(fechaRifa.getTime())) return;
+        const fechaRifa = new Date(timestampRifa);
 
         const fechaSorteoActivo = new Date(sorteo.fechaCierre);
 
         // Si hay diferencia mayor a 1s o el valor actual no es válido, sincronizamos
         if (isNaN(fechaSorteoActivo.getTime()) || Math.abs(fechaSorteoActivo.getTime() - fechaRifa.getTime()) > 1000) {
             sorteo.fechaCierre = fechaRifa.toISOString();
-            sorteo.fechaCierreFormato = window.rifaplusConfig?.rifa?.fechaSorteoFormato || fechaRifa.toLocaleString('es-MX');
+            sorteo.fechaCierreFormato = window.rifaplusConfig?.obtenerFechaSorteoFormato?.() || window.rifaplusConfig?.rifa?.fechaSorteoFormato || fechaRifa.toLocaleString('es-MX');
             console.log('🔄 Sincronizado sorteoActivo.fechaCierre desde rifa.fechaSorteo ->', sorteo.fechaCierre);
         }
     } catch (err) {

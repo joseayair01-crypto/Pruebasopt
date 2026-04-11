@@ -2957,6 +2957,124 @@ app.patch('/api/admin/config', verificarToken, async (req, res) => {
                 };
             }
             if (req.body.rifa.publicacion) config.rifa.publicacion = req.body.rifa.publicacion;
+            const normalizarTimeZoneServidor = (valor) => {
+                const texto = String(valor || '').trim();
+                const alias = {
+                    'Hora Centro Mexico': 'America/Mexico_City',
+                    'Hora Centro México': 'America/Mexico_City',
+                    'Hora Monterrey': 'America/Monterrey',
+                    'Hora Chihuahua': 'America/Chihuahua',
+                    'Hora Pacifico Mexico': 'America/Mazatlan',
+                    'Hora Pacifico México': 'America/Mazatlan',
+                    'Hora Sonora': 'America/Hermosillo',
+                    'Hora Tijuana': 'America/Tijuana',
+                    'Hora Cancun': 'America/Cancun',
+                    'Hora Cancún': 'America/Cancun'
+                };
+                const validas = new Set([
+                    'America/Mexico_City',
+                    'America/Monterrey',
+                    'America/Chihuahua',
+                    'America/Mazatlan',
+                    'America/Hermosillo',
+                    'America/Tijuana',
+                    'America/Cancun'
+                ]);
+                if (validas.has(texto)) return texto;
+                return alias[texto] || 'America/Mexico_City';
+            };
+            const obtenerEtiquetaTimeZoneServidor = (timeZone) => ({
+                'America/Mexico_City': 'Hora Centro Mexico',
+                'America/Monterrey': 'Hora Monterrey',
+                'America/Chihuahua': 'Hora Chihuahua',
+                'America/Mazatlan': 'Hora Pacifico Mexico',
+                'America/Hermosillo': 'Hora Sonora',
+                'America/Tijuana': 'Hora Tijuana',
+                'America/Cancun': 'Hora Cancun'
+            }[normalizarTimeZoneServidor(timeZone)] || 'Hora Centro Mexico');
+            const parseFechaEnZonaServidor = (valor, timeZone) => {
+                if (!valor) return null;
+                const texto = String(valor).trim();
+                const tieneZonaExplicita = /(?:Z|[+-]\d{2}:\d{2})$/i.test(texto);
+                if (tieneZonaExplicita) {
+                    const fechaConZona = new Date(texto);
+                    return Number.isNaN(fechaConZona.getTime()) ? null : fechaConZona;
+                }
+                const match = texto.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
+                if (!match) {
+                    const fechaDirecta = new Date(texto);
+                    return Number.isNaN(fechaDirecta.getTime()) ? null : fechaDirecta;
+                }
+                const year = Number(match[1]);
+                const month = Number(match[2]);
+                const day = Number(match[3]);
+                const hour = Number(match[4]);
+                const minute = Number(match[5]);
+                const second = Number(match[6] || 0);
+                const utcTentativo = Date.UTC(year, month - 1, day, hour, minute, second);
+                const formatter = new Intl.DateTimeFormat('en-US', {
+                    timeZone: normalizarTimeZoneServidor(timeZone),
+                    timeZoneName: 'shortOffset',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                const offsetPart = formatter.formatToParts(new Date(utcTentativo)).find((part) => part.type === 'timeZoneName')?.value || 'GMT-6';
+                const offsetMatch = offsetPart.match(/GMT([+-])(\d{1,2})(?::?(\d{2}))?/i);
+                const sign = offsetMatch?.[1] === '-' ? -1 : 1;
+                const hours = Number(offsetMatch?.[2] || 0);
+                const minutes = Number(offsetMatch?.[3] || 0);
+                const offsetMinutes = sign * ((hours * 60) + minutes);
+                const fecha = new Date(utcTentativo - (offsetMinutes * 60 * 1000));
+                return Number.isNaN(fecha.getTime()) ? null : fecha;
+            };
+            const procesarFechaRifaServidor = (valorFecha, timeZone) => {
+                const fecha = parseFechaEnZonaServidor(valorFecha, timeZone);
+                if (!fecha) return null;
+                const formatterFecha = new Intl.DateTimeFormat('es-MX', {
+                    timeZone: normalizarTimeZoneServidor(timeZone),
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                });
+                const formatterHora = new Intl.DateTimeFormat('es-MX', {
+                    timeZone: normalizarTimeZoneServidor(timeZone),
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                });
+                const parts = formatterFecha.formatToParts(fecha);
+                const dia = parts.find((part) => part.type === 'day')?.value || '';
+                const mesRaw = parts.find((part) => part.type === 'month')?.value || '';
+                const año = parts.find((part) => part.type === 'year')?.value || '';
+                const mes = mesRaw ? mesRaw.charAt(0).toUpperCase() + mesRaw.slice(1) : '';
+                return {
+                    fecha,
+                    hora: formatterHora.format(fecha),
+                    fechaFormato: dia && mes && año ? `${dia} de ${mes} del ${año}` : formatterFecha.format(fecha)
+                };
+            };
+            if (req.body.rifa.timeZone !== undefined || req.body.rifa.zonaHoraria !== undefined) {
+                const timeZoneNormalizado = normalizarTimeZoneServidor(req.body.rifa.timeZone || req.body.rifa.zonaHoraria);
+                config.rifa.timeZone = timeZoneNormalizado;
+                config.rifa.zonaHoraria = obtenerEtiquetaTimeZoneServidor(timeZoneNormalizado);
+            } else {
+                config.rifa.timeZone = normalizarTimeZoneServidor(config.rifa.timeZone || config.rifa.zonaHoraria);
+                config.rifa.zonaHoraria = obtenerEtiquetaTimeZoneServidor(config.rifa.timeZone);
+            }
+            if ((req.body.rifa.timeZone !== undefined || req.body.rifa.zonaHoraria !== undefined) && !req.body.rifa.fechaSorteo && config.rifa.fechaSorteo) {
+                const fechaSorteoRecalculada = procesarFechaRifaServidor(config.rifa.fechaSorteo, config.rifa.timeZone);
+                if (fechaSorteoRecalculada) {
+                    config.rifa.horaSorteo = fechaSorteoRecalculada.hora;
+                    config.rifa.fechaSorteoFormato = fechaSorteoRecalculada.fechaFormato;
+                }
+            }
+            if ((req.body.rifa.timeZone !== undefined || req.body.rifa.zonaHoraria !== undefined) && !req.body.rifa.fechaPresorteo && config.rifa.fechaPresorteo) {
+                const fechaPresorteoRecalculada = procesarFechaRifaServidor(config.rifa.fechaPresorteo, config.rifa.timeZone);
+                if (fechaPresorteoRecalculada) {
+                    config.rifa.horaPresorteo = fechaPresorteoRecalculada.hora;
+                    config.rifa.fechaPresorteoFormato = fechaPresorteoRecalculada.fechaFormato;
+                }
+            }
             if (req.body.rifa.rangos !== undefined) {
                 const rangosNormalizados = Array.isArray(req.body.rifa.rangos)
                     ? req.body.rifa.rangos
@@ -3006,22 +3124,14 @@ app.patch('/api/admin/config', verificarToken, async (req, res) => {
             if (req.body.rifa.fechaSorteo) {
                 config.rifa.fechaSorteo = req.body.rifa.fechaSorteo;
                 try {
-                    const fecha = new Date(req.body.rifa.fechaSorteo);
-                    if (!isNaN(fecha.getTime())) {
-                        // Extraer hora
-                        const horas = String(fecha.getHours()).padStart(2, '0');
-                        const minutos = String(fecha.getMinutes()).padStart(2, '0');
-                        config.rifa.horaSorteo = `${horas}:${minutos}`;
-                        
-                        // Formatear fecha en español
-                        const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-                        const dia = fecha.getDate();
-                        const mes = meses[fecha.getMonth()];
-                        const año = fecha.getFullYear();
-                        config.rifa.fechaSorteoFormato = `${dia} de ${mes} del ${año}`;
-                        
+                    const fechaProcesada = procesarFechaRifaServidor(req.body.rifa.fechaSorteo, config.rifa.timeZone);
+                    if (fechaProcesada) {
+                        config.rifa.horaSorteo = fechaProcesada.hora;
+                        config.rifa.fechaSorteoFormato = fechaProcesada.fechaFormato;
                         console.log('✅ Fecha del sorteo procesada:', {
                             fechaSorteo: config.rifa.fechaSorteo,
+                            timeZone: config.rifa.timeZone,
+                            zonaHoraria: config.rifa.zonaHoraria,
                             horaSorteo: config.rifa.horaSorteo,
                             fechaSorteoFormato: config.rifa.fechaSorteoFormato
                         });
@@ -3040,22 +3150,13 @@ app.patch('/api/admin/config', verificarToken, async (req, res) => {
             } else if (req.body.rifa.fechaPresorteo) {
                 config.rifa.fechaPresorteo = req.body.rifa.fechaPresorteo;
                 try {
-                    const fecha = new Date(req.body.rifa.fechaPresorteo);
-                    if (!isNaN(fecha.getTime())) {
-                        // Extraer hora
-                        const horas = String(fecha.getHours()).padStart(2, '0');
-                        const minutos = String(fecha.getMinutes()).padStart(2, '0');
-                        config.rifa.horaPresorteo = `${horas}:${minutos}`;
-                        
-                        // Formatear fecha en español
-                        const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-                        const dia = fecha.getDate();
-                        const mes = meses[fecha.getMonth()];
-                        const año = fecha.getFullYear();
-                        config.rifa.fechaPresorteoFormato = `${dia} de ${mes} del ${año}`;
-                        
+                    const fechaProcesada = procesarFechaRifaServidor(req.body.rifa.fechaPresorteo, config.rifa.timeZone);
+                    if (fechaProcesada) {
+                        config.rifa.horaPresorteo = fechaProcesada.hora;
+                        config.rifa.fechaPresorteoFormato = fechaProcesada.fechaFormato;
                         console.log('✅ Fecha del presorteo procesada:', {
                             fechaPresorteo: config.rifa.fechaPresorteo,
+                            timeZone: config.rifa.timeZone,
                             horaPresorteo: config.rifa.horaPresorteo,
                             fechaPresorteoFormato: config.rifa.fechaPresorteoFormato
                         });

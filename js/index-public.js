@@ -199,7 +199,7 @@
             totalBoletos: rifa.totalBoletos || 0,
             modalidadSorteo: rifa.modalidadSorteo || '',
             modalidadEnlaceTipo: rifa.modalidadEnlace?.tipo || '',
-            zonaHoraria: rifa.zonaHoraria || '',
+            zonaHoraria: config.obtenerZonaHorariaLabel?.() || rifa.zonaHoraria || '',
             presorteo: Array.isArray(rifa.sistemaPremios?.presorteo) ? rifa.sistemaPremios.presorteo.length : 0,
             facebook: config.cliente?.redesSociales?.facebook || '',
             whatsapp: config.cliente?.redesSociales?.whatsapp || '',
@@ -239,15 +239,29 @@
             contenido: 'dinamico-fecha-hora'
         };
 
+        const zonaHorariaLabel = config.obtenerZonaHorariaLabel?.() || rifa.zonaHoraria || '';
+        const formatearFechaHoraPublica = (fechaFormateada, horaFormateada) => {
+            const fechaTexto = String(fechaFormateada || '').trim();
+            const horaTexto = String(horaFormateada || '').trim();
+            const zonaTexto = String(zonaHorariaLabel || '').trim();
+
+            if (fechaTexto && horaTexto && zonaTexto) return `${fechaTexto} a las ${horaTexto} (${zonaTexto})`;
+            if (fechaTexto && horaTexto) return `${fechaTexto} a las ${horaTexto}`;
+            if (horaTexto && zonaTexto) return `${horaTexto} (${zonaTexto})`;
+            if (fechaTexto) return fechaTexto;
+            if (horaTexto) return horaTexto;
+            return zonaTexto || '';
+        };
+
         const presorteoActivo = Array.isArray(rifa.sistemaPremios?.presorteo) && rifa.sistemaPremios.presorteo.length > 0;
         if (presorteoActivo) {
             const fechaPresorteoTexto = (() => {
                 const fechaFormateada = config.obtenerFechaPresorteoFormato?.() || rifa.fechaPresorteoFormato;
                 const horaFormateada = rifa.horaPresorteo;
 
-                if (fechaFormateada && horaFormateada) return `${fechaFormateada} a las ${horaFormateada}`;
+                if (fechaFormateada && horaFormateada) return formatearFechaHoraPublica(fechaFormateada, horaFormateada);
                 if (fechaFormateada) return fechaFormateada;
-                if (horaFormateada) return `Hora por confirmar: ${horaFormateada}`;
+                if (horaFormateada) return `Hora por confirmar: ${formatearFechaHoraPublica('', horaFormateada)}`;
                 return 'Fecha y hora por confirmar';
             })();
 
@@ -272,9 +286,12 @@
             if (contenido === 'dinamico-fecha') {
                 contenido = config.obtenerFechaSorteoFormato?.() || config.rifa.fechaSorteoFormato;
             } else if (contenido === 'dinamico-hora') {
-                contenido = `${config.rifa.horaSorteo} (${config.rifa.zonaHoraria})`;
+                contenido = formatearFechaHoraPublica('', config.rifa.horaSorteo);
             } else if (contenido === 'dinamico-fecha-hora') {
-                contenido = `${config.obtenerFechaSorteoFormato?.() || config.rifa.fechaSorteoFormato} a las ${config.rifa.horaSorteo}`;
+                contenido = formatearFechaHoraPublica(
+                    config.obtenerFechaSorteoFormato?.() || config.rifa.fechaSorteoFormato,
+                    config.rifa.horaSorteo
+                );
             } else if (contenido === 'dinamico-modalidad') {
                 contenido = config.rifa.modalidadSorteo;
             } else if (contenido === 'dinamico-boletos') {
