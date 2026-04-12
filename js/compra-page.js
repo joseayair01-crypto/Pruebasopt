@@ -140,11 +140,13 @@
 
         const snapshot = window.__RIFAPLUS_COMPRA_PRICE_SNAPSHOT__;
         const precioSnapshot = Number(snapshot?.precioBoleto);
-        if (!Number.isFinite(precioSnapshot) || precioSnapshot <= 0) {
-            return;
-        }
+        const precioVisibleSnapshot = Number(snapshot?.precioVisible);
 
-        config.rifa.precioBoleto = precioSnapshot;
+        if (Number.isFinite(precioSnapshot) && precioSnapshot > 0) {
+            config.rifa.precioBoleto = precioSnapshot;
+        } else if (Number.isFinite(precioVisibleSnapshot) && precioVisibleSnapshot > 0) {
+            config.rifa.precioBoleto = precioVisibleSnapshot;
+        }
 
         if (snapshot?.promocionPorTiempo) {
             config.rifa.promocionPorTiempo = snapshot.promocionPorTiempo;
@@ -593,6 +595,20 @@
         }
 
         const promo = resolverPromocionActiva(rifa);
+        const precioFinal = Number(promo.precioFinal);
+        const snapshotPrecio = Number(window.__RIFAPLUS_COMPRA_PRICE_SNAPSHOT__?.precioVisible);
+        const precioExistente = Number(String(precioDinamico.textContent || '').replace(/[^0-9.]+/g, ''));
+        const precioRespaldo = Number.isFinite(snapshotPrecio) && snapshotPrecio > 0
+            ? snapshotPrecio
+            : (Number.isFinite(precioExistente) && precioExistente > 0 ? precioExistente : null);
+
+        if (!Number.isFinite(precioFinal) || precioFinal <= 0) {
+            if (Number.isFinite(precioRespaldo) && precioRespaldo > 0) {
+                precioDinamico.textContent = formatearMoneda(precioRespaldo);
+            }
+            return;
+        }
+
         precioDinamico.textContent = formatearMoneda(promo.precioFinal);
         if (precioCardCompra) {
             precioCardCompra.classList.remove('loading');

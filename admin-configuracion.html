@@ -2520,6 +2520,22 @@
                         </div>
                     </div>
 
+                    <div style="margin-top: var(--spacing-md); padding: 1rem 1.1rem; border: 1px solid #e5e7eb; border-radius: 14px; background: #f8fafc;">
+                        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                            <div style="min-width: 240px; flex: 1;">
+                                <label class="form-label" style="margin-bottom: 0.35rem;">Nota de disponibilidad en la máquina</label>
+                                <div class="form-helper" style="margin: 0;">
+                                    Muestra u oculta el texto de apoyo debajo del botón de la máquina de la suerte, como "boletos disponibles" o "cargando disponibilidad".
+                                </div>
+                            </div>
+                            <label class="toggle-label" for="maquina-suerte-mostrar-nota-disponibilidad" style="margin: 0;">
+                                <input type="checkbox" class="toggle-input" id="maquina-suerte-mostrar-nota-disponibilidad">
+                                <span class="toggle-bg"></span>
+                                <span class="toggle-circle"></span>
+                            </label>
+                        </div>
+                    </div>
+
                     <div style="margin-top: var(--spacing-xl);">
                         <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
                             <label class="form-label" style="margin: 0;">Rangos públicos de compra</label>
@@ -7806,6 +7822,7 @@
             totalBoletos: '',
             tiempoApartadoHoras: '',
             maquinaSuerteLimite: '',
+            maquinaSuerteMostrarNotaDisponibilidad: 'true',
             busquedaBoletosModoAvanzado: 'false',
             rangos: '[]',
             rangoVisible: '',
@@ -7909,6 +7926,13 @@
             if (tiempoApartadoInput) tiempoApartadoInput.value = tiempoApartadoHoras || 1;
             const toggleBusqueda = document.getElementById('busqueda-boletos-modo-avanzado');
             if (toggleBusqueda) toggleBusqueda.checked = busquedaModoAvanzado;
+            const toggleNotaDisponibilidad = document.getElementById('maquina-suerte-mostrar-nota-disponibilidad');
+            if (toggleNotaDisponibilidad) {
+                toggleNotaDisponibilidad.checked = obtenerMostrarNotaDisponibilidadMaquinaSuerte(
+                    rifa?.maquinaSuerte?.mostrarNotaDisponibilidad,
+                    true
+                );
+            }
 
             maquinaSuerteLimiteTemporal = obtenerLimiteMaquinaSuerteNormalizado(
                 rifa?.maquinaSuerte?.limiteBoletos,
@@ -7955,6 +7979,7 @@
                 totalBoletos: document.getElementById('sorteo-total-boletos')?.value?.trim() || '',
                 tiempoApartadoHoras: document.getElementById('tiempo-apartado-horas')?.value?.trim() || '',
                 maquinaSuerteLimite: document.getElementById('maquina-suerte-limite')?.value?.trim() || '',
+                maquinaSuerteMostrarNotaDisponibilidad: document.getElementById('maquina-suerte-mostrar-nota-disponibilidad')?.checked ? 'true' : 'false',
                 busquedaBoletosModoAvanzado: document.getElementById('busqueda-boletos-modo-avanzado')?.checked ? 'true' : 'false',
                 rangos: obtenerRangosPublicosDesdeDOM(),
                 rangoVisible: serializarRangoSimpleAdmin('oportunidades-rango-visible-inicio', 'oportunidades-rango-visible-fin'),
@@ -7968,6 +7993,7 @@
                 totalBoletos: originales.totalBoletos || '',
                 tiempoApartadoHoras: originales.tiempoApartadoHoras || '',
                 maquinaSuerteLimite: originales.maquinaSuerteLimite || '',
+                maquinaSuerteMostrarNotaDisponibilidad: originales.maquinaSuerteMostrarNotaDisponibilidad || 'true',
                 busquedaBoletosModoAvanzado: originales.busquedaBoletosModoAvanzado || 'false',
                 rangos: JSON.parse(originales.rangos || '[]'),
                 rangoVisible: originales.rangoVisible || '',
@@ -8017,6 +8043,10 @@
 
             const inputLimite = document.getElementById('maquina-suerte-limite');
             if (inputLimite) inputLimite.value = snapshot.maquinaSuerteLimite || '';
+            const toggleNotaDisponibilidad = document.getElementById('maquina-suerte-mostrar-nota-disponibilidad');
+            if (toggleNotaDisponibilidad) {
+                toggleNotaDisponibilidad.checked = snapshot.maquinaSuerteMostrarNotaDisponibilidad !== 'false';
+            }
 
             const toggleBusqueda = document.getElementById('busqueda-boletos-modo-avanzado');
             if (toggleBusqueda) toggleBusqueda.checked = snapshot.busquedaBoletosModoAvanzado === 'true';
@@ -8797,6 +8827,7 @@
                     document.getElementById('maquina-suerte-limite')?.value,
                     maquinaSuerteLimiteTemporal || 500
                 );
+                const maquinaSuerteMostrarNotaDisponibilidad = document.getElementById('maquina-suerte-mostrar-nota-disponibilidad')?.checked !== false;
                 const busquedaBoletosModoAvanzado = document.getElementById('busqueda-boletos-modo-avanzado')?.checked === true;
                 const rangos = obtenerRangosPublicosDesdeDOM();
                 const rangoVisible = normalizarRangoAdmin({
@@ -8890,7 +8921,8 @@
                         tiempoApartadoHoras,
                         maquinaSuerte: {
                             ...(window.rifaplusConfig?.rifa?.maquinaSuerte || {}),
-                            limiteBoletos: limiteMaquinaSuerte
+                            limiteBoletos: limiteMaquinaSuerte,
+                            mostrarNotaDisponibilidad: maquinaSuerteMostrarNotaDisponibilidad
                         },
                         busquedaBoletos: {
                             ...(window.rifaplusConfig?.rifa?.busquedaBoletos || {}),
@@ -8926,7 +8958,8 @@
                 window.rifaplusConfig.rifa.rangos = rangos;
                 window.rifaplusConfig.rifa.maquinaSuerte = {
                     ...(window.rifaplusConfig.rifa.maquinaSuerte || {}),
-                    limiteBoletos: limiteMaquinaSuerte
+                    limiteBoletos: limiteMaquinaSuerte,
+                    mostrarNotaDisponibilidad: maquinaSuerteMostrarNotaDisponibilidad
                 };
                 window.rifaplusConfig.rifa.busquedaBoletos = {
                     ...(window.rifaplusConfig.rifa.busquedaBoletos || {}),
@@ -8972,6 +9005,7 @@
             const totalBoletosActual = document.getElementById('sorteo-total-boletos')?.value?.trim() || '';
             const tiempoApartadoHorasActual = document.getElementById('tiempo-apartado-horas')?.value?.trim() || '';
             const maquinaSuerteLimiteActual = document.getElementById('maquina-suerte-limite')?.value?.trim() || '';
+            const maquinaSuerteMostrarNotaDisponibilidadActual = document.getElementById('maquina-suerte-mostrar-nota-disponibilidad')?.checked ? 'true' : 'false';
             const busquedaBoletosModoAvanzadoActual = document.getElementById('busqueda-boletos-modo-avanzado')?.checked ? 'true' : 'false';
             const rangosActuales = JSON.stringify(obtenerRangosPublicosDesdeDOM());
             const rangoVisibleActual = serializarRangoSimpleAdmin('oportunidades-rango-visible-inicio', 'oportunidades-rango-visible-fin');
@@ -8987,6 +9021,7 @@
                 totalBoletosActual !== window.sorteoValoresOriginales.totalBoletos ||
                 tiempoApartadoHorasActual !== window.sorteoValoresOriginales.tiempoApartadoHoras ||
                 maquinaSuerteLimiteActual !== window.sorteoValoresOriginales.maquinaSuerteLimite ||
+                maquinaSuerteMostrarNotaDisponibilidadActual !== window.sorteoValoresOriginales.maquinaSuerteMostrarNotaDisponibilidad ||
                 busquedaBoletosModoAvanzadoActual !== window.sorteoValoresOriginales.busquedaBoletosModoAvanzado ||
                 rangosActuales !== window.sorteoValoresOriginales.rangos ||
                 rangoVisibleActual !== window.sorteoValoresOriginales.rangoVisible ||
@@ -9007,6 +9042,7 @@
                 totalBoletos: document.getElementById('sorteo-total-boletos')?.value?.trim() || '',
                 tiempoApartadoHoras: document.getElementById('tiempo-apartado-horas')?.value?.trim() || '',
                 maquinaSuerteLimite: document.getElementById('maquina-suerte-limite')?.value?.trim() || '',
+                maquinaSuerteMostrarNotaDisponibilidad: document.getElementById('maquina-suerte-mostrar-nota-disponibilidad')?.checked ? 'true' : 'false',
                 busquedaBoletosModoAvanzado: document.getElementById('busqueda-boletos-modo-avanzado')?.checked ? 'true' : 'false',
                 rangos: JSON.stringify(obtenerRangosPublicosDesdeDOM()),
                 rangoVisible: serializarRangoSimpleAdmin('oportunidades-rango-visible-inicio', 'oportunidades-rango-visible-fin'),
@@ -13962,6 +13998,13 @@
         let bonosCompraHabilitado = false;
         let maquinaSuerteLimiteTemporal = 500;
 
+        function obtenerMostrarNotaDisponibilidadMaquinaSuerte(valor, fallback = true) {
+            if (typeof valor === 'boolean') return valor;
+            if (valor === 'true') return true;
+            if (valor === 'false') return false;
+            return fallback;
+        }
+
         function cargarBonosCompra() {
             const config = window.rifaplusConfig?.rifa?.bonosCompra || {};
             bonosCompraHabilitado = config.enabled === true;
@@ -13992,6 +14035,10 @@
         }
 
         function cargarLimiteMaquinaSuerte() {
+            const mostrarNotaDisponibilidad = obtenerMostrarNotaDisponibilidadMaquinaSuerte(
+                window.rifaplusConfig?.rifa?.maquinaSuerte?.mostrarNotaDisponibilidad,
+                true
+            );
             maquinaSuerteLimiteTemporal = obtenerLimiteMaquinaSuerteNormalizado(
                 window.rifaplusConfig?.rifa?.maquinaSuerte?.limiteBoletos,
                 500
@@ -14000,6 +14047,10 @@
             const input = document.getElementById('maquina-suerte-limite');
             if (input) {
                 input.value = maquinaSuerteLimiteTemporal;
+            }
+            const toggle = document.getElementById('maquina-suerte-mostrar-nota-disponibilidad');
+            if (toggle) {
+                toggle.checked = mostrarNotaDisponibilidad;
             }
 
             actualizarAyudaLimiteMaquinaSuerte();
@@ -14012,6 +14063,7 @@
 
             try {
                 const limite = obtenerLimiteMaquinaSuerteNormalizado(input?.value, 0);
+                const mostrarNotaDisponibilidad = document.getElementById('maquina-suerte-mostrar-nota-disponibilidad')?.checked !== false;
                 if (!limite) {
                     mostrarAlerta('❌ Ingresa un límite válido mayor a 0', 'error');
                     input?.focus();
@@ -14043,7 +14095,8 @@
                     body: JSON.stringify({
                         rifa: {
                             maquinaSuerte: {
-                                limiteBoletos: limite
+                                limiteBoletos: limite,
+                                mostrarNotaDisponibilidad: mostrarNotaDisponibilidad
                             }
                         }
                     }),
@@ -14059,7 +14112,8 @@
                 if (!window.rifaplusConfig.rifa) window.rifaplusConfig.rifa = {};
                 window.rifaplusConfig.rifa.maquinaSuerte = {
                     ...(window.rifaplusConfig.rifa.maquinaSuerte || {}),
-                    limiteBoletos: limite
+                    limiteBoletos: limite,
+                    mostrarNotaDisponibilidad: mostrarNotaDisponibilidad
                 };
 
                 actualizarAyudaLimiteMaquinaSuerte();
@@ -14071,7 +14125,10 @@
                 if (window.rifaplusConfig?.emitirEvento) {
                     window.rifaplusConfig.emitirEvento('configuracionActualizada', {
                         tipo: 'maquinaSuerte',
-                        datos: { limiteBoletos: limite }
+                        datos: {
+                            limiteBoletos: limite,
+                            mostrarNotaDisponibilidad: mostrarNotaDisponibilidad
+                        }
                     });
                 }
 
@@ -14341,6 +14398,10 @@
                     this.value = obtenerLimiteMaquinaSuerteNormalizado(this.value, maquinaSuerteLimiteTemporal || 500);
                     actualizarAyudaLimiteMaquinaSuerte();
                 });
+            }
+            const toggleMostrarNotaDisponibilidadMaquina = document.getElementById('maquina-suerte-mostrar-nota-disponibilidad');
+            if (toggleMostrarNotaDisponibilidadMaquina) {
+                toggleMostrarNotaDisponibilidadMaquina.addEventListener('change', manejarCambioBoletajeYRangos);
             }
             
             setTimeout(() => {

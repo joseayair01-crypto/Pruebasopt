@@ -144,12 +144,24 @@
                 return mejorPrecio;
             }
 
+            function leerPrecioCacheadoCompra() {
+                try {
+                    const payload = JSON.parse(localStorage.getItem('rifaplus_compra_precio_cache_v1') || 'null');
+                    const precio = Number(payload?.precio);
+                    return Number.isFinite(precio) && precio > 0 ? precio : null;
+                } catch (error) {
+                    return null;
+                }
+            }
+
             const rifaPrecioInicial = elegirRifaFuentePrecio();
+            const precioCacheadoCompra = leerPrecioCacheadoCompra();
+            const precioVisibleInicial = resolverPrecioVisibleCompra(rifaPrecioInicial) || precioCacheadoCompra;
             window.__RIFAPLUS_COMPRA_PRICE_SNAPSHOT__ = {
-                precioBoleto: Number(rifaPrecioInicial?.precioBoleto) || 0,
+                precioBoleto: Number(rifaPrecioInicial?.precioBoleto) || precioCacheadoCompra || 0,
                 promocionPorTiempo: rifaPrecioInicial?.promocionPorTiempo || null,
                 descuentoPorcentaje: rifaPrecioInicial?.descuentoPorcentaje || null,
-                precioVisible: resolverPrecioVisibleCompra(rifaPrecioInicial)
+                precioVisible: precioVisibleInicial
             };
 
             window.__RIFAPLUS_COMPRA_HERO__ = (function() {

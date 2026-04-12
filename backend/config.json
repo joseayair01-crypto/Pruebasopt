@@ -151,7 +151,8 @@
       "progressStats": true
     },
     "maquinaSuerte": {
-      "limiteBoletos": 10
+      "limiteBoletos": 10,
+      "mostrarNotaDisponibilidad": true
     },
     "busquedaBoletos": {
       "modoAvanzado": true

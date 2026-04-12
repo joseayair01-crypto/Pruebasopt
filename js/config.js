@@ -340,7 +340,8 @@ Object.assign(window.rifaplusConfig, {
             items: []
         },  // Se sincroniza desde config.json
         maquinaSuerte: {
-            limiteBoletos: 500
+            limiteBoletos: 500,
+            mostrarNotaDisponibilidad: true
         },  // Se sincroniza desde config.json
         sistemaPremios: {
             enabled: false,

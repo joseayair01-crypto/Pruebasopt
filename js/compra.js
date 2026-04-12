@@ -1125,11 +1125,7 @@ async function cargarBoletosPublicos() {
 
                     // ⭐ OPTIMIZACIÓN CRÍTICA: Mostrar disponibles INMEDIATAMENTE desde /stats (< 50ms)
                     // No esperar por cálculo de rango - eso se hace en background en Stage 2
-                    const availabilityNote = document.getElementById('availabilityNote');
-                    if (availabilityNote) {
-                        availabilityNote.textContent = `${data.disponibles} boletos disponibles`;
-                        availabilityNote.style.display = 'inline-block';
-                    }
+                    aplicarEstadoNotaDisponibilidad(`${data.disponibles} boletos disponibles`, 'ready');
                     
                     if (typeof actualizarEstadoBotonGenerar === 'function') {
                         actualizarEstadoBotonGenerar();
@@ -1139,12 +1135,9 @@ async function cargarBoletosPublicos() {
         } catch (error) {
             console.error('❌ Error cargando stats (mostrar en UI):', error.message, error.stack);
             // Mostrar error al usuario
-            const availabilityNote = document.getElementById('availabilityNote');
-            if (availabilityNote) {
-                availabilityNote.textContent = '❌ Error cargando disponibilidad: ' + (error.message || 'desconocido');
-                availabilityNote.style.display = 'inline-block';
-                availabilityNote.style.color = 'red';
-            }
+            aplicarEstadoNotaDisponibilidad('❌ Error cargando disponibilidad: ' + (error.message || 'desconocido'), 'error', {
+                color: 'red'
+            });
             
             // ⚠️ IMPORTANTE: Marcar como cargado INCLUSO con error
             // Sino, se queda bloqueado esperando forever
@@ -1247,7 +1240,9 @@ async function cargarDatosCompletosEnBackground(endpoint, rango = null, opciones
             return true;
         }
         // If data not in expected shape, treat as fail and try later
-        window.rifaplusBoletosLoaded = false;
+        if (!Number.isFinite(obtenerDisponiblesGlobalesMaquina())) {
+            window.rifaplusBoletosLoaded = false;
+        }
         window.rifaplusBoletosLoading = false;
         window.rifaplusFetchBackoffMs = Math.min((window.rifaplusFetchBackoffMs || 30000) * 2, 300000);
         if (window.rifaplusFetchTimeoutId) clearTimeout(window.rifaplusFetchTimeoutId);
@@ -1258,7 +1253,9 @@ async function cargarDatosCompletosEnBackground(endpoint, rango = null, opciones
     } catch (e) {
         // Network or unexpected error — increase backoff and retry later
         console.warn('cargarBoletosPublicos error', e && e.message ? e.message : e);
-        window.rifaplusBoletosLoaded = false;
+        if (!Number.isFinite(obtenerDisponiblesGlobalesMaquina())) {
+            window.rifaplusBoletosLoaded = false;
+        }
         window.rifaplusBoletosLoading = false;
         window.rifaplusFetchBackoffMs = Math.min((window.rifaplusFetchBackoffMs || 30000) * 2, 300000);
         if (window.rifaplusFetchTimeoutId) clearTimeout(window.rifaplusFetchTimeoutId);
@@ -1507,6 +1504,7 @@ function actualizarLimiteMaquinaSuerteUI() {
 
     actualizarTotalMaquina();
     actualizarEstadoBotonGenerar();
+    actualizarNotaDisponibilidad();
 }
 
 function actualizarTotalMaquina() {
@@ -1524,6 +1522,59 @@ function actualizarTotalMaquina() {
     totalDisplay.textContent = `$${total.toFixed(2)}`;
 }
 
+function obtenerDisponiblesGlobalesMaquina() {
+    const disponibles = Number(window.rifaplusConfig?.estado?.boletosDisponibles);
+    return Number.isFinite(disponibles) && disponibles >= 0 ? disponibles : null;
+}
+
+function maquinaSuerteDebeMostrarNotaDisponibilidad() {
+    return window.rifaplusConfig?.rifa?.maquinaSuerte?.mostrarNotaDisponibilidad !== false;
+}
+
+function aplicarEstadoNotaDisponibilidad(texto, estado = 'ready', opciones = {}) {
+    const note = document.getElementById('availabilityNote');
+    if (!note) return;
+
+    if (!maquinaSuerteDebeMostrarNotaDisponibilidad()) {
+        note.textContent = '';
+        note.style.display = 'none';
+        note.style.visibility = 'hidden';
+        note.style.opacity = '0';
+        note.style.color = '';
+        note.dataset.state = 'hidden';
+        return;
+    }
+
+    note.textContent = texto;
+    note.style.display = 'inline-flex';
+    note.style.visibility = 'visible';
+    note.style.opacity = '1';
+    note.style.color = opciones.color || '';
+    note.dataset.state = estado;
+}
+
+function actualizarEstadoVisualBotonGenerar(estado, contexto = {}) {
+    const btnGenerar = document.getElementById('btnGenerarNumeros');
+    if (!btnGenerar) return;
+
+    const maximo = Number(contexto.maximo) || obtenerMaximoPermitidoMaquinaSuerte();
+    const textos = {
+        idle: 'GENERAR NÚMEROS',
+        empty: 'INGRESA UNA CANTIDAD',
+        loading: 'CARGANDO DISPONIBILIDAD...',
+        limit: `MÁXIMO ${maximo} BOLETOS`,
+        insufficient: 'NO HAY SUFICIENTES BOLETOS',
+        generating: '⏳ GENERANDO...'
+    };
+
+    const label = textos[estado] || textos.idle;
+    btnGenerar.textContent = label;
+    btnGenerar.dataset.state = estado;
+    btnGenerar.setAttribute('aria-busy', estado === 'loading' || estado === 'generating' ? 'true' : 'false');
+    btnGenerar.classList.toggle('is-pending', estado === 'loading');
+    btnGenerar.classList.toggle('is-insufficient', estado === 'insufficient');
+}
+
 // Función global para activar/desactivar el botón 'Generar' según cantidad y disponibilidad
 function actualizarEstadoBotonGenerar() {
     const btnGenerar = document.getElementById('btnGenerarNumeros');
@@ -1533,46 +1584,53 @@ function actualizarEstadoBotonGenerar() {
     let val = parseInt(inputCantidad.value, 10);
     if (isNaN(val) || val < 1) {
         btnGenerar.disabled = true;
+        actualizarEstadoVisualBotonGenerar('empty');
         return;
     }
 
     const maximoPermitido = obtenerMaximoPermitidoMaquinaSuerte();
     if (val > maximoPermitido) {
         btnGenerar.disabled = true;
+        actualizarEstadoVisualBotonGenerar('limit', { maximo: maximoPermitido });
         return;
     }
-    
-    // 🚀 SIMPLE Y ESTABLE: rifaplusBoletosLoaded está ahora true por defecto
-    // Funciona incluso si el backend es lento o falla
+
+    const disponiblesConfirmados = obtenerDisponiblesGlobalesMaquina();
+    const tieneDisponibilidadConfirmada = Number.isFinite(disponiblesConfirmados);
     const loaded = !!window.rifaplusBoletosLoaded;
-    
-    // Si hay datos del servidor, usar conteo real
-    // Si no, asumir suficientes boletos disponibles
-    const totalBoletosFallback = typeof window.rifaplusConfig?.obtenerTotalBoletos === 'function'
-        ? window.rifaplusConfig.obtenerTotalBoletos()
-        : Number(window.rifaplusConfig?.rifa?.totalBoletos || 0);
-    const boletosDisponibles = (window.rifaplusConfig &&
-                               window.rifaplusConfig.estado &&
-                               window.rifaplusConfig.estado.boletosDisponibles !== undefined)
-                              ? window.rifaplusConfig.estado.boletosDisponibles
-                              : Math.max(0, totalBoletosFallback); // Fallback dinámico, no hardcodeado
-    
-    const hay_suficientes = boletosDisponibles >= val;
-    
-    // ⭐ SIMPLE: Si hay datos cargados y suficientes → HABILITAR
-    btnGenerar.disabled = !loaded || !hay_suficientes;
-    logCompraDebug(`[compra] Boton generar ${btnGenerar.disabled ? 'deshabilitado' : 'habilitado'} (cantidad=${val}, disponibles=${boletosDisponibles}, loaded=${loaded})`);
+
+    if (!tieneDisponibilidadConfirmada) {
+        btnGenerar.disabled = true;
+        actualizarEstadoVisualBotonGenerar('loading');
+        logCompraDebug(`[compra] Boton generar deshabilitado (cantidad=${val}, disponibles=pendiente, loaded=${loaded})`);
+        return;
+    }
+
+    const puedeGenerar = disponiblesConfirmados >= val;
+    btnGenerar.disabled = !puedeGenerar;
+
+    if (!puedeGenerar) {
+        actualizarEstadoVisualBotonGenerar('insufficient');
+    } else {
+        actualizarEstadoVisualBotonGenerar('idle');
+    }
+
+    logCompraDebug(`[compra] Boton generar ${btnGenerar.disabled ? 'deshabilitado' : 'habilitado'} (cantidad=${val}, disponibles=${tieneDisponibilidadConfirmada ? disponiblesConfirmados : 'desconocido'}, loaded=${loaded})`);
 }
 
 // Mostrar nota de disponibilidad bajo el botón Generar
 function actualizarNotaDisponibilidad() {
+    if (!maquinaSuerteDebeMostrarNotaDisponibilidad()) {
+        aplicarEstadoNotaDisponibilidad('', 'hidden');
+        return;
+    }
+
     const note = document.getElementById('availabilityNote');
     if (!note) return;
 
-    const disponiblesGlobales = Number(window.rifaplusConfig?.estado?.boletosDisponibles);
+    const disponiblesGlobales = obtenerDisponiblesGlobalesMaquina();
     if (Number.isFinite(disponiblesGlobales) && disponiblesGlobales >= 0) {
-        note.textContent = `${disponiblesGlobales} boletos disponibles`;
-        note.style.display = 'inline-block';
+        aplicarEstadoNotaDisponibilidad(`${disponiblesGlobales} boletos disponibles`, 'ready');
         return;
     }
     
@@ -1581,11 +1639,7 @@ function actualizarNotaDisponibilidad() {
         return;
     }
     
-    if (!window.rifaplusBoletosLoaded) {
-        note.textContent = 'Cargando disponibilidad...';
-        note.style.display = 'inline-block';
-        return;
-    }
+    aplicarEstadoNotaDisponibilidad('Estamos validando disponibilidad para la máquina...', 'loading');
 }
 
 async function generarNumerosAleatoriosMejorado() {
@@ -1617,7 +1671,7 @@ async function generarNumerosAleatoriosMejorado() {
     // Mostrar estado de carga
     if (btnGenerar) {
         btnGenerar.disabled = true;
-        btnGenerar.textContent = '⏳ Generando…';
+        actualizarEstadoVisualBotonGenerar('generating');
     }
     
     try {
@@ -1700,7 +1754,6 @@ async function generarNumerosAleatoriosMejorado() {
     } finally {
         // Restaurar botón
         if (btnGenerar) {
-            btnGenerar.textContent = 'GENERAR NÚMEROS';
             if (typeof actualizarEstadoBotonGenerar === 'function') {
                 actualizarEstadoBotonGenerar();
             }
