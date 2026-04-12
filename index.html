@@ -194,6 +194,7 @@
     <script defer src="js/main.js?v=20260408.2"></script>
     <script defer src="js/index-public.js?v=20260408.3"></script>
     <script defer src="js/calculo-precios.js?v=20251230.1"></script>
+    <script defer src="js/public-shell.js"></script>
 
     <script defer src="js/oportunidades-manager.js"></script>
     <script defer src="js/storage-manager-v2.js"></script>
@@ -224,7 +225,14 @@
         })();
     </script>
 </head>
-<body>
+<body class="rifaplus-shell-loading" aria-busy="true">
+    <div class="rifaplus-shell-overlay rifaplus-shell-overlay--logo-only" id="rifaplusPublicShell" role="status" aria-live="polite" aria-label="Cargando">
+        <div class="rifaplus-shell-card">
+            <div class="rifaplus-shell-logo-frame">
+                <img id="rifaplusShellLogo" class="rifaplus-shell-logo" src="images/placeholder-logo.svg" alt="Logo del organizador" width="112" height="112">
+            </div>
+        </div>
+    </div>
     <!-- HEADER CON MENÚ -->
     <header class="header">
         <div class="container">
@@ -239,9 +247,9 @@
             <a href="#top" class="logo" data-logo-src id="logoLink">
                 <div class="logo-circle">
                     <script>
-                        document.write('<img src="' + (window.__RIFAPLUS_CACHED_LOGO__ || "images/placeholder-logo.svg") + '" alt="Logo del organizador" class="logo-image dynamic-logo" data-dynamic-logo="true" fetchpriority="high" width="320" height="137">');
+                        document.write('<img src="' + (window.__RIFAPLUS_CACHED_LOGO__ || "images/placeholder-logo.svg") + '" alt="Logo del organizador" class="logo-image dynamic-logo" data-dynamic-logo="true" fetchpriority="high" loading="eager" decoding="sync" width="320" height="137">');
                     </script>
-                    <noscript><img src="images/placeholder-logo.svg" alt="Logo del organizador" class="logo-image dynamic-logo" data-dynamic-logo="true" fetchpriority="high" width="320" height="137"></noscript>
+                    <noscript><img src="images/placeholder-logo.svg" alt="Logo del organizador" class="logo-image dynamic-logo" data-dynamic-logo="true" fetchpriority="high" loading="eager" decoding="sync" width="320" height="137"></noscript>
                 </div>
             </a>
 

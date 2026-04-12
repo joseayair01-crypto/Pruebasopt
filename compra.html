@@ -209,6 +209,7 @@
     <script defer src="js/modal-orden-confirmada.js?v=20260406.1"></script>
     <script defer src="js/orden-formal.js?v=20260329.1"></script>
     <script defer src="js/modal-contacto.js?v=20260406.1"></script>
+    <script defer src="js/public-shell.js"></script>
     <script defer>
         (function cargarAnimadorBotonFlotanteEnSegundoPlano() {
             function loadAnimator() {
@@ -232,7 +233,14 @@
 
     <script defer src="js/modal-conflicto-boletos.js?v=20260219"></script>
 </head>
-<body id="compra-page" data-rifaplus-socket="true" data-rifaplus-live-state="true" data-rifaplus-warm-range="true">
+<body id="compra-page" class="rifaplus-shell-loading" data-rifaplus-socket="true" data-rifaplus-live-state="true" data-rifaplus-warm-range="true" aria-busy="true">
+    <div class="rifaplus-shell-overlay rifaplus-shell-overlay--logo-only" id="rifaplusPublicShell" role="status" aria-live="polite" aria-label="Cargando">
+        <div class="rifaplus-shell-card">
+            <div class="rifaplus-shell-logo-frame">
+                <img id="rifaplusShellLogo" class="rifaplus-shell-logo" src="images/placeholder-logo.svg" alt="Logo del organizador" width="112" height="112">
+            </div>
+        </div>
+    </div>
     <!-- HEADER CON MENÚ -->
     <header class="header">
         <div class="container">
@@ -247,9 +255,9 @@
             <a href="index.html#top" class="logo" data-logo-src id="logoLink">
                 <div class="logo-circle">
                     <script>
-                        document.write('<img src="' + (window.__RIFAPLUS_CACHED_LOGO__ || "data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 240 96\\'%3E%3Crect width=\\'240\\' height=\\'96\\' rx=\\'20\\' fill=\\'%230b2235\\'/%3E%3Ctext x=\\'120\\' y=\\'58\\' font-size=\\'28\\' text-anchor=\\'middle\\' fill=\\'%23ffffff\\' font-family=\\'Arial,sans-serif\\'%3ESorteo%3C/text%3E%3C/svg%3E") + '" alt="Logo del organizador" class="logo-image dynamic-logo" data-dynamic-logo="true" width="320" height="137" decoding="async">');
+                        document.write('<img src="' + (window.__RIFAPLUS_CACHED_LOGO__ || "data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 240 96\\'%3E%3Crect width=\\'240\\' height=\\'96\\' rx=\\'20\\' fill=\\'%230b2235\\'/%3E%3Ctext x=\\'120\\' y=\\'58\\' font-size=\\'28\\' text-anchor=\\'middle\\' fill=\\'%23ffffff\\' font-family=\\'Arial,sans-serif\\'%3ESorteo%3C/text%3E%3C/svg%3E") + '" alt="Logo del organizador" class="logo-image dynamic-logo" data-dynamic-logo="true" fetchpriority="high" loading="eager" decoding="sync" width="320" height="137">');
                     </script>
-                    <noscript><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='28' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ESorteo%3C/text%3E%3C/svg%3E" alt="Logo del organizador" class="logo-image dynamic-logo" data-dynamic-logo="true" width="320" height="137" decoding="async"></noscript>
+                    <noscript><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='28' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ESorteo%3C/text%3E%3C/svg%3E" alt="Logo del organizador" class="logo-image dynamic-logo" data-dynamic-logo="true" fetchpriority="high" loading="eager" decoding="sync" width="320" height="137"></noscript>
                 </div>
             </a>
 
@@ -308,12 +316,12 @@
     <!-- SECCIÓN PRINCIPAL DE COMPRA: precio, promociones, máquina y selección -->
     <section class="compra-pricing-section">
         <div class="container">
-            <div class="precio-card-main" id="precioCardCompra">
+            <div class="precio-card-main loading" id="precioCardCompra" aria-busy="true">
                 <!-- PRECIO NORMAL (cuando no hay promoción) -->
                 <div id="precioNormalCompra" class="precio-normal-mode">
                     <p class="precio-kicker">Precio por boleto</p>
                     <h3>Compra individual</h3>
-                    <div class="precio-big"><span id="precioDinamico"><script>document.write((function(){const precio=Number(window.__RIFAPLUS_COMPRA_PRICE_SNAPSHOT__?.precioVisible);return Number.isFinite(precio)&&precio>0?`$${precio.toFixed(2)}`:'$0.00';})());</script></span></div>
+                    <div class="precio-big"><span id="precioDinamico"><script>document.write((function(){const precio=Number(window.__RIFAPLUS_COMPRA_PRICE_SNAPSHOT__?.precioVisible);return Number.isFinite(precio)&&precio>0?`$${precio.toFixed(2)}`:'';})());</script></span></div>
                     <p class="precio-caption">Tu entrada directa al sorteo</p>
                 </div>
                 

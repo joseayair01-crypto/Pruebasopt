@@ -578,6 +578,7 @@
     }
 
     function actualizarCardPrecio(rifa) {
+        const precioCardCompra = document.getElementById('precioCardCompra');
         const precioDinamico = document.getElementById('precioDinamico');
         const precioNormalCompra = document.getElementById('precioNormalCompra');
         const precioOfertaCompra = document.getElementById('precioOfertaCompra');
@@ -593,6 +594,10 @@
 
         const promo = resolverPromocionActiva(rifa);
         precioDinamico.textContent = formatearMoneda(promo.precioFinal);
+        if (precioCardCompra) {
+            precioCardCompra.classList.remove('loading');
+            precioCardCompra.setAttribute('aria-busy', 'false');
+        }
 
         if (!promo.activa) {
             if (precioNormalCompra) precioNormalCompra.style.display = 'flex';
