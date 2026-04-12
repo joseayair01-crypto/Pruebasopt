@@ -2499,7 +2499,7 @@
 
                         <div class="form-group-single" style="margin: 0;">
                             <label class="form-label" for="maquina-suerte-limite">Máximo de boletos por intento</label>
-                            <input type="number" class="form-input" id="maquina-suerte-limite" min="1" step="1" placeholder="500" data-number-guard="strict" data-number-mode="integer" inputmode="numeric" autocomplete="off">
+                            <input type="number" class="form-input" id="maquina-suerte-limite" min="1" max="5000" step="1" placeholder="500" data-number-guard="strict" data-number-mode="integer" inputmode="numeric" autocomplete="off">
                             <div class="form-helper" id="maquina-suerte-limite-help">La máquina podrá generar hasta 500 boletos por intento.</div>
                         </div>
                     </div>
@@ -13997,6 +13997,8 @@
         let bonosCompraTemporal = [];
         let bonosCompraHabilitado = false;
         let maquinaSuerteLimiteTemporal = 500;
+        const MAQUINA_SUERTE_LIMITE_MAXIMO = 5000;
+        const MAQUINA_SUERTE_TAMANO_BLOQUE = 1000;
 
         function obtenerMostrarNotaDisponibilidadMaquinaSuerte(valor, fallback = true) {
             if (typeof valor === 'boolean') return valor;
@@ -14022,7 +14024,7 @@
         function obtenerLimiteMaquinaSuerteNormalizado(valor, fallback = 500) {
             const numero = Number(valor);
             if (!Number.isFinite(numero) || numero < 1) return fallback;
-            return Math.floor(numero);
+            return Math.min(Math.floor(numero), MAQUINA_SUERTE_LIMITE_MAXIMO);
         }
 
         function actualizarAyudaLimiteMaquinaSuerte() {
@@ -14031,7 +14033,7 @@
             if (!input || !help) return;
 
             const limite = obtenerLimiteMaquinaSuerteNormalizado(input.value, maquinaSuerteLimiteTemporal || 500);
-            help.textContent = `La máquina podrá generar hasta ${limite} boletos por intento.`;
+            help.textContent = `La máquina podrá generar hasta ${limite} boletos por intento. El máximo permitido por el sistema es ${MAQUINA_SUERTE_LIMITE_MAXIMO} y se procesa en bloques internos de ${MAQUINA_SUERTE_TAMANO_BLOQUE}.`;
         }
 
         function cargarLimiteMaquinaSuerte() {
