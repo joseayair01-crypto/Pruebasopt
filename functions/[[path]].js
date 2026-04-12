@@ -1,4 +1,5 @@
 const HTML_CONTENT_TYPE_REGEX = /text\/html/i;
+const DEFAULT_PRODUCTION_API_BASE = 'https://sadev-production.up.railway.app';
 
 function escapeHtmlAttr(value) {
     return String(value || '')
@@ -86,12 +87,28 @@ function injectMetadata(html, metadata) {
     return out;
 }
 
-function resolveApiBase(env, html) {
+function inferApiBaseFromRequest(requestUrl) {
+    try {
+        const { hostname } = new URL(requestUrl);
+        if (!hostname) return '';
+        if (/^(localhost|127\.0\.0\.1)$/i.test(hostname)) {
+            return 'http://localhost:5001';
+        }
+        return DEFAULT_PRODUCTION_API_BASE;
+    } catch (error) {
+        return DEFAULT_PRODUCTION_API_BASE;
+    }
+}
+
+function resolveApiBase(env, html, requestUrl) {
     const fromEnv = String(env.RIFAPLUS_API_BASE || '').trim().replace(/\/+$/, '');
     if (fromEnv) return fromEnv;
 
     const match = html.match(/<meta\s+name=["']rifaplus-api-base["']\s+content=["']([^"']+)["']/i);
-    return match ? String(match[1] || '').trim().replace(/\/+$/, '') : '';
+    const fromHtml = match ? String(match[1] || '').trim().replace(/\/+$/, '') : '';
+    if (fromHtml) return fromHtml;
+
+    return inferApiBaseFromRequest(requestUrl);
 }
 
 async function fetchMetadata(apiBase, requestUrl, pathname) {
@@ -141,7 +158,7 @@ export async function onRequest(context) {
     }
 
     const html = await assetResponse.text();
-    const apiBase = resolveApiBase(env, html);
+    const apiBase = resolveApiBase(env, html, request.url);
 
     if (!apiBase) {
         return new Response(html, {
@@ -166,6 +183,7 @@ export async function onRequest(context) {
         const headers = new Headers(assetResponse.headers);
         headers.delete('content-length');
         headers.set('x-sadev-og-injected', 'true');
+        headers.set('x-sadev-og-api-base', apiBase);
 
         return new Response(injectedHtml, {
             status: assetResponse.status,
@@ -176,6 +194,7 @@ export async function onRequest(context) {
         const headers = new Headers(assetResponse.headers);
         headers.set('x-sadev-og-injected', 'fallback');
         headers.set('x-sadev-og-error', String(error.message || 'unknown'));
+        headers.set('x-sadev-og-api-base', apiBase);
 
         return new Response(html, {
             status: assetResponse.status,

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="rifaplus-api-base" content="">
+    <meta name="rifaplus-api-base" content="https://sadev-production.up.railway.app">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:* http://localhost:* http://localhost:5001; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://fonts.googleapis.com http://localhost:5001 http://127.0.0.1:5001; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' http://127.0.0.1:* http://localhost:* https: http://localhost:5001 http://127.0.0.1:5001 ws: wss: ws://localhost:5001 wss://localhost:5001 ws://127.0.0.1:5001 wss://127.0.0.1:5001; img-src 'self' data: https:;">
     <!-- METADATOS DINÁMICOS - Cloudflare Functions y js/meta-inyector los actualizan desde la configuración actual -->
     <title>Compra tus boletos</title>
@@ -18,6 +18,9 @@
     <meta name="twitter:title" content="Compra tus boletos" />
     <meta name="twitter:description" content="Selecciona tus boletos y participa en el sorteo activo." />
     <meta name="twitter:image" content="images/placeholder-cover.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="stylesheet" href="css/styles.css?v=20260410.6">
     <script src="js/image-delivery.js"></script>
     <script>
@@ -164,16 +167,42 @@
             document.write('<link rel="apple-touch-icon" href="' + (imageDelivery?.resolverUrlImagen(rawLogo, 'logoIcon') || rawLogo) + '">');
         })();
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="css/modal-contacto.css">
-    <link rel="stylesheet" href="css/orden-formal.css">
-    <link rel="stylesheet" href="css/modal-orden-confirmada.css">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" as="style">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" media="print" data-deferred-style="true">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"></noscript>
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" data-deferred-style="true">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
+    <link rel="preload" href="css/modal-contacto.css" as="style">
+    <link rel="stylesheet" href="css/modal-contacto.css" media="print" data-deferred-style="true">
+    <noscript><link rel="stylesheet" href="css/modal-contacto.css"></noscript>
+    <link rel="preload" href="css/orden-formal.css" as="style">
+    <link rel="stylesheet" href="css/orden-formal.css" media="print" data-deferred-style="true">
+    <noscript><link rel="stylesheet" href="css/orden-formal.css"></noscript>
+    <link rel="preload" href="css/modal-orden-confirmada.css" as="style">
+    <link rel="stylesheet" href="css/modal-orden-confirmada.css" media="print" data-deferred-style="true">
+    <noscript><link rel="stylesheet" href="css/modal-orden-confirmada.css"></noscript>
+    <script>
+        (function activarEstilosDiferidos() {
+            const estilos = document.querySelectorAll('link[data-deferred-style="true"]');
+            estilos.forEach((link) => {
+                const activar = () => {
+                    link.media = 'all';
+                };
+
+                if (link.addEventListener) {
+                    link.addEventListener('load', activar, { once: true });
+                }
+
+                setTimeout(activar, 2500);
+            });
+        })();
+    </script>
     <!-- ✅ PRIMERO: Core config (se ejecuta ANTES que todo) -->
-    <script src="js/deploy-config.js"></script>
-    <script src="js/config.js?v=20260410.1"></script>
-    <script src="js/config-sync.js"></script>
-    <script src="js/meta-inyector.js"></script>
+    <script defer src="js/deploy-config.js"></script>
+    <script defer src="js/config.js?v=20260410.1"></script>
+    <script defer src="js/config-sync.js"></script>
+    <script defer src="js/meta-inyector.js"></script>
     <script>
         // Limpieza de caché de localStorage - elimina datos obsoletos
         (function() {
@@ -195,9 +224,9 @@
             });
         })();
     </script>
-    <script src="js/theme-dynamic.js?v=20260410.1"></script>
-    <script src="js/modal-scroll-lock.js"></script>
-    <script src="js/modal-sorteo-finalizado.js?v=20260408.1"></script>
+    <script defer src="js/theme-dynamic.js?v=20260410.1"></script>
+    <script defer src="js/modal-scroll-lock.js"></script>
+    <script defer src="js/modal-sorteo-finalizado.js?v=20260408.1"></script>
     <!-- ✅ CRÍTICO: storage-manager + carrito (debe estar antes que compra.js) -->
     <script defer src="js/storage-manager-v2.js"></script>
     <script defer src="js/main.js?v=20260408.2"></script>

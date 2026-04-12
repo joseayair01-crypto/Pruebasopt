@@ -2650,6 +2650,111 @@ function configurarBuscadorBoletos() {
         return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
+    function esperarSiguientePintado() {
+        return new Promise((resolve) => {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(resolve);
+            });
+        });
+    }
+
+    function elementoEstaVisibleEnViewport(elemento, opciones = {}) {
+        if (!elemento || typeof elemento.getBoundingClientRect !== 'function') {
+            return false;
+        }
+
+        const {
+            topOffset = 140,
+            bottomOffset = 96
+        } = opciones;
+        const rect = elemento.getBoundingClientRect();
+        const viewportTop = topOffset;
+        const viewportBottom = window.innerHeight - bottomOffset;
+
+        return rect.top >= viewportTop && rect.bottom <= viewportBottom;
+    }
+
+    function scrollCompraSiHaceFalta(target, offset = -120, opciones = {}) {
+        const elemento = typeof target === 'string'
+            ? document.querySelector(target) || document.getElementById(target)
+            : target;
+
+        if (!elemento) {
+            return false;
+        }
+
+        if (!opciones.forzar && elementoEstaVisibleEnViewport(elemento, opciones)) {
+            return false;
+        }
+
+        return scrollSuaveCompraA(elemento, offset);
+    }
+
+    function obtenerPrimerResultadoBusquedaSimple() {
+        if (!resultadosDiv) {
+            return null;
+        }
+
+        return resultadosDiv.querySelector('.resultado-item, .resultados-vacio');
+    }
+
+    async function enfocarResultadoBusquedaSimple(numero) {
+        await esperarSiguientePintado();
+
+        const resultadoItem = obtenerPrimerResultadoBusquedaSimple();
+        if (resultadoItem) {
+            const rect = resultadoItem.getBoundingClientRect();
+            const centroViewport = window.innerHeight / 2;
+            const centroResultado = rect.top + (rect.height / 2);
+            const distanciaAlCentro = Math.abs(centroResultado - centroViewport);
+
+            if (distanciaAlCentro > 56) {
+                const topObjetivo = window.pageYOffset + rect.top - Math.max(0, centroViewport - (rect.height / 2));
+                window.scrollTo({
+                    top: Math.max(0, topObjetivo),
+                    behavior: 'smooth'
+                });
+            }
+            return;
+        }
+
+        const botonEnGrid = obtenerBotonNumeroEnGrid(numero);
+        if (botonEnGrid) {
+            if (!elementoEstaVisibleEnViewport(botonEnGrid, {
+                topOffset: 140,
+                bottomOffset: 140
+            })) {
+                botonEnGrid.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                    inline: 'nearest'
+                });
+            }
+
+            enfatizarNumeroSeleccionado(botonEnGrid);
+            return;
+        }
+
+        scrollCompraSiHaceFalta('.busqueda-boletos-card', -110);
+    }
+
+    async function enfocarResultadosBusquedaGrid() {
+        await esperarSiguientePintado();
+
+        if (boletosContainer && boletosContainer.scrollTop > 0) {
+            boletosContainer.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+
+        const objetivo = busquedaGridToolbar?.classList.contains('is-visible')
+            ? busquedaGridToolbar
+            : numerosGrid;
+
+        scrollCompraSiHaceFalta(objetivo, -110);
+    }
+
     function obtenerConfiguracionBusquedaBoletos() {
         return window.rifaplusConfig?.rifa?.busquedaBoletos || {};
     }
@@ -3363,6 +3468,7 @@ function configurarBuscadorBoletos() {
         const valorFin = normalizarValorNumericoEntrada(inputBusquedaFin?.value?.trim() || '');
         const soloDisponibles = checkboxFiltroDisponibles?.checked === true;
         const requestId = estadoBusqueda.requestId + 1;
+        const esBusquedaSimple = !busquedaAvanzadaHabilitada() || modo === 'exacto';
 
         if (!valor) {
             mostrarFeedbackBusqueda('Ingresa un valor para realizar la búsqueda.', 'info');
@@ -3455,6 +3561,17 @@ function configurarBuscadorBoletos() {
             });
             asegurarBusquedaVigente(requestId);
 
+            if (!esBusquedaSimple) {
+                await enfocarResultadosBusquedaGrid();
+            } else {
+                const numeroExacto = parseInt(valor, 10);
+                if (Array.isArray(data.items) && data.items.length > 0 && Number.isInteger(numeroExacto)) {
+                    await enfocarResultadoBusquedaSimple(numeroExacto);
+                } else {
+                    scrollCompraSiHaceFalta(resultadosDiv || '.busqueda-boletos-card', -110);
+                }
+            }
+
             if (modo !== 'exacto') {
                 if (data.truncado) {
                     mostrarFeedbackBusqueda(`Mostrando los primeros ${data.items.length.toLocaleString()} resultados. Ajusta el filtro para afinar la búsqueda.`, 'info');
@@ -3479,6 +3596,11 @@ function configurarBuscadorBoletos() {
                         modo,
                         availableOnly: soloDisponibles
                     });
+                    if (Array.isArray(dataFallback.items) && dataFallback.items.length > 0 && Number.isInteger(numero)) {
+                        await enfocarResultadoBusquedaSimple(numero);
+                    } else {
+                        scrollCompraSiHaceFalta(resultadosDiv || '.busqueda-boletos-card', -110);
+                    }
                     mostrarFeedbackBusqueda('La búsqueda exacta siguió funcionando con compatibilidad temporal. Reinicia el backend para habilitar la búsqueda avanzada completa.', 'info');
                     return;
                 } catch (fallbackError) {

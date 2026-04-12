@@ -42,6 +42,38 @@
             quality: 'auto:good',
             format: 'auto',
             dpr: 'auto'
+        }),
+        hero: Object.freeze({
+            width: 1280,
+            height: 720,
+            crop: 'limit',
+            quality: 'auto:best',
+            format: 'auto',
+            dpr: 'auto'
+        }),
+        cover: Object.freeze({
+            width: 1200,
+            height: 675,
+            crop: 'limit',
+            quality: 'auto:good',
+            format: 'auto',
+            dpr: 'auto'
+        }),
+        content: Object.freeze({
+            width: 960,
+            height: 960,
+            crop: 'limit',
+            quality: 'auto:good',
+            format: 'auto',
+            dpr: 'auto'
+        }),
+        thumbnail: Object.freeze({
+            width: 480,
+            height: 480,
+            crop: 'limit',
+            quality: 'auto:good',
+            format: 'auto',
+            dpr: 'auto'
         })
     });
 
@@ -189,15 +221,183 @@
         return optimizedUrl || originalUrl;
     }
 
+    function obtenerProfileDesdeImagen(img) {
+        if (!img || typeof img !== 'object') {
+            return 'content';
+        }
+
+        const datasetProfile = String(img.dataset?.rifaplusImageProfile || '').trim();
+        if (datasetProfile && IMAGE_PROFILES[datasetProfile]) {
+            return datasetProfile;
+        }
+
+        if (img.matches?.('.dynamic-logo, .logo-image, .footer-logo-img, .carrito-logo, .rifaplus-shell-logo')) {
+            return 'logo';
+        }
+
+        if (img.matches?.('.orden-imagen-dinamica, [data-imagen-tipo=\"cliente.imagenPrincipal\"], .sorteo-cover, .hero-image')) {
+            return 'cover';
+        }
+
+        if (img.closest?.('.carrusel, .carrusel-item, .galeria, .galeria-slide')) {
+            return img.fetchPriority === 'high' || img.loading === 'eager' ? 'carouselPreload' : 'carousel';
+        }
+
+        if (img.fetchPriority === 'high' || img.loading === 'eager') {
+            return 'hero';
+        }
+
+        return 'content';
+    }
+
+    function obtenerWidthsDesdeImagen(img, profile) {
+        if (!img || typeof img !== 'object') {
+            return [];
+        }
+
+        if (Array.isArray(img.dataset?.rifaplusWidths) && img.dataset.rifaplusWidths.length > 0) {
+            return img.dataset.rifaplusWidths;
+        }
+
+        const datasetWidths = String(img.dataset?.rifaplusWidths || '').trim();
+        if (datasetWidths) {
+            return datasetWidths
+                .split(',')
+                .map((value) => Number(value.trim()))
+                .filter((value) => Number.isFinite(value) && value > 0);
+        }
+
+        switch (profile) {
+        case 'logo':
+            return [160, 240, 320];
+        case 'logoIcon':
+            return [64, 128, 180];
+        case 'thumbnail':
+            return [240, 360, 480];
+        case 'cover':
+            return [480, 768, 960, 1200];
+        case 'hero':
+            return [480, 768, 1024, 1280];
+        case 'carousel':
+        case 'carouselPreload':
+            return [480, 768, 960, 1280, 1600];
+        default:
+            return [320, 480, 768, 960];
+        }
+    }
+
+    function obtenerSizesDesdeImagen(img, profile) {
+        const datasetSizes = String(img?.dataset?.rifaplusSizes || '').trim();
+        if (datasetSizes) {
+            return datasetSizes;
+        }
+
+        switch (profile) {
+        case 'logo':
+            return '(max-width: 768px) 160px, 320px';
+        case 'logoIcon':
+            return '180px';
+        case 'cover':
+        case 'hero':
+            return '(max-width: 768px) 100vw, min(92vw, 1200px)';
+        case 'carousel':
+        case 'carouselPreload':
+            return '(max-width: 768px) 100vw, min(92vw, 1200px)';
+        default:
+            return '(max-width: 768px) 100vw, 960px';
+        }
+    }
+
+    function autoOptimizarImagen(img) {
+        if (!img || img.dataset?.rifaplusOptimized === 'true') {
+            return '';
+        }
+
+        const originalUrl = String(img.dataset?.rifaplusOriginalSrc || img.getAttribute('src') || '').trim();
+        if (!esUrlCloudinary(originalUrl) || esArchivoVectorialOPdf(originalUrl)) {
+            return originalUrl;
+        }
+
+        const profile = obtenerProfileDesdeImagen(img);
+        const optimizedUrl = aplicarImagenOptimizada(img, {
+            originalUrl,
+            profile,
+            widths: obtenerWidthsDesdeImagen(img, profile),
+            sizes: obtenerSizesDesdeImagen(img, profile),
+            loading: img.getAttribute('loading') || undefined,
+            fetchPriority: img.getAttribute('fetchpriority') || img.fetchPriority || undefined,
+            decoding: img.getAttribute('decoding') || img.decoding || 'async'
+        });
+
+        if (img.dataset) {
+            img.dataset.rifaplusOptimized = 'true';
+        }
+
+        return optimizedUrl;
+    }
+
+    function autoOptimizarImagenes(root) {
+        if (!root || typeof root.querySelectorAll !== 'function') {
+            return 0;
+        }
+
+        const images = root.matches?.('img') ? [root] : Array.from(root.querySelectorAll('img'));
+        images.forEach(autoOptimizarImagen);
+        return images.length;
+    }
+
+    function observarNuevasImagenes() {
+        if (typeof MutationObserver === 'undefined' || !global.document?.body) {
+            return null;
+        }
+
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (!node || node.nodeType !== 1) {
+                        return;
+                    }
+
+                    autoOptimizarImagenes(node);
+                });
+            });
+        });
+
+        observer.observe(global.document.body, {
+            childList: true,
+            subtree: true
+        });
+
+        return observer;
+    }
+
     const api = {
         IMAGE_PROFILES,
         esUrlCloudinary,
         resolverUrlImagen,
         construirSrcset,
-        aplicarImagenOptimizada
+        aplicarImagenOptimizada,
+        autoOptimizarImagen,
+        autoOptimizarImagenes
     };
 
     global.RifaPlusImageDelivery = api;
+
+    if (typeof window !== 'undefined' && global.document) {
+        const inicializarAutoOptimizacion = function() {
+            autoOptimizarImagenes(global.document);
+
+            if (!global.__RIFAPLUS_IMAGE_OBSERVER__) {
+                global.__RIFAPLUS_IMAGE_OBSERVER__ = observarNuevasImagenes();
+            }
+        };
+
+        if (global.document.readyState === 'loading') {
+            global.document.addEventListener('DOMContentLoaded', inicializarAutoOptimizacion, { once: true });
+        } else {
+            inicializarAutoOptimizacion();
+        }
+    }
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;
