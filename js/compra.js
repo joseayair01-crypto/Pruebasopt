@@ -740,77 +740,43 @@ async function validarSeleccionOptimista(numero, boton, token) {
 async function generarNumerosVerificadosEnServidor(cantidad) {
     const endpoint = obtenerApiBaseCompra();
     const seleccionadosActuales = Array.from(selectedNumbersGlobal || []);
-    const numerosYaGenerados = document.getElementById('numerosSuerte')?.getAttribute('data-numeros');
-    const generadosPrevios = numerosYaGenerados
-        ? numerosYaGenerados.split(',').map((n) => parseInt(n, 10)).filter((n) => Number.isInteger(n))
-        : [];
-    const excludeNumbers = new Set([...seleccionadosActuales, ...generadosPrevios]);
-    const resultados = [];
-    let restante = cantidad;
-    let bloqueActual = 0;
-    const totalBloques = Math.ceil(cantidad / MAQUINA_SUERTE_TAMANO_BLOQUE);
+    const excludeNumbers = Array.from(new Set(seleccionadosActuales));
 
-    while (restante > 0) {
-        bloqueActual += 1;
-        const cantidadBloque = Math.min(restante, MAQUINA_SUERTE_TAMANO_BLOQUE);
+    const respuesta = await fetch(`${endpoint}/api/boletos/disponibles-aleatorios`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            cantidad,
+            excludeNumbers
+        })
+    });
 
-        if (typeof actualizarEstadoVisualBotonGenerar === 'function') {
-            actualizarEstadoVisualBotonGenerar('generating', {
-                customLabel: totalBloques > 1
-                    ? `⏳ GENERANDO ${bloqueActual}/${totalBloques}...`
-                    : '⏳ GENERANDO...'
-            });
-        }
+    if (!respuesta.ok) {
+        let mensajeError = `No se pudieron generar boletos aleatorios (${respuesta.status})`;
 
-        const respuesta = await fetch(`${endpoint}/api/boletos/disponibles-aleatorios`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                cantidad: cantidadBloque,
-                excludeNumbers: Array.from(excludeNumbers)
-            })
-        });
-
-        if (!respuesta.ok) {
-            let mensajeError = `No se pudieron generar boletos aleatorios (${respuesta.status})`;
-
-            try {
-                const errorJson = await respuesta.json();
-                if (errorJson?.message) {
-                    mensajeError = errorJson.message;
-                }
-            } catch (error) {
-                // Ignorar parseo fallido y usar mensaje por defecto
+        try {
+            const errorJson = await respuesta.json();
+            if (errorJson?.message) {
+                mensajeError = errorJson.message;
             }
-
-            throw new Error(mensajeError);
+        } catch (error) {
+            // Ignorar parseo fallido y usar mensaje por defecto
         }
 
-        const json = await respuesta.json();
-        if (!json?.success) {
-            throw new Error(json?.message || 'No se pudieron generar boletos aleatorios');
-        }
-
-        const boletos = Array.isArray(json.boletos) ? json.boletos : [];
-        const numerosBloque = boletos
-            .map((numero) => Number(numero))
-            .filter((numero) => Number.isInteger(numero) && !excludeNumbers.has(numero));
-
-        numerosBloque.forEach((numero) => {
-            excludeNumbers.add(numero);
-            resultados.push(numero);
-        });
-
-        if (numerosBloque.length < cantidadBloque) {
-            break;
-        }
-
-        restante -= cantidadBloque;
+        throw new Error(mensajeError);
     }
 
-    return resultados;
+    const json = await respuesta.json();
+    if (!json?.success) {
+        throw new Error(json?.message || 'No se pudieron generar boletos aleatorios');
+    }
+
+    const boletos = Array.isArray(json.boletos) ? json.boletos : [];
+    return boletos
+        .map((numero) => Number(numero))
+        .filter((numero) => Number.isInteger(numero) && !excludeNumbers.includes(numero));
 }
 
 async function cargarEstadoRangoVisibleEnBackground(endpoint, inicio, fin, opciones = {}) {
@@ -1508,7 +1474,6 @@ function obtenerUniversoMaquinaSuerteCompra() {
 }
 
 const MAQUINA_SUERTE_MAXIMA_SOLICITUD = 5000;
-const MAQUINA_SUERTE_TAMANO_BLOQUE = 1000;
 
 function obtenerLimiteConfiguradoMaquinaSuerte() {
     const limite = Number(window.rifaplusConfig?.rifa?.maquinaSuerte?.limiteBoletos);
@@ -1612,7 +1577,7 @@ function actualizarEstadoVisualBotonGenerar(estado, contexto = {}) {
         generating: '⏳ GENERANDO...'
     };
 
-    const label = contexto.customLabel || textos[estado] || textos.idle;
+    const label = textos[estado] || textos.idle;
     btnGenerar.textContent = label;
     btnGenerar.dataset.state = estado;
     btnGenerar.setAttribute('aria-busy', estado === 'loading' || estado === 'generating' ? 'true' : 'false');

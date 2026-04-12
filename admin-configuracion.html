@@ -13998,7 +13998,6 @@
         let bonosCompraHabilitado = false;
         let maquinaSuerteLimiteTemporal = 500;
         const MAQUINA_SUERTE_LIMITE_MAXIMO = 5000;
-        const MAQUINA_SUERTE_TAMANO_BLOQUE = 1000;
 
         function obtenerMostrarNotaDisponibilidadMaquinaSuerte(valor, fallback = true) {
             if (typeof valor === 'boolean') return valor;
@@ -14033,7 +14032,7 @@
             if (!input || !help) return;
 
             const limite = obtenerLimiteMaquinaSuerteNormalizado(input.value, maquinaSuerteLimiteTemporal || 500);
-            help.textContent = `La máquina podrá generar hasta ${limite} boletos por intento. El máximo permitido por el sistema es ${MAQUINA_SUERTE_LIMITE_MAXIMO} y se procesa en bloques internos de ${MAQUINA_SUERTE_TAMANO_BLOQUE}.`;
+            help.textContent = `La máquina podrá generar hasta ${limite} boletos por intento. El máximo permitido por el sistema es ${MAQUINA_SUERTE_LIMITE_MAXIMO}.`;
         }
 
         function cargarLimiteMaquinaSuerte() {

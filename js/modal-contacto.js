@@ -86,32 +86,37 @@ function removeItemSafeModal(key) {
  */
 function abrirModalContacto(opciones = {}) {
     const modal = document.getElementById('modalContacto');
-    if (modal) {
-        const aperturaInstantanea = !!opciones.instant;
+    if (!modal) {
+        return;
+    }
 
-        if (aperturaInstantanea) {
-            modal.classList.add('modal-overlay--instant');
-        } else {
-            modal.classList.remove('modal-overlay--instant');
-        }
+    const aperturaDesdeCarrito = !!opciones.instant;
+    const primerCampo = document.getElementById('clienteNombre');
 
-        modal.classList.add('show');
-        window.rifaplusModalScrollLock?.sync?.();
-        limpiarFormularioContacto();
-
+    if (modal.classList.contains('show') || modal.dataset.opening === 'true') {
         window.requestAnimationFrame(() => {
-            const primerCampo = document.getElementById('clienteNombre');
             if (primerCampo instanceof HTMLElement) {
                 primerCampo.focus({ preventScroll: true });
             }
-
-            if (aperturaInstantanea) {
-                window.setTimeout(() => {
-                    modal.classList.remove('modal-overlay--instant');
-                }, 120);
-            }
         });
+        return;
     }
+
+    modal.dataset.opening = 'true';
+    modal.classList.toggle('modal-overlay--handoff', aperturaDesdeCarrito);
+    limpiarFormularioContacto();
+    modal.classList.add('show');
+    window.rifaplusModalScrollLock?.sync?.();
+
+    window.requestAnimationFrame(() => {
+        if (primerCampo instanceof HTMLElement) {
+            primerCampo.focus({ preventScroll: true });
+        }
+
+        window.setTimeout(() => {
+            delete modal.dataset.opening;
+        }, aperturaDesdeCarrito ? 200 : 320);
+    });
 }
 
 /**
@@ -121,7 +126,9 @@ function abrirModalContacto(opciones = {}) {
 function cerrarModalContacto() {
     const modal = document.getElementById('modalContacto');
     if (modal) {
+        delete modal.dataset.opening;
         modal.classList.remove('show');
+        modal.classList.remove('modal-overlay--handoff');
         window.rifaplusModalScrollLock?.sync?.();
     }
 }

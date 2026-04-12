@@ -21,14 +21,6 @@
     animation: fadeIn var(--transition-normal);
 }
 
-.modal-overlay.modal-overlay--instant {
-    animation: none;
-}
-
-.modal-overlay.modal-overlay--instant .modal-contacto {
-    animation: none;
-}
-
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -55,9 +47,12 @@
     -webkit-overflow-scrolling: touch;
 }
 
-.modal-overlay.modal-overlay--instant .modal-contacto {
-    opacity: 1;
-    transform: translateY(0);
+.modal-overlay.modal-overlay--handoff.show {
+    animation: fadeIn 0.16s ease-out;
+}
+
+.modal-overlay.modal-overlay--handoff.show .modal-contacto {
+    animation: slideUpHandoff 0.18s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes slideUp {
@@ -68,6 +63,17 @@
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+@keyframes slideUpHandoff {
+    from {
+        opacity: 0.92;
+        transform: translateY(16px) scale(0.985);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
     }
 }
 

@@ -75,6 +75,19 @@ function obtenerAccountIdSeguroFlujo(cuenta, idx) {
     );
 }
 
+function liberarTransicionModalCuentas(modal) {
+    if (!modal) {
+        return;
+    }
+
+    delete modal.dataset.transitioning;
+    modal.classList.remove('modal-seleccion-cuenta--busy');
+
+    modal.querySelectorAll('input[type="radio"][name="cuentaPago"]').forEach((radio) => {
+        radio.disabled = false;
+    });
+}
+
 function prepararModalSeleccionCuenta(modal, transferenciasContainer, efectivoContainer) {
     transferenciasContainer.innerHTML = '<p class="payment-empty-state">Cargando cuentas de transferencia...</p>';
     efectivoContainer.innerHTML = '<p class="payment-empty-state">Cargando opciones de pago...</p>';
@@ -340,9 +353,17 @@ function iniciarFlujoPago() {
         });
     };
     
-    // Abrir modal de contacto
+    // Abrir modal de contacto con un traspaso limpio si viene del carrito.
     if (typeof abrirModalContacto === 'function') {
-        abrirModalContacto({ instant: carritoEstabaAbierto });
+        const abrirContacto = () => abrirModalContacto({ instant: carritoEstabaAbierto });
+
+        if (carritoEstabaAbierto) {
+            window.requestAnimationFrame(() => {
+                abrirContacto();
+            });
+        } else {
+            abrirContacto();
+        }
     }
 
     precargarCuentasDisponiblesFlujo();
@@ -371,6 +392,7 @@ async function abrirModalSeleccionCuenta() {
         return;
     }
 
+    liberarTransicionModalCuentas(modal);
     prepararModalSeleccionCuenta(modal, transferenciasContainer, efectivoContainer);
 
     const cuentasLocales = obtenerCuentasLocalesFlujo();
@@ -393,6 +415,10 @@ async function abrirModalSeleccionCuenta() {
     
     radios.forEach(radio => {
         radio.addEventListener('change', function() {
+            if (modal.dataset.transitioning === 'true') {
+                return;
+            }
+
             const accountId = String(this.value);
             const cuentaSeleccionada = cuentas.find((cuenta, idx) =>
                 obtenerAccountIdSeguroFlujo(cuenta, idx) === accountId
@@ -402,14 +428,25 @@ async function abrirModalSeleccionCuenta() {
                 console.error('[AbrirModal] ❌ Cuenta no encontrada para id:', accountId);
                 return;
             }
-            
-            // Cerrar selector
+
+            modal.dataset.transitioning = 'true';
+            modal.classList.add('modal-seleccion-cuenta--busy');
+            radios.forEach((item) => {
+                item.disabled = true;
+            });
+
             cerrarModalSeleccionCuenta();
-            
-            // Paso 3: Generar y mostrar orden formal
-            setTimeout(async () => {
-                await mostrarOrdenFormal(cuentaSeleccionada);
-            }, 300);
+
+            // Paso 3: Generar y mostrar orden formal con traspaso rápido y estable.
+            window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(async () => {
+                    try {
+                        await mostrarOrdenFormal(cuentaSeleccionada, { handoff: true });
+                    } finally {
+                        liberarTransicionModalCuentas(modal);
+                    }
+                });
+            });
         });
     });
     
@@ -440,7 +477,7 @@ function cerrarModalSeleccionCuenta() {
  * @param {Object} cuenta - Objeto con datos de la cuenta bancaria
  * @returns {Promise<void>}
  */
-async function mostrarOrdenFormal(cuenta) {
+async function mostrarOrdenFormal(cuenta, opciones = {}) {
     if (!clienteCheckout) {
         console.error('No hay datos de cliente');
         return;
@@ -522,14 +559,14 @@ async function mostrarOrdenFormal(cuenta) {
     // Usar función de orden-formal.js si está disponible
     if (typeof window.abrirOrdenFormal === 'function') {
         try {
-            window.abrirOrdenFormal(cuenta);
+            window.abrirOrdenFormal(cuenta, opciones);
         } catch (e) {
             console.error('Error al abrir orden formal:', e);
-            mostrarOrdenFormalManual(orden);
+            mostrarOrdenFormalManual(orden, opciones);
         }
     } else {
         console.warn('abrirOrdenFormal no disponible, usando renderizado manual');
-        mostrarOrdenFormalManual(orden);
+        mostrarOrdenFormalManual(orden, opciones);
     }
 }
 
@@ -542,7 +579,7 @@ async function mostrarOrdenFormal(cuenta) {
  * @param {Object} orden - Objeto con datos de la orden
  * @returns {void}
  */
-function mostrarOrdenFormalManual(orden) {
+function mostrarOrdenFormalManual(orden, opciones = {}) {
     const modal = document.getElementById('modalOrdenFormal');
     if (!modal) {
         alert('No hay modal de orden disponible');
@@ -608,6 +645,7 @@ function mostrarOrdenFormalManual(orden) {
     contenedor.innerHTML = html;
     
     // Mostrar modal
+    modal.classList.toggle('modal-orden-formal--handoff', !!opciones.handoff);
     modal.classList.add('show');
     window.rifaplusModalScrollLock?.sync?.();
 }

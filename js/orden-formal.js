@@ -281,7 +281,7 @@ function obtenerOrdenIdVisibleOrdenFormal(ordenId) {
  * @param {Object} cuenta - Objeto con datos de cuenta bancaria
  * @returns {void}
  */
-function abrirOrdenFormal(cuenta) {
+function abrirOrdenFormal(cuenta, opciones = {}) {
     // VALIDACIÓN 1: Verificar que rifaplusConfig existe
     if (!window.rifaplusConfig) {
         console.error('❌ rifaplusConfig no está inicializado');
@@ -368,6 +368,7 @@ function abrirOrdenFormal(cuenta) {
     // Mostrar modal
     const modal = document.getElementById('modalOrdenFormal');
     if (modal) {
+        modal.classList.toggle('modal-orden-formal--handoff', !!opciones.handoff);
         modal.classList.add('show');
         window.rifaplusModalScrollLock?.sync?.();
 
@@ -387,6 +388,7 @@ function cerrarOrdenFormal() {
     const modal = document.getElementById('modalOrdenFormal');
     if (modal) {
         modal.classList.remove('show');
+        modal.classList.remove('modal-orden-formal--handoff');
         window.rifaplusModalScrollLock?.sync?.();
     }
 }

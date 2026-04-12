@@ -2632,7 +2632,6 @@ app.delete('/api/admin/cloudinary-image', verificarToken, async (req, res) => {
  * - Transacciones atómicas (o-todo-o-nada)
  */
 const MAQUINA_SUERTE_LIMITE_MAXIMO = 5000;
-const MAQUINA_SUERTE_TAMANO_BLOQUE = 1000;
 
 app.patch('/api/admin/config', verificarToken, async (req, res) => {
     const configPath = path.join(__dirname, 'config.json');
@@ -7120,10 +7119,10 @@ app.post('/api/boletos/disponibles-aleatorios', async (req, res) => {
             });
         }
 
-        if (cantidad > MAQUINA_SUERTE_TAMANO_BLOQUE) {
+        if (cantidad > MAQUINA_SUERTE_LIMITE_MAXIMO) {
             return res.status(400).json({
                 success: false,
-                message: `No se pueden solicitar más de ${MAQUINA_SUERTE_TAMANO_BLOQUE} boletos aleatorios por bloque`
+                message: `No se pueden solicitar más de ${MAQUINA_SUERTE_LIMITE_MAXIMO} boletos aleatorios por intento`
             });
         }
 

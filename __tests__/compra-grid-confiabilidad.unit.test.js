@@ -42,6 +42,7 @@ describe('Confiabilidad del grid de compra', () => {
             },
             logCompraDebug: jest.fn(),
             encodeURIComponent,
+            obtenerClaveEstadoRango: (endpoint, inicio, fin) => `${String(endpoint || '').replace(/\/+$/, '')}::${inicio}-${fin}`,
             fetch: jest.fn().mockResolvedValue({
                 ok: true,
                 json: async () => ({
