@@ -10829,11 +10829,11 @@ body.modal-scroll-locked {
 
 /* ===== SHELL DE CARGA INICIAL PARA PÁGINAS PÚBLICAS ===== */
 
-body.rifaplus-shell-loading {
+body.rifaplus-shell-active {
     overflow: hidden;
 }
 
-body.rifaplus-shell-loading > :not(.rifaplus-shell-overlay) {
+body.rifaplus-shell-active > :not(.rifaplus-shell-overlay) {
     visibility: hidden;
 }
 
