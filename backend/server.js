@@ -1294,7 +1294,7 @@ function construirSeoPorRuta(config = {}, ruta = '/', baseUrl = '') {
 
     const definiciones = {
         inicio: {
-            title: tituloBase,
+            title: tituloCliente,
             description: descripcionBase
         },
         compra: {

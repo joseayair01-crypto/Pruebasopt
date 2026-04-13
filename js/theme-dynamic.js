@@ -577,11 +577,14 @@ function construirTemaNormalizado(temaRaw = {}) {
  * @param {Object} rifa - Datos de la rifa
  */
 function updatePageTitle(cliente, rifa) {
-    // Usar exactamente lo que está en `rifa.nombreSorteo` como título de la página
-    if (rifa && rifa.nombreSorteo) {
-        document.title = rifa.nombreSorteo;
-    } else if (cliente && cliente.nombre) {
-        document.title = cliente.nombre;
+    const tituloResuelto = typeof window.rifaplusResolverTituloPagina === 'function'
+        ? window.rifaplusResolverTituloPagina(window.rifaplusConfig || { cliente, rifa })
+        : (rifa && rifa.nombreSorteo)
+            ? rifa.nombreSorteo
+            : (cliente && cliente.nombre) || document.title;
+
+    if (tituloResuelto) {
+        document.title = tituloResuelto;
     }
 
     // Actualizar meta description usando la descripción del sorteo si existe

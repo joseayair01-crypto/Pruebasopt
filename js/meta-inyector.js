@@ -22,6 +22,82 @@
 (function InyectorMetadat() {
     'use strict';
 
+    function resolverAliasRutaSeo(ruta = '/') {
+        const rutaNormalizada = String(ruta || '/')
+            .split('?')[0]
+            .split('#')[0]
+            .replace(/\/index\.html$/i, '/')
+            .replace(/\/+$/, '') || '/';
+
+        const mapaAlias = {
+            '/': 'inicio',
+            '/compra': 'compra',
+            '/mis-boletos': 'mis-boletos',
+            '/ayuda': 'ayuda',
+            '/cuentas-pago': 'cuentas-pago',
+            '/admin-dashboard': 'admin-dashboard',
+            '/admin-configuracion': 'admin-configuracion',
+            '/admin-ordenes': 'admin-ordenes',
+            '/admin-boletos': 'admin-boletos'
+        };
+
+        return mapaAlias[rutaNormalizada] || rutaNormalizada.replace(/^\/+/, '') || 'inicio';
+    }
+
+    function obtenerSeoPaginaConfig(seo = {}, alias = '') {
+        if (!alias || !seo || typeof seo !== 'object') return {};
+        const paginas = seo.paginas || seo.pages || {};
+        const pagina = paginas[alias];
+        return pagina && typeof pagina === 'object' ? pagina : {};
+    }
+
+    function resolverTituloPaginaDesdeConfig(config, fallbackTitle = '') {
+        const seo = config?.seo || {};
+        const cliente = config?.cliente || {};
+        const rifa = config?.rifa || {};
+        const nombreSorteo = String(rifa.nombreSorteo || '').trim();
+        const nombreCliente = String(cliente.nombre || '').trim();
+        const aliasRuta = resolverAliasRutaSeo(window.location.pathname || '/');
+        const seoPagina = obtenerSeoPaginaConfig(seo, aliasRuta);
+        const tituloPagina =
+            seoPagina.title ||
+            seoPagina.titulo ||
+            seoPagina.metaTitle ||
+            '';
+        const tituloCliente = [nombreSorteo, nombreCliente].filter(Boolean).join(' | ');
+        const tituloBase = tituloCliente || nombreSorteo || nombreCliente || String(fallbackTitle || document.title || 'Sorteos').trim();
+
+        if (tituloPagina) {
+            return tituloPagina;
+        }
+
+        switch (aliasRuta) {
+            case 'compra':
+                return nombreSorteo
+                    ? `Compra tus boletos para ${nombreSorteo}${nombreCliente ? ` | ${nombreCliente}` : ''}`
+                    : `Compra tus boletos${nombreCliente ? ` | ${nombreCliente}` : ''}`;
+            case 'mis-boletos':
+                return `Consulta tus boletos${nombreCliente ? ` | ${nombreCliente}` : ''}`;
+            case 'ayuda':
+                return `Ayuda y preguntas frecuentes${nombreCliente ? ` | ${nombreCliente}` : ''}`;
+            case 'cuentas-pago':
+                return `Cuentas y medios de pago${nombreCliente ? ` | ${nombreCliente}` : ''}`;
+            case 'admin-dashboard':
+                return `Panel administrativo${nombreCliente ? ` | ${nombreCliente}` : ''}`;
+            case 'admin-configuracion':
+                return `Configuracion administrativa${nombreCliente ? ` | ${nombreCliente}` : ''}`;
+            case 'admin-ordenes':
+                return `Ordenes y comprobantes${nombreCliente ? ` | ${nombreCliente}` : ''}`;
+            case 'admin-boletos':
+                return `Control de boletos${nombreCliente ? ` | ${nombreCliente}` : ''}`;
+            case 'inicio':
+            default:
+                return tituloBase;
+        }
+    }
+
+    window.rifaplusResolverTituloPagina = resolverTituloPaginaDesdeConfig;
+
     function resolverBaseUrl(config) {
         const desdeConfig = config?.seo?.urlBase || config?.backend?.apiBase || window.location.origin;
         return String(desdeConfig || window.location.origin).replace(/\/api\/?$/, '').replace(/\/+$/, '');
@@ -52,13 +128,14 @@
         const og = seo.openGraph || {};
         const twitter = seo.twitter || {};
         const baseUrl = resolverBaseUrl(config);
-        const tituloDerivado = rifa.nombreSorteo
-            ? `${rifa.nombreSorteo}${cliente.nombre ? ` | ${cliente.nombre}` : ''}`
-            : (cliente.nombre || document.title || 'Sorteos');
+        const tituloDerivado = resolverTituloPaginaDesdeConfig(
+            config,
+            seo.title || seo.titulo || og.titulo || twitter.titulo || ''
+        );
         const descripcionDerivada = rifa.descripcion || (rifa.nombreSorteo
             ? `Participa en el sorteo de ${rifa.nombreSorteo}.`
             : (cliente.eslogan || 'Compra tus boletos en linea.'));
-        const title = seo.title || seo.titulo || og.titulo || twitter.titulo || tituloDerivado;
+        const title = tituloDerivado;
         const description = seo.description || seo.descripcion || og.descripcion || twitter.descripcion || descripcionDerivada;
         const imageRaw = seo.image || seo.imagen || og.imagen || twitter.imagen || cliente.imagenPrincipal || cliente.logo || cliente.logotipo || '/images/placeholder-cover.svg';
 
