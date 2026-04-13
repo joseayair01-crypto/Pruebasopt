@@ -14,9 +14,34 @@
             const rawLogo = localStorage.getItem('rifaplus_cached_logo') || 'images/placeholder-logo.svg';
             const cachedLogo = imageDelivery?.resolverUrlImagen(rawLogo, 'logoPreload') || rawLogo;
             window.__RIFAPLUS_CACHED_LOGO__ = imageDelivery?.resolverUrlImagen(rawLogo, 'logo') || rawLogo;
-            document.write('<link rel="preload" as="image" href="' + cachedLogo + '" fetchpriority="high">');
-            document.write('<link rel="icon" href="' + (imageDelivery?.resolverUrlImagen(rawLogo, 'logoIcon') || rawLogo) + '" sizes="32x32">');
-            document.write('<link rel="apple-touch-icon" href="' + (imageDelivery?.resolverUrlImagen(rawLogo, 'logoIcon') || rawLogo) + '">');
+            
+            // ⭐ Preload de imágenes - debe estar aquí dentro del scope para acceder a variables
+            if (document.readyState === 'loading') {
+                document.write('<link rel="preload" as="image" href="' + cachedLogo + '" fetchpriority="high">');
+                document.write('<link rel="icon" href="' + (imageDelivery?.resolverUrlImagen(rawLogo, 'logoIcon') || rawLogo) + '" sizes="32x32">');
+                document.write('<link rel="apple-touch-icon" href="' + (imageDelivery?.resolverUrlImagen(rawLogo, 'logoIcon') || rawLogo) + '">');
+            } else {
+                // Si el DOM ya se cargó, inyectar en head directamente
+                const head = document.head || document.documentElement;
+                
+                const preloadLogo = document.createElement('link');
+                preloadLogo.rel = 'preload';
+                preloadLogo.as = 'image';
+                preloadLogo.href = cachedLogo;
+                preloadLogo.setAttribute('fetchpriority', 'high');
+                head.appendChild(preloadLogo);
+
+                const iconLink = document.createElement('link');
+                iconLink.rel = 'icon';
+                iconLink.href = imageDelivery?.resolverUrlImagen(rawLogo, 'logoIcon') || rawLogo;
+                iconLink.sizes = '32x32';
+                head.appendChild(iconLink);
+
+                const appleTouchLink = document.createElement('link');
+                appleTouchLink.rel = 'apple-touch-icon';
+                appleTouchLink.href = imageDelivery?.resolverUrlImagen(rawLogo, 'logoIcon') || rawLogo;
+                head.appendChild(appleTouchLink);
+            }
         })();
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">

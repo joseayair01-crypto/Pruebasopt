@@ -69,10 +69,8 @@ var observerEstadoBoletosVisibles = null;
 var actualizacionEstadoGridFrameId = 0;
 var actualizacionEstadoGridVersion = 0;
 var loadingGridHideTimeoutId = 0;
-
-// ⚠️ FLAG DE SINCRONIZACIÓN: Indica si los datos de boletos (sold/reserved) están FRESCOS
-// Previene race conditions donde el Web Worker aún está procesando
-var window_rifaplusBoletosDatosActualizados = false;
+var loadingGridShowTimeoutId = 0;
+var loadingGridVisibleSince = 0;
 
 // Inicializar arrays de boletos vendidos/apartados (se llenan después desde API)
 if (!window.rifaplusSoldNumbers) window.rifaplusSoldNumbers = [];
@@ -194,6 +192,23 @@ function mostrarEstadoCargaGrid(activo) {
     const loadingEl = document.getElementById('loadingEstadoBoletos');
     const gridEl = document.getElementById('numerosGrid');
     const shellEl = document.getElementById('boletosGridShell');
+    const SHOW_DELAY_MS = 140;
+    const MIN_VISIBLE_MS = 220;
+
+    function aplicarEstadoVisible() {
+        if (!loadingEl) {
+            return;
+        }
+
+        if (loadingGridShowTimeoutId) {
+            clearTimeout(loadingGridShowTimeoutId);
+            loadingGridShowTimeoutId = 0;
+        }
+
+        loadingEl.hidden = false;
+        loadingEl.classList.add('is-visible');
+        loadingGridVisibleSince = Date.now();
+    }
 
     if (loadingEl) {
         if (loadingGridHideTimeoutId) {
@@ -202,14 +217,27 @@ function mostrarEstadoCargaGrid(activo) {
         }
 
         if (activo) {
-            loadingEl.hidden = false;
-            loadingEl.classList.add('is-visible');
+            if (!loadingEl.classList.contains('is-visible') && !loadingGridShowTimeoutId) {
+                loadingGridShowTimeoutId = setTimeout(() => {
+                    aplicarEstadoVisible();
+                }, SHOW_DELAY_MS);
+            } else if (loadingEl.classList.contains('is-visible')) {
+                loadingEl.hidden = false;
+            }
         } else {
+            if (loadingGridShowTimeoutId) {
+                clearTimeout(loadingGridShowTimeoutId);
+                loadingGridShowTimeoutId = 0;
+            }
+
+            const tiempoVisible = loadingGridVisibleSince ? (Date.now() - loadingGridVisibleSince) : MIN_VISIBLE_MS;
+            const esperaRestante = Math.max(0, MIN_VISIBLE_MS - tiempoVisible);
             loadingEl.classList.remove('is-visible');
             loadingGridHideTimeoutId = setTimeout(() => {
                 loadingEl.hidden = true;
+                loadingGridVisibleSince = 0;
                 loadingGridHideTimeoutId = 0;
-            }, 220);
+            }, esperaRestante);
         }
     }
 
@@ -1152,16 +1180,9 @@ async function cargarBoletosPublicos() {
         }
         
         // 🔄 STAGE 2: BACKGROUND - Cargar datos completos SIN BLOQUEAR
-        // Si es la primera carga, mostrar loading
+        // Si es la primera carga, mostrar loading con la rutina unificada.
         if (!window.rifaplusBoletosLoaded) {
-            const loadingEl = document.getElementById('loadingEstadoBoletos');
-            const gridEl = document.getElementById('numerosGrid');
-            if (loadingEl) loadingEl.style.display = 'flex';
-            if (gridEl) {
-                gridEl.style.opacity = '0.5';
-                gridEl.setAttribute('data-loading', 'true');
-                gridEl.style.pointerEvents = 'none';
-            }
+            mostrarEstadoCargaGrid(true);
             
             // ⭐ BLOQUEAR AGREGAR AL CARRITO DURANTE LA CARGA
             window.rifaplusBoletosLoading = true;
@@ -1215,15 +1236,8 @@ async function cargarDatosCompletosEnBackground(endpoint, rango = null, opciones
                 controlarEstadoBotonesLoQuiero();
             }
             
-            // ⭐ OCULTAR LOADING INDICATOR
-            const loadingEl = document.getElementById('loadingEstadoBoletos');
-            const gridEl = document.getElementById('numerosGrid');
-            if (loadingEl) loadingEl.style.display = 'none';
-            if (gridEl) {
-                gridEl.style.opacity = '1';
-                gridEl.removeAttribute('data-loading');
-                gridEl.style.pointerEvents = 'auto';
-            }
+            // ⭐ OCULTAR LOADING INDICATOR con la misma rutina usada por el grid
+            mostrarEstadoCargaGrid(false);
 
             const { sold, reserved } = obtenerEstadoLocalBoletos();
             logCompraDebug(`[compra] Estado de rango cargado: ${sold.length} vendidos, ${reserved.length} apartados`);

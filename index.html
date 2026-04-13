@@ -89,12 +89,46 @@
                     descripcion
                 };
             })();
-            document.write('<link rel="preload" as="image" href="' + cachedLogo + '" fetchpriority="high">');
-            if (primeraImagenGaleria) {
-                document.write('<link rel="preload" as="image" href="' + primeraImagenGaleria + '" fetchpriority="high">');
+
+            // ⭐ Preload de imágenes - debe estar aquí dentro del scope para acceder a variables
+            if (document.readyState === 'loading') {
+                document.write('<link rel="preload" as="image" href="' + cachedLogo + '" fetchpriority="high">');
+                if (primeraImagenGaleria) {
+                    document.write('<link rel="preload" as="image" href="' + primeraImagenGaleria + '" fetchpriority="high">');
+                }
+                document.write('<link rel="icon" href="' + (imageDelivery?.resolverUrlImagen(rawLogo, 'logoIcon') || rawLogo) + '" sizes="32x32">');
+                document.write('<link rel="apple-touch-icon" href="' + (imageDelivery?.resolverUrlImagen(rawLogo, 'logoIcon') || rawLogo) + '">');
+            } else {
+                // Si el DOM ya se cargó, inyectar en head directamente
+                const head = document.head || document.documentElement;
+                
+                const preloadLogo = document.createElement('link');
+                preloadLogo.rel = 'preload';
+                preloadLogo.as = 'image';
+                preloadLogo.href = cachedLogo;
+                preloadLogo.setAttribute('fetchpriority', 'high');
+                head.appendChild(preloadLogo);
+
+                if (primeraImagenGaleria) {
+                    const preloadGaleria = document.createElement('link');
+                    preloadGaleria.rel = 'preload';
+                    preloadGaleria.as = 'image';
+                    preloadGaleria.href = primeraImagenGaleria;
+                    preloadGaleria.setAttribute('fetchpriority', 'high');
+                    head.appendChild(preloadGaleria);
+                }
+
+                const iconLink = document.createElement('link');
+                iconLink.rel = 'icon';
+                iconLink.href = imageDelivery?.resolverUrlImagen(rawLogo, 'logoIcon') || rawLogo;
+                iconLink.sizes = '32x32';
+                head.appendChild(iconLink);
+
+                const appleTouchLink = document.createElement('link');
+                appleTouchLink.rel = 'apple-touch-icon';
+                appleTouchLink.href = imageDelivery?.resolverUrlImagen(rawLogo, 'logoIcon') || rawLogo;
+                head.appendChild(appleTouchLink);
             }
-            document.write('<link rel="icon" href="' + (imageDelivery?.resolverUrlImagen(rawLogo, 'logoIcon') || rawLogo) + '" sizes="32x32">');
-            document.write('<link rel="apple-touch-icon" href="' + (imageDelivery?.resolverUrlImagen(rawLogo, 'logoIcon') || rawLogo) + '">');
         })();
     </script>
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" as="style">
