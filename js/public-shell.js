@@ -6,6 +6,7 @@
     const POLL_INTERVAL_MS = 120;
     const LEAVE_ANIMATION_MS = 320;
     const PLACEHOLDER_LOGO = 'images/placeholder-logo.svg';
+    const LOGO_PLACEHOLDER_DATA_PREFIX = 'data:image/svg+xml';
 
     function cuandoDomEsteListo(callback) {
         if (document.readyState === 'loading') {
@@ -74,9 +75,40 @@
         return normalizarRutaLogo(resolverLogoShell());
     }
 
+    function logoObjetivoVieneDeCacheReal() {
+        const config = window.rifaplusConfig || {};
+        const logoPreferido = String(config?.cliente?.logo || config?.cliente?.logotipo || '').trim();
+        let logoCacheado = String(window.__RIFAPLUS_CACHED_LOGO__ || '').trim();
+
+        if (!logoCacheado) {
+            try {
+                logoCacheado = String(localStorage.getItem('rifaplus_cached_logo') || '').trim();
+            } catch (error) {
+                logoCacheado = '';
+            }
+        }
+
+        const logoObjetivo = resolverLogoObjetivo();
+        const tieneCacheReal = Boolean(logoCacheado)
+            && !logoCacheado.includes(PLACEHOLDER_LOGO)
+            && !logoCacheado.startsWith(LOGO_PLACEHOLDER_DATA_PREFIX);
+
+        if (!tieneCacheReal || !logoObjetivo) {
+            return false;
+        }
+
+        if (!logoPreferido) {
+            return normalizarRutaLogo(logoCacheado) === logoObjetivo;
+        }
+
+        return normalizarRutaLogo(logoCacheado) === logoObjetivo;
+    }
+
     function logoObjetivoEsReal() {
         const logoObjetivo = resolverLogoObjetivo();
-        return Boolean(logoObjetivo) && !logoObjetivo.includes(PLACEHOLDER_LOGO);
+        return Boolean(logoObjetivo)
+            && !logoObjetivo.includes(PLACEHOLDER_LOGO)
+            && !logoObjetivo.startsWith(LOGO_PLACEHOLDER_DATA_PREFIX);
     }
 
     function obtenerLogoCabecera() {
@@ -112,6 +144,19 @@
         body.removeAttribute('aria-busy');
     }
 
+    function actualizarEstadoLogoHeader(body) {
+        if (!body) return;
+
+        if (logoCabeceraListo()) {
+            body.classList.remove('rifaplus-logo-pending');
+            body.classList.add('rifaplus-logo-ready');
+            return;
+        }
+
+        body.classList.add('rifaplus-logo-pending');
+        body.classList.remove('rifaplus-logo-ready');
+    }
+
     cuandoDomEsteListo(() => {
         const body = document.body;
         const overlay = document.getElementById('rifaplusPublicShell');
@@ -132,7 +177,8 @@
             intervalId: 0,
             showId: 0,
             softFallbackId: 0,
-            forceCloseId: 0
+            forceCloseId: 0,
+            cacheLogoRealDisponible: logoObjetivoVieneDeCacheReal()
         };
 
         overlay.setAttribute('hidden', 'hidden');
@@ -223,9 +269,14 @@
             if (estado.cerrado) return true;
 
             actualizarLogoShell();
+            actualizarEstadoLogoHeader(body);
             const readiness = obtenerReadiness();
 
-            if (!estado.visible && readiness.structureReady && (readiness.configReady || readiness.logoReady) && readiness.elapsed < SHOW_DELAY_MS) {
+            const puedeOmitirOverlayTemprano = readiness.structureReady
+                && readiness.configReady
+                && (readiness.logoReady || estado.cacheLogoRealDisponible);
+
+            if (!estado.visible && puedeOmitirOverlayTemprano && readiness.elapsed < SHOW_DELAY_MS) {
                 estado.noMostrarOverlay = true;
             }
 
@@ -243,6 +294,7 @@
 
         const onConfigSync = () => {
             estado.configSincronizada = true;
+            estado.cacheLogoRealDisponible = logoObjetivoVieneDeCacheReal();
             evaluar();
         };
 
@@ -252,6 +304,7 @@
         };
 
         actualizarLogoShell();
+        actualizarEstadoLogoHeader(body);
 
         estado.showId = window.setTimeout(() => {
             evaluar();
@@ -281,6 +334,7 @@
             headerLogo.addEventListener('error', () => {
                 estado.permitirFallbackLogo = true;
                 headerLogo.setAttribute('src', PLACEHOLDER_LOGO);
+                actualizarEstadoLogoHeader(body);
                 evaluar();
             });
         }
@@ -291,6 +345,7 @@
             shellLogo.addEventListener('error', () => {
                 estado.permitirFallbackLogo = true;
                 shellLogo.setAttribute('src', PLACEHOLDER_LOGO);
+                actualizarEstadoLogoHeader(body);
                 evaluar();
             });
         }

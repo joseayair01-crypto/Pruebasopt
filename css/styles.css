@@ -319,6 +319,42 @@ body.mobile-menu-open {
     filter: drop-shadow(0 10px 20px rgba(var(--primary-rgb), 0.18));
 }
 
+body.rifaplus-logo-pending .logo-circle {
+    overflow: hidden;
+}
+
+body.rifaplus-logo-pending .logo-circle::before {
+    content: '';
+    position: absolute;
+    inset: 10px;
+    border-radius: 999px;
+    background:
+        linear-gradient(
+            110deg,
+            rgba(255, 255, 255, 0.06) 18%,
+            rgba(255, 255, 255, 0.18) 38%,
+            rgba(255, 255, 255, 0.06) 58%
+        ),
+        radial-gradient(circle at center, rgba(var(--secondary-rgb), 0.12), rgba(var(--primary-rgb), 0.08));
+    background-size: 220% 100%, 100% 100%;
+    animation: rifaplusLogoSkeleton 1.2s linear infinite;
+    z-index: 0;
+}
+
+body.rifaplus-logo-pending .logo-circle img.dynamic-logo,
+body.rifaplus-logo-pending .logo-circle img[data-dynamic-logo="true"] {
+    opacity: 0.08;
+    transform: scale(0.96);
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+
+body.rifaplus-logo-ready .logo-circle img.dynamic-logo,
+body.rifaplus-logo-ready .logo-circle img[data-dynamic-logo="true"] {
+    opacity: 1;
+    transform: scale(1);
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+
 @media (max-width: 1100px) {
     /* Cuando el menú empieza a tocar, logo se centra */
     .header {
@@ -10942,6 +10978,15 @@ body.rifaplus-shell-active > :not(.rifaplus-shell-overlay) {
     height: 100%;
     object-fit: contain;
     filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.18));
+}
+
+@keyframes rifaplusLogoSkeleton {
+    0% {
+        background-position: 200% 0, 0 0;
+    }
+    100% {
+        background-position: -20% 0, 0 0;
+    }
 }
 
 .rifaplus-shell-kicker {
