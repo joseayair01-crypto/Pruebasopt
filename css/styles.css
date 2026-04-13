@@ -5757,7 +5757,6 @@ body.modal-scroll-locked {
     width: 100%;
     overflow: hidden;
     overscroll-behavior: none;
-    touch-action: none;
 }
 
 .modal-header {

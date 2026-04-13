@@ -276,13 +276,13 @@
                                 required
                                 class="input-file"
                             >
-                            <div class="file-upload-content">
+                            <label class="file-upload-content" for="archivoComprobante" id="fileUploadTrigger" tabindex="0">
                                 <i class="fas fa-cloud-upload-alt file-upload-icon"></i>
                                 <p class="file-upload-text">
                                     <span class="file-upload-main">Arrastra tu comprobante aquí</span>
                                     <span class="file-upload-sub">o haz clic para seleccionar</span>
                                 </p>
-                            </div>
+                            </label>
                         </div>
                         
                         <small style="color: var(--text-light); display: block; margin-top: 0.75rem; text-align: center;">
@@ -1987,21 +1987,33 @@
 
         /* Input file personalizado */
         .input-file {
-            display: block;
-            width: 100%;
-            padding: 0.75rem;
-            border: 2px dashed var(--border-color);
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            transition: all var(--transition-fast);
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            border: 0;
+            opacity: 0;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            clip-path: inset(50%);
+            pointer-events: none;
         }
 
-        .input-file:hover {
+        .file-upload-content {
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            user-select: none;
+        }
+
+        .file-upload-content:hover {
             border-color: var(--primary);
             background: rgba(124, 58, 237, 0.05);
         }
 
-        .input-file:focus {
+        .input-file:focus + .file-upload-content,
+        .file-upload-content:focus {
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
@@ -4489,6 +4501,8 @@
                 // Drag & Drop
                 const fileUploadArea = document.getElementById('fileUploadArea');
                 if (fileUploadArea) {
+                    const fileUploadTrigger = document.getElementById('fileUploadTrigger');
+
                     // Prevenir comportamiento por defecto
                     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
                         fileUploadArea.addEventListener(eventName, preventDefaults, false);
@@ -4526,10 +4540,35 @@
                         }
                     }, false);
                     
-                    // Hacer clickeable toda el área
-                    fileUploadArea.addEventListener('click', () => {
+                    const abrirSelectorArchivo = () => {
+                        if (typeof archivoInput.showPicker === 'function') {
+                            archivoInput.showPicker();
+                            return;
+                        }
                         archivoInput.click();
-                    });
+                    };
+
+                    const manejarActivacionManual = (event) => {
+                        const origen = event.target;
+                        if (origen === archivoInput) {
+                            return;
+                        }
+
+                        if (event.type === 'keydown') {
+                            if (event.key !== 'Enter' && event.key !== ' ') {
+                                return;
+                            }
+                            event.preventDefault();
+                        }
+
+                        abrirSelectorArchivo();
+                    };
+
+                    if (fileUploadTrigger) {
+                        fileUploadTrigger.addEventListener('keydown', manejarActivacionManual);
+                    } else {
+                        fileUploadArea.addEventListener('keydown', manejarActivacionManual);
+                    }
                 }
             }
 
@@ -4597,7 +4636,7 @@
             // Abrir modal
             if (modal) {
                 modal.classList.add('show');
-                document.body.style.overflow = 'hidden';
+                window.rifaplusModalScrollLock?.sync?.();
             }
         };
 
@@ -4672,7 +4711,7 @@
             const modal = document.getElementById('modalComprobante');
             if (modal) {
                 modal.classList.remove('show');
-                document.body.style.overflow = 'auto';
+                window.rifaplusModalScrollLock?.sync?.();
             }
             limpiarEstadoSubidaComprobante();
         }
@@ -4762,7 +4801,7 @@
             if (modalConfirmacion) {
                 cerrarModalComprobante();
                 modalConfirmacion.classList.add('show');
-                document.body.style.overflow = 'hidden';
+                window.rifaplusModalScrollLock?.sync?.();
             }
         }
 
@@ -4862,7 +4901,7 @@
             const modal = document.getElementById('modalComprobanteConfirmado');
             if (modal) {
                 modal.classList.remove('show');
-                document.body.style.overflow = 'auto';
+                window.rifaplusModalScrollLock?.sync?.();
             }
 
             const ordenIdActual = String(appState.ordenActualComprobante?.id || '').trim();
