@@ -160,8 +160,52 @@
     "ayuda": {
       "preguntasFrecuentes": [
         {
-          "pregunta": "¿Cómo sé que mi pago fue confirmado?",
-          "respuesta": "Después de subir tu comprobante, el administrador lo revisará en máximo 24 horas.\n\nTu orden pasará a estado \"Confirmada\" en \"Mis Boletos\". No necesitas esperar notificación: verifica directamente en la web que tu comprobante fue validado."
+          "pregunta": "¿Cómo compro mis boletos?",
+          "respuesta": "Selecciona tus números manualmente o usa la máquina de la suerte, agrégalos al carrito, genera tu orden y sigue las instrucciones de pago que aparecen en pantalla."
+        },
+        {
+          "pregunta": "¿Puedo comprar desde mi celular?",
+          "respuesta": "Sí. La plataforma está diseñada para funcionar correctamente desde celular, tablet y computadora."
+        },
+        {
+          "pregunta": "¿Cómo sé si mi boleto sí quedó registrado?",
+          "respuesta": "Después de generar tu orden podrás ver el resumen de tu compra, tus boletos seleccionados y el estado de tu proceso.\n\nCuando tu pago sea validado, tus boletos quedarán confirmados dentro del sistema."
+        },
+        {
+          "pregunta": "¿Qué pasa si no quiero elegir números manualmente?",
+          "respuesta": "Puedes usar la máquina de la suerte para generar boletos aleatorios disponibles de forma rápida."
+        },
+        {
+          "pregunta": "¿Cómo envío mi comprobante de pago?",
+          "respuesta": "La plataforma te permite generar tu orden y subir tu comprobante directamente en el proceso de compra, sin depender completamente de atención manual por mensaje."
+        },
+        {
+          "pregunta": "¿Puedo apartar boletos?",
+          "respuesta": "Eso depende de la configuración activa del organizador.\n\nCuando esta función está habilitada, algunos boletos pueden mostrarse como apartados temporalmente."
+        },
+        {
+          "pregunta": "¿Qué pasa si un boleto ya no está disponible?",
+          "respuesta": "El sistema valida disponibilidad para evitar que selecciones boletos vendidos o apartados.\n\nSi un número ya no está disponible, se te notificará para que puedas elegir otro."
+        },
+        {
+          "pregunta": "¿Puedo ver el estado de mi orden después?",
+          "respuesta": "Sí. El sistema puede mostrar seguimiento de órdenes, estado de boletos y validación de compra según la configuración del sorteo."
+        },
+        {
+          "pregunta": "¿Hay promociones automáticas en la compra?",
+          "respuesta": "Sí. Cuando el sorteo tiene promociones activas, el sistema calcula automáticamente el precio o descuento correspondiente según la cantidad de boletos."
+        },
+        {
+          "pregunta": "¿Es seguro comprar aquí?",
+          "respuesta": "La plataforma está diseñada para dar claridad en el proceso de compra, mostrar los datos de pago de forma ordenada y registrar la información necesaria para el seguimiento de cada orden."
+        },
+        {
+          "pregunta": "¿Puedo participar aunque no sepa mucho de tecnología?",
+          "respuesta": "Sí. El proceso está pensado para ser simple, guiado y fácil de completar incluso desde celular."
+        },
+        {
+          "pregunta": "¿Qué ventajas tiene esta plataforma frente a hacer todo por WhatsApp?",
+          "respuesta": "Permite organizar mejor los boletos, órdenes, comprobantes y pagos en un solo lugar, reduciendo errores, mensajes perdidos y carga manual para el organizador."
         }
       ]
     },

@@ -30,9 +30,9 @@
             --primary: #7C3AED;
             --primary-dark: #5a2abf;
             --primary-light: #F3E9FF;
-            --ticket-card-public-primary: var(--primary);
-            --ticket-card-public-primary-dark: var(--primary-dark);
-            --ticket-card-public-primary-soft: rgba(124, 58, 237, 0.14);
+            --ticket-card-public-primary: #0b2238;
+            --ticket-card-public-primary-dark: #153e5c;
+            --ticket-card-public-primary-soft: rgba(11, 34, 56, 0.16);
             --success: #31A24C;
             --danger: #E4163A;
             --warning: #B4740C;
@@ -1986,44 +1986,138 @@
             }
         }
 
+        const TICKET_CARD_PUBLIC_THEME_STORAGE_KEY = 'rifaplus_admin_ticket_card_theme';
+        const TICKET_CARD_PUBLIC_THEME_DEFAULT = Object.freeze({
+            primary: '#0b2238',
+            primaryDark: '#153e5c',
+            soft: 'rgba(11, 34, 56, 0.16)'
+        });
+
+        function normalizarColorHexTicketCard(valor, fallback = '') {
+            const normalizador = typeof window.normalizarHexColorSeguro === 'function'
+                ? window.normalizarHexColorSeguro
+                : (input, localFallback = '') => {
+                    const limpio = String(input || '').trim();
+                    const match = limpio.match(/^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+                    if (!match) return localFallback;
+                    const hex = match[1];
+                    if (hex.length === 3) {
+                        return `#${hex.split('').map((char) => char + char).join('').toLowerCase()}`;
+                    }
+                    return `#${hex.toLowerCase()}`;
+                };
+
+            return normalizador(valor, fallback);
+        }
+
+        function calcularSoftTicketCard(primary) {
+            const rgb = typeof window.hexToRgbSeguro === 'function'
+                ? window.hexToRgbSeguro(primary)
+                : null;
+
+            if (rgb && Number.isFinite(rgb.r) && Number.isFinite(rgb.g) && Number.isFinite(rgb.b)) {
+                return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.16)`;
+            }
+
+            return TICKET_CARD_PUBLIC_THEME_DEFAULT.soft;
+        }
+
+        function leerTemaPublicoCacheadoTicketCard() {
+            try {
+                const bruto = localStorage.getItem(TICKET_CARD_PUBLIC_THEME_STORAGE_KEY);
+                if (!bruto) {
+                    return null;
+                }
+
+                const tema = JSON.parse(bruto);
+                const primary = normalizarColorHexTicketCard(tema?.primary, '');
+                if (!primary) {
+                    return null;
+                }
+
+                const primaryDark = normalizarColorHexTicketCard(
+                    tema?.primaryDark,
+                    typeof window.ajustarLuminosidadHex === 'function'
+                        ? window.ajustarLuminosidadHex(primary, -0.22)
+                        : primary
+                );
+
+                return {
+                    primary,
+                    primaryDark,
+                    soft: calcularSoftTicketCard(primary)
+                };
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function resolverTemaPublicoTicketCard(config = window.rifaplusConfig || {}) {
+            const primary = normalizarColorHexTicketCard(
+                config?.tema?.colores?.primary,
+                normalizarColorHexTicketCard(
+                    config?.cliente?.colorPrimario,
+                    normalizarColorHexTicketCard(config?.cliente?.colores?.primary, '')
+                )
+            );
+
+            if (!primary) {
+                return null;
+            }
+
+            const primaryDarkFallback = typeof window.ajustarLuminosidadHex === 'function'
+                ? window.ajustarLuminosidadHex(primary, -0.22)
+                : primary;
+
+            const primaryDark = normalizarColorHexTicketCard(
+                config?.tema?.colores?.primaryDark,
+                normalizarColorHexTicketCard(
+                    config?.cliente?.colorPrimarioDark,
+                    normalizarColorHexTicketCard(config?.cliente?.colores?.primaryDark, primaryDarkFallback)
+                )
+            ) || primaryDarkFallback;
+
+            return {
+                primary,
+                primaryDark,
+                soft: calcularSoftTicketCard(primary)
+            };
+        }
+
+        function aplicarTemaResueltoTicketCard(tema) {
+            const root = document.documentElement;
+            root.style.setProperty('--ticket-card-public-primary', tema.primary);
+            root.style.setProperty('--ticket-card-public-primary-dark', tema.primaryDark);
+            root.style.setProperty('--ticket-card-public-primary-soft', tema.soft);
+            root.dataset.ticketCardPublicPrimary = tema.primary;
+
+            window.__rifaplusTicketCardPublicTheme = tema;
+
+            try {
+                localStorage.setItem(TICKET_CARD_PUBLIC_THEME_STORAGE_KEY, JSON.stringify({
+                    primary: tema.primary,
+                    primaryDark: tema.primaryDark
+                }));
+            } catch (error) {
+                console.debug('[admin-boletos] No se pudo guardar el tema cacheado del ticket card:', error);
+            }
+        }
+
         function aplicarColorPublicoTicketCard(config = window.rifaplusConfig || {}) {
             try {
-                const root = document.documentElement;
-                const primaryPublico = String(
-                    config?.tema?.colores?.primary
-                    || config?.cliente?.colorPrimario
-                    || config?.cliente?.colores?.primary
-                    || ''
-                ).trim();
+                const temaResuelto = resolverTemaPublicoTicketCard(config)
+                    || window.__rifaplusTicketCardPublicTheme
+                    || leerTemaPublicoCacheadoTicketCard()
+                    || TICKET_CARD_PUBLIC_THEME_DEFAULT;
 
-                if (!primaryPublico) {
-                    root.style.removeProperty('--ticket-card-public-primary');
-                    root.style.removeProperty('--ticket-card-public-primary-dark');
-                    root.style.removeProperty('--ticket-card-public-primary-soft');
-                    return;
-                }
-
-                const primaryPublicoDark = String(
-                    config?.tema?.colores?.primaryDark
-                    || config?.cliente?.colorPrimarioDark
-                    || config?.cliente?.colores?.primaryDark
-                    || primaryPublico
-                ).trim() || primaryPublico;
-
-                root.style.setProperty('--ticket-card-public-primary', primaryPublico);
-                root.style.setProperty('--ticket-card-public-primary-dark', primaryPublicoDark);
-
-                const rgb = typeof window.hexToRgbSeguro === 'function'
-                    ? window.hexToRgbSeguro(primaryPublico)
-                    : null;
-
-                if (rgb && Number.isFinite(rgb.r) && Number.isFinite(rgb.g) && Number.isFinite(rgb.b)) {
-                    root.style.setProperty('--ticket-card-public-primary-soft', `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.16)`);
-                } else {
-                    root.style.setProperty('--ticket-card-public-primary-soft', 'rgba(0, 0, 0, 0.12)');
-                }
+                aplicarTemaResueltoTicketCard(temaResuelto);
             } catch (error) {
                 console.warn('[admin-boletos] No se pudo aplicar el color primario público a ticket card:', error);
+                aplicarTemaResueltoTicketCard(
+                    window.__rifaplusTicketCardPublicTheme
+                    || leerTemaPublicoCacheadoTicketCard()
+                    || TICKET_CARD_PUBLIC_THEME_DEFAULT
+                );
             }
         }
 
