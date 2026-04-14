@@ -4005,37 +4005,60 @@ async function obtenerDiagnosticoBoletosOrden(trx, boletosSolicitados) {
     };
 }
 
-async function obtenerDiagnosticoOportunidadesDisponiblesPorBoleto(trx, boletosSolicitados) {
-    const boletosOrdenados = Array.from(new Set(
-        (Array.isArray(boletosSolicitados) ? boletosSolicitados : [])
+function calcularCantidadOportunidadesEsperadas(boletos = [], oportunidadesConfig = null) {
+    if (!oportunidadesConfig || oportunidadesConfig.enabled !== true) {
+        return 0;
+    }
+
+    const multiplicador = Number.parseInt(oportunidadesConfig.multiplicador, 10);
+    if (!Number.isInteger(multiplicador) || multiplicador < 1) {
+        return 0;
+    }
+
+    return (Array.isArray(boletos) ? boletos.length : 0) * multiplicador;
+}
+
+function parseBoletosOrdenSeguro(raw) {
+    return parseBoletosOrdenLegacy(raw).sort((a, b) => a - b);
+}
+
+async function obtenerMapaOportunidadesPorBoletos(runner, boletos = []) {
+    const boletosValidos = Array.from(new Set(
+        (Array.isArray(boletos) ? boletos : [])
             .map((numero) => Number(numero))
             .filter((numero) => Number.isInteger(numero) && numero >= 0)
     )).sort((a, b) => a - b);
 
-    if (boletosOrdenados.length === 0) {
-        return [];
+    const mapa = new Map();
+    boletosValidos.forEach((numero) => {
+        mapa.set(numero, []);
+    });
+
+    if (boletosValidos.length === 0) {
+        return mapa;
     }
 
-    const filas = await trx('orden_oportunidades')
-        .whereIn('numero_boleto', boletosOrdenados)
-        .where('estado', 'disponible')
-        .whereNull('numero_orden')
-        .select('numero_boleto')
-        .timeout(10000)
-        .count('* as total')
-        .groupBy('numero_boleto');
+    const filas = await runner('orden_oportunidades')
+        .whereIn('numero_boleto', boletosValidos)
+        .select('numero_boleto', 'numero_oportunidad')
+        .orderBy('numero_boleto', 'asc')
+        .orderBy('numero_oportunidad', 'asc');
 
-    const mapaConteos = new Map(
-        filas.map((fila) => [
-            Number(fila.numero_boleto),
-            Number.parseInt(fila.total, 10) || 0
-        ])
-    );
+    filas.forEach((fila) => {
+        const numeroBoleto = Number(fila.numero_boleto);
+        if (!mapa.has(numeroBoleto)) {
+            mapa.set(numeroBoleto, []);
+        }
+        mapa.get(numeroBoleto).push(fila.numero_oportunidad);
+    });
 
-    return boletosOrdenados.map((numero) => ({
-        numero,
-        cantidad: mapaConteos.get(numero) || 0
-    }));
+    return mapa;
+}
+
+function combinarOportunidadesPorBoletos(boletos = [], mapaOportunidades = new Map()) {
+    return (Array.isArray(boletos) ? boletos : []).flatMap((numeroBoleto) => {
+        return mapaOportunidades.get(Number(numeroBoleto)) || [];
+    });
 }
 
 function esMismaOrdenIdempotente(ordenExistente, contexto) {
@@ -4263,22 +4286,10 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                     whatsapp,
                     boletos: boletosOrdenados
                 })) {
-                    const cantidadOportunidadesExistente = oportunidadesHabilitadas
-                        ? Number.parseInt(
-                            (
-                                await (async () => {
-                                    const oppDuplicateStart = Date.now();
-                                    const resultadoOpp = await trx('orden_oportunidades')
-                                        .where('numero_orden', ordenSolicitada.numero_orden)
-                                        .count('* as total')
-                                        .first();
-                                    perfMarks.duplicateOppCountMs = (perfMarks.duplicateOppCountMs || 0) + (Date.now() - oppDuplicateStart);
-                                    return resultadoOpp;
-                                })()
-                            )?.total,
-                            10
-                        ) || 0
-                        : 0;
+                    const cantidadOportunidadesExistente = calcularCantidadOportunidadesEsperadas(
+                        boletosOrdenados,
+                        oportunidadesConfig
+                    );
 
                     return {
                         isDuplicate: true,
@@ -4311,22 +4322,10 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                     whatsapp,
                     boletos: boletosOrdenados
                 })) {
-                    const cantidadOportunidadesExistente = oportunidadesHabilitadas
-                        ? Number.parseInt(
-                            (
-                                await (async () => {
-                                    const oppDuplicateStart = Date.now();
-                                    const resultadoOpp = await trx('orden_oportunidades')
-                                        .where('numero_orden', ordenExistente.numero_orden)
-                                        .count('* as total')
-                                        .first();
-                                    perfMarks.duplicateOppCountMs = (perfMarks.duplicateOppCountMs || 0) + (Date.now() - oppDuplicateStart);
-                                    return resultadoOpp;
-                                })()
-                            )?.total,
-                            10
-                        ) || 0
-                        : 0;
+                    const cantidadOportunidadesExistente = calcularCantidadOportunidadesEsperadas(
+                        boletosOrdenados,
+                        oportunidadesConfig
+                    );
 
                     // 200 OK: orden ya existe (idempotencia real)
                     return {
@@ -4431,21 +4430,19 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
                     });
                 perfMarks.oppReserveMs = (perfMarks.oppReserveMs || 0) + (Date.now() - oppReserveStart);
 
-                const oportunidadesEsperadasOrden = boletosValidos.length * oportunidadesConfig.multiplicador;
+                const oportunidadesEsperadasOrden = calcularCantidadOportunidadesEsperadas(
+                    boletosValidos,
+                    oportunidadesConfig
+                );
                 if (oportunidadesActualizadas !== oportunidadesEsperadasOrden) {
-                    const oppCountStart = Date.now();
-                    const boletosConConteoDisponible = await obtenerDiagnosticoOportunidadesDisponiblesPorBoleto(trx, boletosValidos);
-                    perfMarks.oppCountMs = (perfMarks.oppCountMs || 0) + (Date.now() - oppCountStart);
-
                     throw {
                         code: 'OPORTUNIDADES_INCONSISTENTES',
-                        message: 'La asignación de oportunidades no coincidió con el multiplicador configurado',
+                        message: 'La reserva de oportunidades preasignadas no coincidió con el multiplicador configurado',
                         detalles: {
                             multiplicadorEsperado: oportunidadesConfig.multiplicador,
                             totalBoletos: boletosValidos.length,
                             oportunidadesEsperadas: oportunidadesEsperadasOrden,
-                            oportunidadesActualizadas,
-                            boletos: boletosConConteoDisponible.filter((item) => item.cantidad !== oportunidadesConfig.multiplicador)
+                            oportunidadesActualizadas
                         }
                     };
                 }
@@ -5244,14 +5241,21 @@ app.get('/api/ordenes/:id', async (req, res) => {
 app.get('/api/ordenes/:id/oportunidades', verificarToken, async (req, res) => {
     try {
         const { id } = req.params;
-        
-        // Obtener oportunidades de UNA orden específica
-        const oportunidades = await db('orden_oportunidades')
+        const orden = await db('ordenes')
             .where('numero_orden', id)
-            .select('numero_oportunidad')
-            .orderBy('numero_oportunidad', 'asc');
-        
-        const oportunidadesArray = oportunidades.map(op => op.numero_oportunidad);
+            .select('numero_orden', 'boletos')
+            .first();
+
+        if (!orden) {
+            return res.status(404).json({
+                success: false,
+                message: 'Orden no encontrada'
+            });
+        }
+
+        const boletos = parseBoletosOrdenSeguro(orden.boletos);
+        const mapaOportunidades = await obtenerMapaOportunidadesPorBoletos(db, boletos);
+        const oportunidadesArray = combinarOportunidadesPorBoletos(boletos, mapaOportunidades);
 
         return res.json({
             success: true,
@@ -5315,43 +5319,27 @@ app.get('/api/public/ordenes-cliente', async (req, res) => {
             .where('telefono_cliente', whatsappSanitizado)
             .orderBy('created_at', 'desc');
 
-        // ✅ Agregar oportunidades a cada orden (si existen)
-        const ordenesConOportunidades = await Promise.all(
-            ordenes.map(async (orden) => {
-                const oportunidades = await db('orden_oportunidades')
-                    .where('numero_orden', orden.numero_orden)
-                    .pluck('numero_oportunidad');
-                return {
-                    ...orden,
-                    oportunidades: oportunidades || []
-                };
-            })
-        );
-
         // DEBUG: Log si no encuentra nada
         if (ordenes.length === 0) {
             console.log(`⚠️ No se encontraron órdenes para: ${whatsappSanitizado}`);
         }
 
-        // ✅ Mapeo SINCRÓNICO - Ya tenemos todas las oportunidades agregadas
-        const ordenesFormateadas = ordenesConOportunidades.map(orden => {
-            let boletosParsados = [];
-            try {
-                let boletos = orden.boletos;
-                if (typeof boletos === 'string') {
-                    boletosParsados = JSON.parse(boletos || '[]');
-                } else if (Array.isArray(boletos)) {
-                    boletosParsados = boletos;
-                }
-            } catch (e) {
-                console.warn(`Error parseando boletos de orden ${orden.numero_orden}:`, e);
-                boletosParsados = [];
-            }
+        const ordenesPreparadas = ordenes.map((orden) => {
+            const boletosParsados = parseBoletosOrdenSeguro(orden.boletos);
+            return {
+                ...orden,
+                boletosNormalizados: boletosParsados
+            };
+        });
 
-            // ✅ Oportunidades ya agrupadas en la query - solo filtrar nulls
-            const oportunidades = Array.isArray(orden.oportunidades)
-                ? orden.oportunidades.filter(op => op !== null && op !== '')
-                : [];
+        const boletosConsultados = ordenesPreparadas.flatMap((orden) => orden.boletosNormalizados);
+        const mapaOportunidades = await obtenerMapaOportunidadesPorBoletos(db, boletosConsultados);
+
+        const ordenesFormateadas = ordenesPreparadas.map(orden => {
+            const oportunidades = combinarOportunidadesPorBoletos(
+                orden.boletosNormalizados,
+                mapaOportunidades
+            ).filter(op => op !== null && op !== '');
 
             return {
                 id: orden.numero_orden,
@@ -5366,7 +5354,7 @@ app.get('/api/public/ordenes-cliente', async (req, res) => {
                 precio_unitario: Number(orden.precio_unitario ?? 0),
                 subtotal: Number(orden.subtotal ?? 0),
                 descuento: Number(orden.descuento ?? 0),
-                boletos: boletosParsados,
+                boletos: orden.boletosNormalizados,
                 oportunidades: oportunidades,
                 total: Number(orden.total ?? 0),
                 tipo_pago: orden.metodo_pago || 'No especificado',
@@ -5432,21 +5420,9 @@ app.get('/api/public/ordenes-cliente/orden/:ordenId', async (req, res) => {
             });
         }
 
-        const oportunidades = await db('orden_oportunidades')
-            .where('numero_orden', orden.numero_orden)
-            .pluck('numero_oportunidad');
-
-        let boletosParsados = [];
-        try {
-            if (typeof orden.boletos === 'string') {
-                boletosParsados = JSON.parse(orden.boletos || '[]');
-            } else if (Array.isArray(orden.boletos)) {
-                boletosParsados = orden.boletos;
-            }
-        } catch (e) {
-            console.warn(`Error parseando boletos de orden ${orden.numero_orden}:`, e);
-            boletosParsados = [];
-        }
+        const boletosParsados = parseBoletosOrdenSeguro(orden.boletos);
+        const mapaOportunidades = await obtenerMapaOportunidadesPorBoletos(db, boletosParsados);
+        const oportunidades = combinarOportunidadesPorBoletos(boletosParsados, mapaOportunidades);
 
         return res.json({
             success: true,
@@ -7791,41 +7767,40 @@ app.get('/api/admin/oportunidades-stats', verificarToken, async (req, res) => {
     try {
         console.log('📊 [GET /api/admin/oportunidades-stats] Iniciando...');
 
-        // Contar disponibles: estado='disponible' Y sin número de orden (NULL o 0)
-        const disponibles = await db('orden_oportunidades')
-            .where('estado', 'disponible')
-            .where(qb => {
-                qb.whereNull('numero_orden').orWhere('numero_orden', '0');
-            })
-            .count('* as count')
-            .first();
-
-        // Contar apartadas: estado='apartado' Y con número de orden asignado (no '0')
-        const apartadas = await db('orden_oportunidades')
-            .where('estado', 'apartado')
-            .where('numero_orden', '<>', '0')
-            .whereNotNull('numero_orden')
-            .count('* as count')
-            .first();
-
-        // Contar asignadas: estado='vendido' (órdenes CONFIRMADAS)
-        const asignadas = await db('orden_oportunidades')
-            .where('estado', 'vendido')
-            .whereNotNull('numero_orden')
-            .count('* as count')
-            .first();
-
-        // Contar canceladas: estado='cancelado'
-        const canceladas = await db('orden_oportunidades')
-            .where('estado', 'cancelado')
-            .count('* as count')
+        const agregados = await db('orden_oportunidades')
+            .select(
+                db.raw(`
+                    COUNT(*) FILTER (
+                        WHERE estado = 'disponible'
+                        AND (numero_orden IS NULL OR numero_orden = '0')
+                    )::int as disponibles
+                `),
+                db.raw(`
+                    COUNT(*) FILTER (
+                        WHERE estado = 'apartado'
+                        AND numero_orden IS NOT NULL
+                        AND numero_orden <> '0'
+                    )::int as apartadas
+                `),
+                db.raw(`
+                    COUNT(*) FILTER (
+                        WHERE estado = 'vendido'
+                        AND numero_orden IS NOT NULL
+                    )::int as asignadas
+                `),
+                db.raw(`
+                    COUNT(*) FILTER (
+                        WHERE estado = 'cancelado'
+                    )::int as canceladas
+                `)
+            )
             .first();
 
         const conteos = {
-            disponible: parseInt(disponibles.count) || 0,
-            apartado: parseInt(apartadas.count) || 0,
-            asignado: parseInt(asignadas.count) || 0,
-            cancelado: parseInt(canceladas.count) || 0
+            disponible: Number.parseInt(agregados?.disponibles, 10) || 0,
+            apartado: Number.parseInt(agregados?.apartadas, 10) || 0,
+            asignado: Number.parseInt(agregados?.asignadas, 10) || 0,
+            cancelado: Number.parseInt(agregados?.canceladas, 10) || 0
         };
 
         console.log('📋 [GET /api/admin/oportunidades-stats] Conteos:', conteos);

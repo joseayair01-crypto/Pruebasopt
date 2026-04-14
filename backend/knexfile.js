@@ -36,12 +36,11 @@ const postgresConfig = {
   seeds: {
     directory: './db/seeds'
   },
-  // ⚠️ CRÍTICO: Configurar pool de conexiones para Neon (mejor que Supabase Free)
-  // Neon: Soporta múltiples conexiones simultáneas sin límite severo
-  // Pool recomendado: 2-10 conexiones (Neon pooler es generoso)
+  // ⚠️ CRÍTICO: Pool conservador para evitar aumentar la contención
+  // en la compra bajo planes pequeños o entornos compartidos.
   pool: {
     min: 2,                       // Mínimo 2 conexiones
-    max: 15,                      // Máximo 15 para dar más aire en picos sin sobrecargar Supabase Free
+    max: 10,                      // 10 rindió mejor que 15 en pruebas reales de contención
     acquireTimeoutMillis: 30000,  // Esperar 30s si no hay conexión disponible
     idleTimeoutMillis: 30000,     // Cerrar conexiones inactivas después de 30s
     reapIntervalMillis: 1000      // Verificar conexiones cada 1s
