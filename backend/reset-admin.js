@@ -40,11 +40,13 @@ async function resetearAdmin() {
     // Credenciales por defecto
     const defaultUsername = 'admin';
     const defaultPassword = 'admin123';
+    const defaultRol = 'administrador';
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
     console.log('🔐 Reseteando credenciales de admin...');
     console.log(`   Usuario: ${defaultUsername}`);
     console.log(`   Contraseña: ${defaultPassword}\n`);
+    console.log(`   Rol: ${defaultRol}\n`);
 
     // Verificar si existe el usuario
     const usuarioExistente = await db('admin_users')
@@ -59,6 +61,7 @@ async function resetearAdmin() {
         .where('username', defaultUsername)
         .update({
           password_hash: hashedPassword,
+          rol: defaultRol,
           updated_at: new Date()
         });
       console.log(`✅ Usuario ${defaultUsername} actualizado\n`);
@@ -69,7 +72,7 @@ async function resetearAdmin() {
         username: defaultUsername,
         password_hash: hashedPassword,
         email: 'admin@rifaplus.local',
-        rol: 'admin',
+        rol: defaultRol,
         activo: true,
         created_at: new Date(),
         updated_at: new Date()
