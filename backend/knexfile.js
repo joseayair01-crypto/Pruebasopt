@@ -41,7 +41,7 @@ const postgresConfig = {
   // Pool recomendado: 2-10 conexiones (Neon pooler es generoso)
   pool: {
     min: 2,                       // Mínimo 2 conexiones
-    max: 10,                      // Máximo 10 (Neon puede manejar más)
+    max: 15,                      // Máximo 15 para dar más aire en picos sin sobrecargar Supabase Free
     acquireTimeoutMillis: 30000,  // Esperar 30s si no hay conexión disponible
     idleTimeoutMillis: 30000,     // Cerrar conexiones inactivas después de 30s
     reapIntervalMillis: 1000      // Verificar conexiones cada 1s
