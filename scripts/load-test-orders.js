@@ -237,9 +237,20 @@ async function createOrder(baseUrl, options, orderIndex, tickets) {
 
 async function runWorker(state, baseUrl, options, stopAt, workerIndex) {
     while (Date.now() < stopAt) {
+        if (state.stopRequested) {
+            return;
+        }
+
         const orderIndex = state.nextOrderIndex++;
         const startedAt = Date.now();
         const tickets = takeNextTicketBlock(state, options, orderIndex);
+
+        if (!Array.isArray(tickets) || tickets.length !== options.ticketsPerOrder) {
+            state.stopRequested = true;
+            state.stopReason = 'ticket-pool-exhausted';
+            state.stopMessage = 'Se agotó el pool de boletos precargados antes de terminar la ventana de prueba';
+            return;
+        }
 
         try {
             const result = await createOrder(baseUrl, options, orderIndex, tickets);
@@ -288,7 +299,10 @@ async function main() {
         nextOrderIndex: 0,
         failureSamples: [],
         availableTickets,
-        nextTicketIndex: 0
+        nextTicketIndex: 0,
+        stopRequested: false,
+        stopReason: '',
+        stopMessage: ''
     };
 
     console.log(`Order load test -> ${baseUrl}/api/ordenes`);
@@ -322,6 +336,10 @@ async function main() {
     console.log(`P95 -> ${percentile(state.durations, 95)}ms`);
     console.log(`P99 -> ${percentile(state.durations, 99)}ms`);
     console.log(`Status -> ${JSON.stringify(state.statuses)}`);
+    if (state.stopReason) {
+        console.log(`Corte controlado -> ${state.stopReason}`);
+        console.log(`Detalle -> ${state.stopMessage}`);
+    }
 
     if (state.failureSamples.length > 0) {
         console.log('Muestras de fallo ->');
@@ -334,7 +352,11 @@ async function main() {
         console.log(`Errores -> ${JSON.stringify(state.errors, null, 2)}`);
     }
 
-    if (state.failures > 0) {
+    if (state.stopReason && state.failures === 0 && Object.keys(state.errors).length === 0) {
+        process.exit(0);
+    }
+
+    if (state.failures > 0 || Object.keys(state.errors).length > 0) {
         process.exit(1);
     }
 }

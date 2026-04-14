@@ -303,16 +303,112 @@ function construirMarkupBotonGrid(numero, soldSet, reservedSet, opciones = {}) {
     return `<button class="${classes}" data-numero="${numero}" ${disabled ? 'disabled' : ''} ${title ? `title="${title}"` : ''}>${numeroFormateado}</button>`;
 }
 
+function formatearCantidadInventario(valor) {
+    const numero = Number(valor);
+    return Number.isFinite(numero) && numero >= 0
+        ? numero.toLocaleString('es-MX')
+        : '0';
+}
+
+function obtenerResumenInventarioBoletos() {
+    const estado = window.rifaplusConfig?.estado || {};
+    const vendidos = Number(estado.boletosVendidos);
+    const apartados = Number(estado.boletosApartados);
+    const disponibles = Number(estado.boletosDisponibles);
+    const totalConfig = Number(window.rifaplusConfig?.rifa?.totalBoletos);
+    const valoresValidos = [vendidos, apartados, disponibles].every((valor) => Number.isFinite(valor) && valor >= 0);
+
+    if (!valoresValidos) {
+        return {
+            vendidos: null,
+            apartados: null,
+            disponibles: null,
+            total: Number.isFinite(totalConfig) && totalConfig > 0 ? totalConfig : null
+        };
+    }
+
+    return {
+        vendidos,
+        apartados,
+        disponibles,
+        total: Number.isFinite(totalConfig) && totalConfig > 0
+            ? totalConfig
+            : vendidos + apartados + disponibles
+    };
+}
+
+function construirAvisoInventarioSinDisponibles() {
+    const resumen = obtenerResumenInventarioBoletos();
+    if (resumen.disponibles !== 0) {
+        return '';
+    }
+
+    if (resumen.apartados > 0) {
+        return `
+            <div class="boletos-inventory-notice-card" data-variant="hold">
+                <div class="boletos-inventory-notice-icon" aria-hidden="true"><i class="fas fa-hourglass-half"></i></div>
+                <div class="boletos-inventory-notice-body">
+                    <h4>No hay boletos disponibles por el momento</h4>
+                    <p>En este instante todos los boletos están apartados en órdenes en proceso. Si algunas compras no se completan, parte de esa disponibilidad podría liberarse nuevamente en unos minutos.</p>
+                    <div class="boletos-inventory-notice-meta">
+                        <span class="boletos-inventory-notice-pill">${formatearCantidadInventario(resumen.apartados)} apartados temporalmente</span>
+                    </div>
+                    <div class="boletos-inventory-notice-actions">
+                        <button type="button" class="boletos-inventory-notice-btn" data-action="refresh-availability">
+                            <i class="fas fa-rotate-right" aria-hidden="true"></i>
+                            <span>Actualizar disponibilidad</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="boletos-inventory-notice-card" data-variant="soldout">
+            <div class="boletos-inventory-notice-icon" aria-hidden="true"><i class="fas fa-check-circle"></i></div>
+            <div class="boletos-inventory-notice-body">
+                <h4>Boletos agotados</h4>
+                <p>Todos los boletos de esta rifa ya fueron vendidos. Gracias por tu preferencia y por acompañarnos en esta dinámica.</p>
+                <div class="boletos-inventory-notice-meta">
+                    <span class="boletos-inventory-notice-pill">${formatearCantidadInventario(resumen.vendidos || resumen.total)} boletos colocados</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function actualizarAvisoInventarioBoletos() {
+    const notice = document.getElementById('boletosInventoryNotice');
+    if (!notice) {
+        return;
+    }
+
+    const markup = construirAvisoInventarioSinDisponibles();
+    if (!markup) {
+        notice.innerHTML = '';
+        notice.hidden = true;
+        return;
+    }
+
+    notice.innerHTML = markup;
+    notice.hidden = false;
+}
+
 function actualizarMensajeGridSinDisponibles() {
     const grid = document.getElementById('numerosGrid');
     if (!grid) {
         return;
     }
 
+    actualizarAvisoInventarioBoletos();
+
     const mensajeActual = grid.querySelector('[data-grid-empty-disponibles="true"]');
+    const resumen = obtenerResumenInventarioBoletos();
     const hayBotonesVisibles = Array.from(grid.querySelectorAll('button[data-numero]')).some((boton) => !boton.classList.contains('filtrado'));
     const debeMostrarMensaje = filtroDisponiblesActivo &&
         !estaVistaBusquedaActiva() &&
+        resumen.disponibles !== 0 &&
         !hayBotonesVisibles &&
         !infiniteScrollState.hasMore &&
         !infiniteScrollState.isLoading;
@@ -1158,13 +1254,14 @@ async function cargarBoletosPublicos() {
                         window.rifaplusConfig.estado.boletosDisponibles = data.disponibles;
                     }
 
-                    // ⭐ OPTIMIZACIÓN CRÍTICA: Mostrar disponibles INMEDIATAMENTE desde /stats (< 50ms)
+                    // ⭐ OPTIMIZACIÓN CRÍTICA: Mostrar disponibilidad INMEDIATAMENTE desde /stats (< 50ms)
                     // No esperar por cálculo de rango - eso se hace en background en Stage 2
-                    aplicarEstadoNotaDisponibilidad(`${data.disponibles} boletos disponibles`, 'ready');
+                    actualizarNotaDisponibilidad();
                     
                     if (typeof actualizarEstadoBotonGenerar === 'function') {
                         actualizarEstadoBotonGenerar();
                     }
+                    actualizarAvisoInventarioBoletos();
                 }
             }
         } catch (error) {
@@ -1251,6 +1348,7 @@ async function cargarDatosCompletosEnBackground(endpoint, rango = null, opciones
             if (typeof actualizarNotaDisponibilidad === 'function') {
                 actualizarNotaDisponibilidad();
             }
+            actualizarAvisoInventarioBoletos();
             
             // 🔌 WEBSOCKET ACTIVO: El polling manual ya no es necesario
             // Socket.io emitirá boletosActualizados en tiempo real desde el servidor
@@ -1654,6 +1752,17 @@ function actualizarNotaDisponibilidad() {
 
     const disponiblesGlobales = obtenerDisponiblesGlobalesMaquina();
     if (Number.isFinite(disponiblesGlobales) && disponiblesGlobales >= 0) {
+        const resumen = obtenerResumenInventarioBoletos();
+        if (disponiblesGlobales === 0 && resumen.apartados > 0) {
+            aplicarEstadoNotaDisponibilidad('Por ahora no hay disponibles; hay boletos apartados en proceso.', 'warning');
+            return;
+        }
+
+        if (disponiblesGlobales === 0) {
+            aplicarEstadoNotaDisponibilidad('Boletos agotados. Gracias por tu preferencia.', 'soldout');
+            return;
+        }
+
         aplicarEstadoNotaDisponibilidad(`${disponiblesGlobales} boletos disponibles`, 'ready');
         return;
     }
@@ -2060,6 +2169,53 @@ function configurarEventListeners() {
 
     // 7. BÚSQUEDA DE BOLETOS
     configurarBuscadorBoletos();
+
+    document.addEventListener('click', async function(e) {
+        const refreshBtn = e.target.closest('[data-action="refresh-availability"]');
+        if (!refreshBtn) {
+            return;
+        }
+
+        e.preventDefault();
+
+        if (refreshBtn.disabled) {
+            return;
+        }
+
+        const label = refreshBtn.querySelector('span');
+        const textoOriginal = label ? label.textContent : '';
+        refreshBtn.disabled = true;
+        if (label) {
+            label.textContent = 'Actualizando...';
+        }
+
+        try {
+            await cargarBoletosPublicos();
+
+            if (!estaVistaBusquedaActiva()) {
+                const rangoActual = infiniteScrollState.rangoActual || obtenerRangoVisibleInicial();
+                const container = document.querySelector('.boletos-container-scrolleable');
+                const scrollTopActual = container ? container.scrollTop : null;
+                await renderRange(rangoActual.inicio, rangoActual.fin, {
+                    reason: 'refresh-no-disponibles',
+                    preservarScroll: true,
+                    restoreScrollTop: scrollTopActual
+                });
+            } else {
+                actualizarMensajeGridSinDisponibles();
+            }
+        } catch (error) {
+            console.error('❌ Error actualizando disponibilidad desde aviso contextual:', error);
+            if (window.rifaplusUtils?.showFeedback) {
+                window.rifaplusUtils.showFeedback('No pudimos actualizar la disponibilidad en este momento.', 'warning');
+            }
+        } finally {
+            refreshBtn.disabled = false;
+            if (label) {
+                label.textContent = textoOriginal || 'Actualizar disponibilidad';
+            }
+        }
+    });
 }
 
 function scrollSuaveCompraA(target, offset) {
