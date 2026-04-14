@@ -7981,37 +7981,13 @@ app.patch('/api/ordenes/:id/estado', verificarToken, async (req, res) => {
             }
             
             let boletosActualizados = 0;
+            const boletos = parseBoletosOrdenSeguro(ordenActual.boletos);
 
             // LÓGICA DE TRANSICIÓN DE ESTADOS Y BOLETOS
             // ==========================================
             
             // Si cambia a 'confirmada' → boletos pasan a 'vendido'
             if (estado === 'confirmada' && ordenActual.estado !== 'confirmada') {
-                let boletos = [];
-                
-                // Manejar diferentes formatos de almacenamiento de boletos
-                if (Array.isArray(ordenActual.boletos)) {
-                    // Ya es un array (PostgreSQL devuelve JSONB como objeto)
-                    boletos = ordenActual.boletos.map(n => {
-                        const num = parseInt(n, 10);
-                        return isNaN(num) ? null : num;
-                    }).filter(n => n !== null);
-                } else if (typeof ordenActual.boletos === 'string') {
-                    // Es un string - intentar parsear como JSON o CSV
-                    try {
-                        boletos = JSON.parse(ordenActual.boletos || '[]');
-                        if (!Array.isArray(boletos)) boletos = [];
-                    } catch (e) {
-                        // Si falla JSON, intentar split por comas
-                        if (ordenActual.boletos.length > 0) {
-                            boletos = ordenActual.boletos.split(',').map(n => {
-                                const num = parseInt(n.trim(), 10);
-                                return isNaN(num) ? null : num;
-                            }).filter(n => n !== null);
-                        }
-                    }
-                }
-
                 console.log(`[Orden ${id}] Boletos a confirmar:`, boletos);
 
                 if (boletos.length > 0) {
@@ -8029,36 +8005,23 @@ app.patch('/api/ordenes/:id/estado', verificarToken, async (req, res) => {
                         boletosActualizados += actualizado;
                     }
                     console.log(`[Orden ${id}] Confirmada: ${boletosActualizados} boletos marcados como VENDIDO`);
+
+                    const oportunidadesConfirmadas = await trx('orden_oportunidades')
+                        .where('numero_orden', id)
+                        .whereIn('numero_boleto', boletos)
+                        .where('estado', 'apartado')
+                        .update({
+                            estado: 'vendido'
+                        });
+
+                    if (oportunidadesConfirmadas > 0) {
+                        console.log(`[Orden ${id}] Confirmada: ${oportunidadesConfirmadas} oportunidades marcadas como VENDIDO`);
+                    }
                 }
             }
             
             // Si cambia a 'cancelada' → boletos vuelven a 'disponible'
             if (estado === 'cancelada' && ordenActual.estado !== 'cancelada') {
-                let boletos = [];
-                
-                // Manejar diferentes formatos de almacenamiento de boletos
-                if (Array.isArray(ordenActual.boletos)) {
-                    // Ya es un array (PostgreSQL devuelve JSONB como objeto)
-                    boletos = ordenActual.boletos.map(n => {
-                        const num = parseInt(n, 10);
-                        return isNaN(num) ? null : num;
-                    }).filter(n => n !== null);
-                } else if (typeof ordenActual.boletos === 'string') {
-                    // Es un string - intentar parsear como JSON o CSV
-                    try {
-                        boletos = JSON.parse(ordenActual.boletos || '[]');
-                        if (!Array.isArray(boletos)) boletos = [];
-                    } catch (e) {
-                        // Si falla JSON, intentar split por comas
-                        if (ordenActual.boletos.length > 0) {
-                            boletos = ordenActual.boletos.split(',').map(n => {
-                                const num = parseInt(n.trim(), 10);
-                                return isNaN(num) ? null : num;
-                            }).filter(n => n !== null);
-                        }
-                    }
-                }
-
                 console.log(`[Orden ${id}] Boletos a cancelar:`, boletos);
 
                 if (boletos.length > 0) {
@@ -8080,6 +8043,7 @@ app.patch('/api/ordenes/:id/estado', verificarToken, async (req, res) => {
                 // NUEVO: Liberar OPORTUNIDADES (apartadas O vendidas) para esta orden
                 const oportunidadesLiberadas = await trx('orden_oportunidades')
                     .where('numero_orden', id)
+                    .whereIn('numero_boleto', boletos)
                     .whereIn('estado', ['apartado', 'vendido'])  // ✅ CRITICAL FIX: Liberar también 'vendido'
                     .update({
                         estado: 'disponible',
@@ -8108,26 +8072,6 @@ app.patch('/api/ordenes/:id/estado', verificarToken, async (req, res) => {
             
             return { success: true, boletosActualizados };
         });
-
-        // ✅ PASO 2a: Cambiar oportunidades a 'vendido' si orden se confirma
-        if (estado === 'confirmada' && resultado.success) {
-            try {
-                const cantidadActualizada = await db('orden_oportunidades')
-                    .where('numero_orden', id)
-                    .where('estado', 'apartado')
-                    .update({
-                        estado: 'vendido'
-                    });
-                if (cantidadActualizada > 0) {
-                    console.log(`✅ [Orden ${id}] ${cantidadActualizada} oportunidades confirmadas (apartado → vendido)`);
-                }
-            } catch (error) {
-                console.error(`❌ [Orden ${id}] Error confirmando oportunidades:`, error.message);
-            }
-        }
-
-        // ✅ NOTA: Las oportunidades ya fueron liberadas dentro de la transacción (líneas 3457-3464)
-        // No necesitamos liberarlas nuevamente aquí
 
         if (resultado && resultado.success) {
             console.log(`✅ Orden ${id} actualizada a estado: ${estado} (${resultado.boletosActualizados} boletos actualizados)`);
@@ -8798,33 +8742,7 @@ app.patch('/api/admin/boletos/:numero/liberar', verificarToken, async (req, res)
 
             for (const orden of ordenes) {
                 try {
-                    let numerosArr = [];
-                    const rawBoletos = orden.boletos;
-
-                    if (!rawBoletos) {
-                        numerosArr = [];
-                    } else if (Array.isArray(rawBoletos)) {
-                        numerosArr = rawBoletos;
-                    } else if (typeof rawBoletos === 'object') {
-                        numerosArr = Object.values(rawBoletos);
-                    } else if (typeof rawBoletos === 'string') {
-                        try {
-                            const parsed = JSON.parse(rawBoletos);
-                            if (Array.isArray(parsed)) {
-                                numerosArr = parsed;
-                            } else if (parsed && typeof parsed === 'object') {
-                                numerosArr = Object.values(parsed);
-                            } else {
-                                numerosArr = [];
-                            }
-                        } catch (parseError) {
-                            numerosArr = rawBoletos.split(',').map(v => v.trim()).filter(Boolean);
-                        }
-                    }
-
-                    numerosArr = numerosArr
-                        .map(v => Number(v?.numero || v?.numero_boleto || v))
-                        .filter(v => !Number.isNaN(v));
+                    let numerosArr = parseBoletosOrdenSeguro(orden.boletos);
 
                     const index = numerosArr.indexOf(numBoleto);
                     
@@ -9820,26 +9738,7 @@ app.post('/api/admin/limpiar-ordenes-canceladas', verificarToken, async (req, re
         // PASO 2: Procesar cada orden cancelada
         for (const orden of ordenesCanceladas) {
             try {
-                // Parsear boletos
-                let boletos = [];
-                if (Array.isArray(orden.boletos)) {
-                    boletos = orden.boletos.map(n => {
-                        const num = parseInt(n, 10);
-                        return isNaN(num) ? null : num;
-                    }).filter(n => n !== null);
-                } else if (typeof orden.boletos === 'string') {
-                    try {
-                        boletos = JSON.parse(orden.boletos || '[]');
-                        if (!Array.isArray(boletos)) boletos = [];
-                    } catch (e) {
-                        if (orden.boletos.length > 0) {
-                            boletos = orden.boletos.split(',').map(n => {
-                                const num = parseInt(n.trim(), 10);
-                                return isNaN(num) ? null : num;
-                            }).filter(n => n !== null);
-                        }
-                    }
-                }
+                const boletos = parseBoletosOrdenSeguro(orden.boletos);
 
                 if (boletos.length === 0) continue;
 
@@ -9854,6 +9753,7 @@ app.post('/api/admin/limpiar-ordenes-canceladas', verificarToken, async (req, re
 
                 await db('orden_oportunidades')
                     .where('numero_orden', orden.numero_orden)
+                    .whereIn('numero_boleto', boletos)
                     .update({
                         estado: 'disponible',
                         numero_orden: null
