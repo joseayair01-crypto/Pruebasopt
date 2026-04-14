@@ -4667,6 +4667,45 @@ app.post('/api/ordenes', limiterOrdenes, async (req, res) => {
             });
         }
 
+        if (error.code === '23505' && /idx_numero_opu_activo|numero_oportunidad/i.test(String(error.detail || error.constraint || error.message || ''))) {
+            perfMarks.totalMs = Date.now() - startTime;
+            logOrdenesPerf('POST /api/ordenes conflicto_oportunidades', {
+                ordenId,
+                errorCode: error.code || null,
+                constraint: error.constraint || null,
+                ...perfMarks
+            });
+            log('warn', 'Colisión de oportunidades activas detectada', {
+                ordenId,
+                errorCode: error.code || null,
+                constraint: error.constraint || null,
+                error: error.message
+            });
+
+            return res.status(409).json({
+                success: false,
+                code: 'OPORTUNIDADES_CONFLICTO',
+                message: 'Algunas oportunidades asociadas a los boletos ya no estaban libres al mismo tiempo. Intenta nuevamente.'
+            });
+        }
+
+        if (error.message === 'NO_SE_PUDO_GENERAR_ORDEN_ID_UNICO') {
+            perfMarks.totalMs = Date.now() - startTime;
+            logOrdenesPerf('POST /api/ordenes orden_id_agotado', {
+                ordenId,
+                ...perfMarks
+            });
+            log('warn', 'No se pudo generar un numero_orden unico tras varios intentos', {
+                ordenId
+            });
+
+            return res.status(503).json({
+                success: false,
+                code: 'ORDEN_ID_EN_CONTENCION',
+                message: 'No se pudo generar un identificador único para la orden. Intenta de nuevo en unos segundos.'
+            });
+        }
+
         if (['40P01', '55P03', '57014'].includes(error.code) || /lock timeout|statement timeout|deadlock/i.test(String(error.message || ''))) {
             perfMarks.totalMs = Date.now() - startTime;
             logOrdenesPerf('POST /api/ordenes timeout', {
