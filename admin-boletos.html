@@ -32,7 +32,8 @@
             --primary-light: #F3E9FF;
             --ticket-card-public-primary: #0b2238;
             --ticket-card-public-primary-dark: #153e5c;
-            --ticket-card-public-primary-soft: rgba(11, 34, 56, 0.16);
+            --ticket-card-public-primary-tint: rgba(11, 34, 56, 0.08);
+            --ticket-card-public-primary-border: rgba(11, 34, 56, 0.18);
             --success: #31A24C;
             --danger: #E4163A;
             --warning: #B4740C;
@@ -313,7 +314,7 @@
             max-width: var(--card-max-width);
             min-width: var(--card-min-width);
             background: white;
-            border: 2px solid var(--primary);
+            border: 2px solid var(--ticket-card-public-primary-border);
             border-radius: var(--border-radius);
             overflow: hidden;
             box-shadow: var(--shadow-md);
@@ -419,8 +420,8 @@
         /* ===== NOMBRE DEL SORTEO ===== */
         .orden-nombre-sorteo {
             padding: var(--spacing-sm) var(--spacing-md);
-            background: var(--primary-light);
-            color: var(--primary);
+            background: var(--ticket-card-public-primary-tint);
+            color: var(--ticket-card-public-primary-dark);
             font-weight: 600;
             text-align: center;
             font-size: 0.85rem;
@@ -747,142 +748,6 @@
             background: #c91230;
         }
 
-        /* ===== ESTILOS PARA TICKET CON LAYOUT ORDENES-LISTA ===== */
-        .orden-header-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            padding: 1rem;
-            background: linear-gradient(135deg, var(--ticket-card-public-primary) 0%, var(--ticket-card-public-primary-dark) 100%);
-            border-bottom: 2px solid var(--ticket-card-public-primary);
-            gap: 1rem;
-        }
-
-        .orden-header-top-left {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            flex: 1;
-        }
-
-        .orden-header-top-left img {
-            max-height: 80px;
-            max-width: 200px;
-            object-fit: contain;
-            border-radius: 4px;
-        }
-
-        .orden-estado-badge {
-            background: var(--primary);
-            color: white;
-            padding: 0.4rem 0.8rem;
-            border-radius: 0.375rem;
-            font-size: 0.7rem;
-            font-weight: 700;
-            letter-spacing: 0.05em;
-            white-space: nowrap;
-        }
-
-        .orden-header-top-right {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 0.25rem;
-            color: #ffffff;
-        }
-
-        .orden-id-numero {
-            font-size: 1.5rem;
-            font-weight: 900;
-            color: #ffffff;
-        }
-
-        .orden-fecha-hora {
-            font-size: 0.75rem;
-            color: rgba(255, 255, 255, 0.82);
-            font-weight: 500;
-        }
-
-        .orden-imagen-principal {
-            position: relative;
-            width: 100%;
-            background: linear-gradient(135deg, #f8fafc 0%, #f0f2f5 100%);
-            padding: 1.5rem;
-            text-align: center;
-            border-bottom: 1px solid var(--divider);
-        }
-
-        .orden-imagen-principal-titulo {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: var(--primary);
-            margin-bottom: 1rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            text-align: center;
-        }
-
-        .orden-imagen-principal img {
-            max-width: 100%;
-            max-height: 250px;
-            object-fit: contain;
-            border-radius: 0.5rem;
-        }
-
-        .orden-body {
-            padding: 1.5rem;
-            background: white;
-        }
-
-        .orden-seccion {
-            margin-bottom: 1.5rem;
-        }
-
-        .orden-seccion:last-of-type {
-            margin-bottom: 0;
-        }
-
-        .orden-seccion-titulo {
-            font-size: 0.9rem;
-            font-weight: 700;
-            color: var(--primary);
-            margin-bottom: 1rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .orden-info {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-        }
-
-        .orden-info-item {
-            padding: 0.75rem;
-            background: #f9fafb;
-            border-radius: 0.5rem;
-            border-left: 3px solid var(--primary);
-        }
-
-        .orden-info-label {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: var(--text-light);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.25rem;
-        }
-
-        .orden-info-value {
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: var(--text-dark);
-            word-break: break-word;
-        }
-
         /* ===== AJUSTES FINALES CARD DE BOLETO ===== */
         .ticket-result.active {
             width: min(100%, 720px);
@@ -895,9 +760,9 @@
             max-width: none;
             min-width: 0;
             position: relative;
-            border: 1px solid #d8cfba;
+            border: 1px solid var(--ticket-card-public-primary-border);
             border-radius: 1.1rem;
-            background: linear-gradient(180deg, #fffef9 0%, #fffaf0 100%);
+            background: linear-gradient(180deg, #ffffff 0%, var(--ticket-card-public-primary-tint) 100%);
             box-shadow: 0 22px 44px rgba(33, 35, 38, 0.12);
             overflow: hidden;
         }
@@ -911,7 +776,7 @@
             height: 22px;
             border-radius: 50%;
             background: #f8f9fa;
-            border: 1px solid #d8cfba;
+            border: 1px solid var(--ticket-card-public-primary-border);
             z-index: 2;
         }
 
@@ -974,15 +839,15 @@
             font-size: 0.88rem;
             font-weight: 700;
             text-align: center;
-            color: #14315f;
-            background: linear-gradient(180deg, #fff7df 0%, #fffdf6 100%);
-            border-bottom: 1px solid #eadfbf;
+            color: var(--ticket-card-public-primary-dark);
+            background: linear-gradient(180deg, var(--ticket-card-public-primary-tint) 0%, #ffffff 100%);
+            border-bottom: 1px solid var(--ticket-card-public-primary-border);
         }
 
         .orden-imagen-principal {
             padding: 1rem 1rem 0.85rem;
             background: #fffdf7;
-            border-bottom: 1px solid #eee3c7;
+            border-bottom: 1px solid var(--ticket-card-public-primary-border);
         }
 
         .orden-imagen-principal img {
@@ -992,8 +857,8 @@
         .orden-imagen-fecha-sorteo {
             padding: 0.7rem 1rem 0.9rem;
             text-align: center;
-            border-bottom: 1px solid #eee3c7;
-            background: #fffdf7;
+            border-bottom: 1px solid var(--ticket-card-public-primary-border);
+            background: linear-gradient(180deg, #ffffff 0%, var(--ticket-card-public-primary-tint) 100%);
         }
 
         .orden-imagen-fecha-sorteo-label {
@@ -1010,13 +875,13 @@
             display: block;
             font-size: 0.98rem;
             font-weight: 700;
-            color: #1f3c88;
+            color: var(--ticket-card-public-primary-dark);
         }
 
         .ticket-perforacion {
             position: relative;
             padding: 0.8rem 1.1rem;
-            background: linear-gradient(180deg, #fff8e6 0%, #fffdf7 100%);
+            background: linear-gradient(180deg, var(--ticket-card-public-primary-tint) 0%, #ffffff 100%);
             text-align: center;
         }
 
@@ -1024,7 +889,7 @@
             content: '';
             position: absolute;
             inset: 50% 1.1rem auto 1.1rem;
-            border-top: 2px dashed #cfbf8e;
+            border-top: 2px dashed var(--ticket-card-public-primary-border);
             transform: translateY(-50%);
         }
 
@@ -1037,14 +902,14 @@
             font-weight: 800;
             letter-spacing: 0.08em;
             text-transform: uppercase;
-            color: #8a6d1d;
-            background: #fffdf7;
+            color: var(--ticket-card-public-primary-dark);
+            background: #ffffff;
         }
 
         .orden-seccion {
             margin-bottom: 0;
             padding: 1rem 1.1rem;
-            border-bottom: 1px solid #eee3c7;
+            border-bottom: 1px solid var(--ticket-card-public-primary-border);
         }
 
         .orden-seccion:last-of-type {
@@ -1065,7 +930,7 @@
             border: none;
             border-radius: 0;
             background: transparent;
-            border-bottom: 1px dashed #d9ccb0;
+            border-bottom: 1px dashed var(--ticket-card-public-primary-border);
         }
 
         .orden-dato-label {
@@ -1159,6 +1024,12 @@
         @media (max-width: 768px) {
             .ticket-result.active {
                 width: 100%;
+                padding: 0.75rem;
+                max-width: 95vw;
+            }
+
+            .ticket-card {
+                border-radius: 0.5rem;
             }
 
             .orden-datos-grid {
@@ -1168,6 +1039,18 @@
 
             .ticket-actions {
                 grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .ticket-result.active {
+                padding: 0.5rem;
+                max-width: 100%;
+            }
+
+            .ticket-card {
+                min-width: auto;
+                border-radius: 0.5rem;
             }
         }
 
@@ -1986,11 +1869,13 @@
             }
         }
 
-        const TICKET_CARD_PUBLIC_THEME_STORAGE_KEY = 'rifaplus_admin_ticket_card_theme';
+        const TICKET_CARD_PUBLIC_THEME_STORAGE_KEY = 'rifaplus_admin_ticket_card_theme_v2';
+        const TICKET_CARD_PUBLIC_THEME_STORAGE_KEY_LEGACY = 'rifaplus_admin_ticket_card_theme';
         const TICKET_CARD_PUBLIC_THEME_DEFAULT = Object.freeze({
             primary: '#0b2238',
             primaryDark: '#153e5c',
-            soft: 'rgba(11, 34, 56, 0.16)'
+            tint: 'rgba(11, 34, 56, 0.08)',
+            border: 'rgba(11, 34, 56, 0.18)'
         });
 
         function normalizarColorHexTicketCard(valor, fallback = '') {
@@ -2010,20 +1895,31 @@
             return normalizador(valor, fallback);
         }
 
-        function calcularSoftTicketCard(primary) {
+        function enriquecerTemaTicketCard(primary, primaryDark) {
             const rgb = typeof window.hexToRgbSeguro === 'function'
                 ? window.hexToRgbSeguro(primary)
                 : null;
 
-            if (rgb && Number.isFinite(rgb.r) && Number.isFinite(rgb.g) && Number.isFinite(rgb.b)) {
-                return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.16)`;
+            if (!rgb || !Number.isFinite(rgb.r) || !Number.isFinite(rgb.g) || !Number.isFinite(rgb.b)) {
+                return {
+                    primary,
+                    primaryDark,
+                    tint: TICKET_CARD_PUBLIC_THEME_DEFAULT.tint,
+                    border: TICKET_CARD_PUBLIC_THEME_DEFAULT.border
+                };
             }
 
-            return TICKET_CARD_PUBLIC_THEME_DEFAULT.soft;
+            return {
+                primary,
+                primaryDark,
+                tint: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.08)`,
+                border: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.18)`
+            };
         }
 
         function leerTemaPublicoCacheadoTicketCard() {
             try {
+                localStorage.removeItem(TICKET_CARD_PUBLIC_THEME_STORAGE_KEY_LEGACY);
                 const bruto = localStorage.getItem(TICKET_CARD_PUBLIC_THEME_STORAGE_KEY);
                 if (!bruto) {
                     return null;
@@ -2042,53 +1938,74 @@
                         : primary
                 );
 
-                return {
-                    primary,
-                    primaryDark,
-                    soft: calcularSoftTicketCard(primary)
-                };
+                return enriquecerTemaTicketCard(primary, primaryDark);
             } catch (error) {
                 return null;
             }
         }
 
         function resolverTemaPublicoTicketCard(config = window.rifaplusConfig || {}) {
-            const primary = normalizarColorHexTicketCard(
-                config?.tema?.colores?.primary,
-                normalizarColorHexTicketCard(
-                    config?.cliente?.colorPrimario,
-                    normalizarColorHexTicketCard(config?.cliente?.colores?.primary, '')
-                )
-            );
+            const temaConfig = config?.tema || {};
+            const coloresTema = temaConfig?.colores || {};
+            const clienteConfig = config?.cliente || {};
+            const clienteColores = clienteConfig?.colores || {};
+            const temaPersonalizadoActivo = temaConfig?.personalizado === true;
 
-            if (!primary) {
-                return null;
-            }
+            const candidatosPrimary = temaPersonalizadoActivo
+                ? [
+                    temaConfig?.colorPrimario,
+                    coloresTema?.colorPrimario,
+                    coloresTema?.primary,
+                    clienteConfig?.colorPrimario,
+                    clienteColores?.colorPrimario,
+                    clienteColores?.primary,
+                    TICKET_CARD_PUBLIC_THEME_DEFAULT.primary
+                ]
+                : [
+                    clienteConfig?.colorPrimario,
+                    clienteColores?.colorPrimario,
+                    clienteColores?.primary,
+                    TICKET_CARD_PUBLIC_THEME_DEFAULT.primary
+                ];
+
+            const primary = candidatosPrimary
+                .map((valor) => normalizarColorHexTicketCard(valor, ''))
+                .find(Boolean) || TICKET_CARD_PUBLIC_THEME_DEFAULT.primary;
 
             const primaryDarkFallback = typeof window.ajustarLuminosidadHex === 'function'
                 ? window.ajustarLuminosidadHex(primary, -0.22)
                 : primary;
 
-            const primaryDark = normalizarColorHexTicketCard(
-                config?.tema?.colores?.primaryDark,
-                normalizarColorHexTicketCard(
-                    config?.cliente?.colorPrimarioDark,
-                    normalizarColorHexTicketCard(config?.cliente?.colores?.primaryDark, primaryDarkFallback)
-                )
-            ) || primaryDarkFallback;
+            const candidatosPrimaryDark = temaPersonalizadoActivo
+                ? [
+                    temaConfig?.colorPrimarioOscuro,
+                    coloresTema?.colorPrimarioOscuro,
+                    coloresTema?.primaryDark,
+                    clienteConfig?.colorPrimarioDark,
+                    clienteColores?.colorPrimarioDark,
+                    clienteColores?.primaryDark,
+                    primaryDarkFallback
+                ]
+                : [
+                    clienteConfig?.colorPrimarioDark,
+                    clienteColores?.colorPrimarioDark,
+                    clienteColores?.primaryDark,
+                    primaryDarkFallback
+                ];
 
-            return {
-                primary,
-                primaryDark,
-                soft: calcularSoftTicketCard(primary)
-            };
+            const primaryDark = candidatosPrimaryDark
+                .map((valor) => normalizarColorHexTicketCard(valor, ''))
+                .find(Boolean) || primaryDarkFallback;
+
+            return enriquecerTemaTicketCard(primary, primaryDark);
         }
 
         function aplicarTemaResueltoTicketCard(tema) {
             const root = document.documentElement;
             root.style.setProperty('--ticket-card-public-primary', tema.primary);
             root.style.setProperty('--ticket-card-public-primary-dark', tema.primaryDark);
-            root.style.setProperty('--ticket-card-public-primary-soft', tema.soft);
+            root.style.setProperty('--ticket-card-public-primary-tint', tema.tint || TICKET_CARD_PUBLIC_THEME_DEFAULT.tint);
+            root.style.setProperty('--ticket-card-public-primary-border', tema.border || TICKET_CARD_PUBLIC_THEME_DEFAULT.border);
             root.dataset.ticketCardPublicPrimary = tema.primary;
 
             window.__rifaplusTicketCardPublicTheme = tema;

@@ -3359,7 +3359,10 @@ app.patch('/api/admin/config', verificarToken, async (req, res) => {
             // ⏰ AGREGAR SOPORTE PARA TIEMPO DE APARTADO
             if (req.body.rifa.tiempoApartadoHoras !== undefined) {
                 const tiempoAnterior = config.rifa.tiempoApartadoHoras;
-                const nuevoTiempoApartadoHoras = parseFloat(req.body.rifa.tiempoApartadoHoras);
+                const nuevoTiempoApartadoHorasRaw = parseFloat(req.body.rifa.tiempoApartadoHoras);
+                const nuevoTiempoApartadoHoras = Number.isFinite(nuevoTiempoApartadoHorasRaw) && nuevoTiempoApartadoHorasRaw > 0
+                    ? Math.max(0.5, Math.round(nuevoTiempoApartadoHorasRaw / 0.5) * 0.5)
+                    : NaN;
                 if (Number.isNaN(nuevoTiempoApartadoHoras) || nuevoTiempoApartadoHoras <= 0) {
                     return res.status(400).json({
                         success: false,
@@ -3367,7 +3370,7 @@ app.patch('/api/admin/config', verificarToken, async (req, res) => {
                     });
                 }
 
-                config.rifa.tiempoApartadoHoras = nuevoTiempoApartadoHoras;
+                config.rifa.tiempoApartadoHoras = Number(nuevoTiempoApartadoHoras.toFixed(1));
                 console.log('[PATCH /api/admin/config] ⏰ Tiempo de apartado - ANTES DE GUARDAR:', {
                     anterior: tiempoAnterior,
                     nuevo: config.rifa.tiempoApartadoHoras,

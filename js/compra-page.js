@@ -13,6 +13,54 @@
     let remotePricePromise = null;
     let renderPublicoPendiente = false;
     let renderFooterPendiente = false;
+    let pageReadyCompraEmitida = false;
+
+    function notificarPaginaListaCompra() {
+        window.dispatchEvent(new CustomEvent('rifaplus:page-ready', {
+            detail: { page: 'compra' }
+        }));
+    }
+
+    function esHeroCompraListo() {
+        const hero = document.querySelector('.compra-hero');
+        const title = document.getElementById('compraHeroTitle');
+        const subtitle = document.getElementById('compraHeroSub');
+
+        if (!hero || !title || !subtitle) {
+            return false;
+        }
+
+        return Boolean(String(title.textContent || '').trim())
+            && Boolean(String(subtitle.textContent || '').trim());
+    }
+
+    function esCardPrecioCompraLista() {
+        const card = document.getElementById('precioCardCompra');
+        const precio = document.getElementById('precioDinamico');
+
+        if (!card || !precio) {
+            return false;
+        }
+
+        return !card.classList.contains('loading')
+            && card.getAttribute('aria-busy') !== 'true'
+            && Boolean(String(precio.textContent || '').trim());
+    }
+
+    function evaluarPaginaListaCompra() {
+        if (pageReadyCompraEmitida) {
+            return;
+        }
+
+        if (!esHeroCompraListo() || !esCardPrecioCompraLista()) {
+            return;
+        }
+
+        pageReadyCompraEmitida = true;
+        requestAnimationFrame(() => {
+            notificarPaginaListaCompra();
+        });
+    }
 
     function cuandoDomEsteListo(callback) {
         if (document.readyState === 'loading') {
@@ -193,6 +241,7 @@
             if (subtitle && !subtitle.textContent.trim()) {
                 subtitle.textContent = estadoSiguiente.subtitulo;
             }
+            evaluarPaginaListaCompra();
             return;
         }
 
@@ -218,6 +267,8 @@
                 ...estadoSiguiente
             };
         }
+
+        evaluarPaginaListaCompra();
     }
 
     async function obtenerPrecioBoletoRemoto() {
@@ -380,10 +431,12 @@
         const card = document.createElement('div');
         card.className = `promo-card ${className}`.trim();
 
-        const tagEl = document.createElement('span');
-        tagEl.className = 'promo-tag';
-        tagEl.textContent = tag;
-        card.appendChild(tagEl);
+        if (tag) {
+            const tagEl = document.createElement('span');
+            tagEl.className = 'promo-tag';
+            tagEl.textContent = tag;
+            card.appendChild(tagEl);
+        }
 
         const simpleEl = document.createElement('p');
         simpleEl.className = 'promo-simple';
@@ -411,11 +464,17 @@
     }
 
     function renderizarPromociones(rifa) {
-        const promocionesHeader = document.querySelector('.promociones-header');
+        const promocionesPanel = document.getElementById('promocionesPanel');
+        const promocionesHeader = document.getElementById('promocionesHeader');
         const promocionesSubText = document.getElementById('promocionesSubText');
         const promosCards = document.getElementById('promosCards');
+        const descuentosBlock = document.getElementById('descuentosBlock');
+        const descuentosSubText = document.getElementById('descuentosSubText');
+        const oportunidadesBlock = document.getElementById('oportunidadesBlock');
+        const oportunidadesSubText = document.getElementById('oportunidadesSubText');
+        const oportunidadesCards = document.getElementById('oportunidadesCards');
 
-        if (!promocionesSubText || !promosCards) {
+        if (!promocionesPanel || !promocionesSubText || !promosCards || !descuentosBlock || !oportunidadesBlock || !oportunidadesCards) {
             return;
         }
 
@@ -427,18 +486,8 @@
             Array.isArray(promosOportunidadesConfig?.ejemplos) &&
             promosOportunidadesConfig.ejemplos.length > 0;
 
-        if (oportunidadesActivas) {
-            const multiplicador = Number(oportunidadesConfig?.multiplicador) > 0
-                ? Number(oportunidadesConfig.multiplicador)
-                : 1;
-            promocionesSubText.textContent = `¡Multiplica tus oportunidades de ganar! Cada boleto que compres te regala ${multiplicador} oportunidades EXTRA. Compra mas boletos y aumenta tus probabilidades, ejemplo:`;
-        } else if (descuentosConfig?.enabled) {
-            promocionesSubText.textContent = 'Aprovecha los paquetes y ahorra al comprar varios boletos';
-        } else {
-            promocionesSubText.textContent = 'Promociones disponibles por tiempo limitado';
-        }
-
-        const tarjetas = [];
+        const promocionesDescuento = [];
+        const tarjetasOportunidades = [];
 
         if (descuentosConfig?.enabled && Array.isArray(descuentosConfig.reglas)) {
             descuentosConfig.reglas.forEach((regla) => {
@@ -449,7 +498,8 @@
                     return;
                 }
 
-                tarjetas.push({
+                promocionesDescuento.push({
+                    sortKey: cantidad,
                     tag: 'Promocion',
                     simple: `${cantidad} Boletos`,
                     operator: 'Solo por:',
@@ -457,6 +507,10 @@
                     desc: '',
                     className: 'promo-card--paquete'
                 });
+            });
+
+            promocionesDescuento.sort((a, b) => {
+                return (a.sortKey || 0) - (b.sortKey || 0);
             });
         }
 
@@ -469,47 +523,104 @@
                     return;
                 }
 
-                tarjetas.push({
-                    tag: 'Oportunidades',
+                tarjetasOportunidades.push({
+                    sortKey: boletos,
+                    tag: '',
                     simple: `${boletos} Boleto${boletos === 1 ? '' : 's'}`,
                     operator: '=',
                     strong: `${oportunidades} Oportunidade${oportunidades === 1 ? '' : 's'}`,
-                    desc: 'Mas oportunidades de ganar',
+                    desc: '',
                     className: 'promo-card--oportunidad'
                 });
             });
+
+            tarjetasOportunidades.sort((a, b) => {
+                return (a.sortKey || 0) - (b.sortKey || 0);
+            });
         }
 
-        const snapshot = JSON.stringify(tarjetas);
+        const multiplicador = Number(oportunidadesConfig?.multiplicador) > 0
+            ? Number(oportunidadesConfig.multiplicador)
+            : 1;
+        const tieneDescuentos = promocionesDescuento.length > 0;
+        const tieneOportunidades = tarjetasOportunidades.length > 0;
+
+        if (tieneDescuentos && tieneOportunidades) {
+            promocionesSubText.textContent = `Aprovecha descuentos por volumen y recibe ${multiplicador} oportunidades extra por cada boleto.`;
+        } else if (tieneDescuentos) {
+            promocionesSubText.textContent = 'Mientras más boletos compras, mejor precio obtienes.';
+        } else if (tieneOportunidades) {
+            promocionesSubText.textContent = `Cada boleto te da ${multiplicador} oportunidades extra para participar con más fuerza.`;
+        } else {
+            promocionesSubText.textContent = 'Promociones disponibles por tiempo limitado';
+        }
+
+        if (descuentosSubText) {
+            descuentosSubText.textContent = 'Llevate mas boletos por un mejor precio.';
+        }
+
+        if (oportunidadesSubText) {
+            oportunidadesSubText.textContent = 'Cada boleto multiplica tus posibilidades de ganar.';
+        }
+
+        const snapshot = JSON.stringify({
+            promocionesDescuento,
+            tarjetasOportunidades
+        });
         if (snapshot === promocionesSnapshot) {
-            promosCards.style.display = tarjetas.length > 0 ? 'grid' : 'none';
-            if (promocionesHeader) {
-                promocionesHeader.style.display = tarjetas.length > 0 ? '' : 'none';
-            }
+            promocionesPanel.style.display = (tieneDescuentos || tieneOportunidades) ? '' : 'none';
+            promocionesHeader.style.display = (tieneDescuentos || tieneOportunidades) ? '' : 'none';
+            descuentosBlock.style.display = tieneDescuentos ? '' : 'none';
+            oportunidadesBlock.style.display = tieneOportunidades ? '' : 'none';
+            promosCards.style.display = tieneDescuentos ? 'grid' : 'none';
+            oportunidadesCards.style.display = tieneOportunidades ? 'grid' : 'none';
             return;
         }
 
         promocionesSnapshot = snapshot;
         vaciarNodo(promosCards);
+        vaciarNodo(oportunidadesCards);
 
-        if (tarjetas.length === 0) {
+        if (!tieneDescuentos && !tieneOportunidades) {
+            promocionesPanel.style.display = 'none';
+            promocionesHeader.style.display = 'none';
+            descuentosBlock.style.display = 'none';
+            oportunidadesBlock.style.display = 'none';
             promosCards.style.display = 'none';
-            if (promocionesHeader) {
-                promocionesHeader.style.display = 'none';
-            }
+            oportunidadesCards.style.display = 'none';
             return;
         }
 
-        const fragment = document.createDocumentFragment();
-        tarjetas.forEach((tarjeta) => {
-            fragment.appendChild(crearPromoCard(tarjeta));
-        });
-        promosCards.appendChild(fragment);
-        promosCards.style.display = 'grid';
-        if (promocionesHeader) {
-            promocionesHeader.style.display = '';
+        if (tieneDescuentos) {
+            const descuentosFragment = document.createDocumentFragment();
+            promocionesDescuento.forEach((tarjeta) => {
+                descuentosFragment.appendChild(crearPromoCard(tarjeta));
+            });
+            promosCards.appendChild(descuentosFragment);
+            promosCards.style.display = 'grid';
+            descuentosBlock.style.display = '';
+            aplicarLayoutCards(promosCards);
+        } else {
+            descuentosBlock.style.display = 'none';
+            promosCards.style.display = 'none';
         }
-        aplicarLayoutCards(promosCards);
+
+        if (tieneOportunidades) {
+            const oportunidadesFragment = document.createDocumentFragment();
+            tarjetasOportunidades.forEach((tarjeta) => {
+                oportunidadesFragment.appendChild(crearPromoCard(tarjeta));
+            });
+            oportunidadesCards.appendChild(oportunidadesFragment);
+            oportunidadesCards.style.display = 'grid';
+            oportunidadesBlock.style.display = '';
+            aplicarLayoutCards(oportunidadesCards);
+        } else {
+            oportunidadesBlock.style.display = 'none';
+            oportunidadesCards.style.display = 'none';
+        }
+
+        promocionesPanel.style.display = '';
+        promocionesHeader.style.display = '';
     }
 
     function renderizarBonosCompra(rifa) {
@@ -614,6 +725,7 @@
             precioCardCompra.classList.remove('loading');
             precioCardCompra.setAttribute('aria-busy', 'false');
         }
+        evaluarPaginaListaCompra();
 
         if (!promo.activa) {
             if (precioNormalCompra) precioNormalCompra.style.display = 'flex';
@@ -654,12 +766,15 @@
             return;
         }
 
+        pageReadyCompraEmitida = false;
+
         hidratarPrecioCompraDesdeSnapshot(config);
         actualizarHeroCompraDesdeConfig();
         actualizarCardPrecio(config.rifa);
         renderizarPromociones(config.rifa);
         renderizarBonosCompra(config.rifa);
         animarBotonFlotanteSiExiste();
+        evaluarPaginaListaCompra();
 
         const precioAntes = Number(config.rifa.precioBoleto);
         const precioRemoto = await obtenerPrecioBoletoRemoto();
@@ -667,6 +782,8 @@
             actualizarCardPrecio(config.rifa);
             renderizarPromociones(config.rifa);
         }
+
+        evaluarPaginaListaCompra();
     }
 
     function programarRenderCompraPublica() {

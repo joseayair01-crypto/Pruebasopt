@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="rifaplus-api-base" content="https://sadev-production.up.railway.app">
+    <meta name="rifaplus-api-base" content="http://localhost:5001">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:* http://localhost:*; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://fonts.googleapis.com http://localhost:5001 http://127.0.0.1:5001; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' http://127.0.0.1:* http://localhost:* https: http://localhost:5001 http://127.0.0.1:5001 ws: wss: ws://localhost:5001 wss://localhost:5001 ws://127.0.0.1:5001 wss://127.0.0.1:5001; img-src 'self' data: https:;">
     <!-- METADATOS DINÁMICOS - Inyectados por js/meta-inyector.js desde config.js -->
     <title>Mis Boletos</title>
@@ -39,6 +39,19 @@
             ['rifaplus_fecha_sorteo','rifaplus_timestamp_sorteo','rifaplus_fecha_cierre'].forEach(k => localStorage.removeItem(k));
         })();
     </script>
+    <script>
+        (function prepararShellMisBoletos() {
+            let omitirShell = false;
+
+            try {
+                omitirShell = sessionStorage.getItem('rifaplus_skip_mis_boletos_shell_once') === 'true';
+            } catch (error) {
+                omitirShell = false;
+            }
+
+            window.__RIFAPLUS_SKIP_PUBLIC_SHELL__ = omitirShell;
+        })();
+    </script>
     <script src="js/theme-dynamic.js?v=20260410.1"></script>
     <script src="js/boletos-loader.js"></script>
     <script src="js/modal-scroll-lock.js"></script>
@@ -49,6 +62,17 @@
     <script defer src="js/oportunidades-manager.js"></script>
 </head>
 <body class="rifaplus-shell-loading" aria-busy="true">
+    <script>
+        (function aplicarSupresionShellMisBoletos() {
+            if (!window.__RIFAPLUS_SKIP_PUBLIC_SHELL__) {
+                return;
+            }
+
+            document.body.classList.remove('rifaplus-shell-loading', 'rifaplus-shell-active');
+            document.body.classList.add('rifaplus-shell-ready');
+            document.body.removeAttribute('aria-busy');
+        })();
+    </script>
     <div class="rifaplus-shell-overlay rifaplus-shell-overlay--logo-only" id="rifaplusPublicShell" role="status" aria-live="polite" aria-label="Cargando">
         <div class="rifaplus-shell-card">
             <div class="rifaplus-shell-logo-frame">
@@ -56,6 +80,25 @@
             </div>
         </div>
     </div>
+    <script>
+        (function finalizarSupresionShellMisBoletos() {
+            if (!window.__RIFAPLUS_SKIP_PUBLIC_SHELL__) {
+                return;
+            }
+
+            const overlay = document.getElementById('rifaplusPublicShell');
+            if (overlay) {
+                overlay.setAttribute('hidden', 'hidden');
+                overlay.classList.remove('is-visible', 'is-leaving');
+            }
+
+            try {
+                sessionStorage.removeItem('rifaplus_skip_mis_boletos_shell_once');
+            } catch (error) {
+                // Ignorar errores de storage para no afectar la página.
+            }
+        })();
+    </script>
     <!-- HEADER CON MENÚ -->
     <header class="header">
         <div class="container">
@@ -2655,6 +2698,12 @@
         };
         window.appState = appState;
 
+        function notificarPaginaListaMisBoletos() {
+            window.dispatchEvent(new CustomEvent('rifaplus:page-ready', {
+                detail: { page: 'mis-boletos' }
+            }));
+        }
+
         document.addEventListener('DOMContentLoaded', async function() {
             // ✅ Sincronizar config del backend first
             if (window.rifaplusConfig?.sincronizarConfigDelBackend) {
@@ -2664,6 +2713,9 @@
             actualizarFooterDesdeConfig();
             // ✅ Inicializar aplicación
             initializeApp();
+            requestAnimationFrame(() => {
+                notificarPaginaListaMisBoletos();
+            });
         });
 
         // ============================================
@@ -3392,6 +3444,51 @@
                         .filter((boleto) => boleto !== '-')
                         .sort()
                     : [];
+                const oportunidadesHabilitadas = window.rifaplusConfig?.rifa?.oportunidades?.enabled === true;
+                const formatearNumeroPdf = typeof window.rifaplusConfig?.formatearNumeroBoleto === 'function'
+                    ? window.rifaplusConfig.formatearNumeroBoleto.bind(window.rifaplusConfig)
+                    : (numero) => String(numero);
+                const oportunidadesRaw = (() => {
+                    if (Array.isArray(orden.oportunidades)) {
+                        return orden.oportunidades;
+                    }
+
+                    if (typeof orden.oportunidades === 'string' && orden.oportunidades.trim()) {
+                        try {
+                            const parsed = JSON.parse(orden.oportunidades);
+                            if (Array.isArray(parsed)) {
+                                return parsed;
+                            }
+                        } catch (_) {
+                            return orden.oportunidades
+                                .split(',')
+                                .map((item) => item.trim())
+                                .filter(Boolean);
+                        }
+                    }
+
+                    return [];
+                })();
+                const oportunidadesConfirmadas = oportunidadesRaw
+                    .map((opp) => {
+                        let numero = opp;
+                        if (typeof opp === 'object' && opp !== null) {
+                            numero = opp.numero_boleto || opp.boleto_numero || opp.numero_oportunidad || opp.numero || 0;
+                        }
+                        return Number.parseInt(numero, 10);
+                    })
+                    .filter((numero) => Number.isFinite(numero) && numero > 0);
+                const oportunidadesUnicas = Array.from(new Set(oportunidadesConfirmadas)).sort((a, b) => a - b);
+                const cantidadOportunidades = Number.isFinite(Number(
+                    orden.cantidad_oportunidades
+                    ?? orden.total_oportunidades
+                    ?? orden.oportunidades_count
+                    ?? 0
+                ))
+                    ? Number(orden.cantidad_oportunidades ?? orden.total_oportunidades ?? orden.oportunidades_count ?? 0)
+                    : oportunidadesUnicas.length;
+                const oportunidadesTotales = Math.max(cantidadOportunidades, oportunidadesUnicas.length);
+                const oportunidadesFormateadas = oportunidadesUnicas.map((numero) => formatearNumeroPdf(numero));
 
                 const subtotal = Number(orden.subtotal ?? 0);
                 const descuento = Number(orden.descuento ?? 0);
@@ -3554,6 +3651,9 @@
                     title: 'Resumen de la participacion',
                     rows: [
                         { label: 'Cantidad', value: `${boletosFormateados.length} boleto(s)` },
+                        ...(oportunidadesHabilitadas && oportunidadesTotales > 0
+                            ? [{ label: 'Oportunidades', value: `${oportunidadesTotales}` }]
+                            : []),
                         { label: 'Subtotal', value: `$${subtotal.toFixed(2)}` },
                         ...(descuento > 0 ? [{ label: 'Descuento', value: `-$${descuento.toFixed(2)}` }] : []),
                         { label: 'Total pagado', value: `$${total.toFixed(2)}` }
@@ -3593,6 +3693,63 @@
                     pdf.text(lineasRender, margen + 2, y);
                     y += altoLinea;
                 });
+
+                if (oportunidadesHabilitadas && oportunidadesTotales > 0) {
+                    if (y + 24 > altoPagina - 36) {
+                        pdf.addPage();
+                        pdf.setFillColor(255, 255, 255);
+                        pdf.rect(0, 0, anchoPagina, altoPagina, 'F');
+                        y = margen + 8;
+                    }
+
+                    pdf.setFillColor(...colors.white);
+                    pdf.setDrawColor(...colors.border);
+                    pdf.roundedRect(margen, y, anchoContenido, 16, 4, 4, 'FD');
+                    pdf.setFont('helvetica', 'bold');
+                    pdf.setFontSize(11);
+                    pdf.setTextColor(...colors.textDark);
+                    pdf.text('Oportunidades confirmadas', margen + 5, y + 9);
+                    pdf.setFont('helvetica', 'normal');
+                    pdf.setFontSize(9.1);
+                    pdf.setTextColor(...colors.textSoft);
+                    pdf.text(
+                        oportunidadesFormateadas.length > 0
+                            ? 'Estas son las oportunidades adicionales ligadas a tu orden confirmada.'
+                            : 'Tu orden incluye oportunidades adicionales confirmadas.',
+                        anchoPagina - margen - 5,
+                        y + 9,
+                        { align: 'right' }
+                    );
+                    y += 20;
+
+                    if (oportunidadesFormateadas.length > 0) {
+                        const lineasOportunidades = construirLineasBoletosPdf(oportunidadesFormateadas);
+                        pdf.setFont('courier', 'bold');
+                        pdf.setFontSize(10);
+                        pdf.setTextColor(...colors.textDark);
+
+                        lineasOportunidades.forEach((linea) => {
+                            const lineasRender = pdf.splitTextToSize(linea, anchoTextoBoletos);
+                            const altoLinea = Math.max(1, lineasRender.length) * 5.2;
+
+                            if (y + altoLinea > altoPagina - 36) {
+                                pdf.addPage();
+                                pdf.setFillColor(255, 255, 255);
+                                pdf.rect(0, 0, anchoPagina, altoPagina, 'F');
+                                y = margen + 8;
+                            }
+
+                            pdf.text(lineasRender, margen + 2, y);
+                            y += altoLinea;
+                        });
+                    } else {
+                        pdf.setFont('helvetica', 'bold');
+                        pdf.setFontSize(10.4);
+                        pdf.setTextColor(...colors.textDark);
+                        pdf.text(`${oportunidadesTotales} oportunidad${oportunidadesTotales === 1 ? '' : 'es'} confirmada${oportunidadesTotales === 1 ? '' : 's'}`, margen + 2, y);
+                        y += 7;
+                    }
+                }
 
                 const yFooter = altoPagina - 26;
                 pdf.setDrawColor(...mezclarColorPdf(colors.primary, [255, 255, 255], 0.75));

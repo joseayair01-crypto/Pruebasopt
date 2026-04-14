@@ -2582,7 +2582,15 @@
          * Inicializar configuración global del dashboard
          * Establece el nombre y logo de la organización desde config
          */
-        function inicializarConfiguracion() {
+        async function inicializarConfiguracion() {
+            if (window.rifaplusConfig?.sincronizarConfigDelBackend) {
+                try {
+                    await window.rifaplusConfig.sincronizarConfigDelBackend({ force: true });
+                } catch (error) {
+                    console.info('ℹ️ [AdminDashboard] No se pudo sincronizar la config antes de pintar la UI inicial:', error?.message || error);
+                }
+            }
+
             const config = window.rifaplusConfig || {};
             const nombreCliente = config.cliente?.nombre || 'Sorteo';
             const logoCliente = config.cliente?.logo || config.cliente?.logotipo || 'images/placeholder-logo.svg';
@@ -2594,6 +2602,18 @@
             if (headerTitleSub) {
                 headerTitleSub.textContent = nombreCliente;
             }
+        }
+
+        function programarCuentaRegresivaCuandoEsteLista() {
+            const validacion = window.rifaplusConfig?.validarFechaSorteo?.();
+
+            if (validacion?.valida) {
+                iniciarCuentaRegresiva();
+                return true;
+            }
+
+            debugAdminDashboard('Countdown pendiente hasta que la fecha del sorteo termine de sincronizarse', validacion?.mensaje || 'Sin fecha disponible');
+            return false;
         }
 
         /* ============================================================ */
@@ -3891,7 +3911,7 @@
                 restringirAccesoConfiguracion();
                 inicializarFiltrosGraficaTendencia();
                 
-                iniciarCuentaRegresiva();
+                programarCuentaRegresivaCuandoEsteLista();
                 
                 // ⭐ IMPORTANTE: Hacer requests SECUENCIALMENTE para respetar límite de conexiones de Supabase
                 debugAdminDashboard('Cargando estadisticas iniciales');
@@ -3975,11 +3995,11 @@
          * Verificar token guardado y cargar dashboard si existe
          */
         window.addEventListener('load', async () => {
-            inicializarConfiguracion();
+            await inicializarConfiguracion();
             if (window.rifaplusConfig && typeof window.rifaplusConfig.escucharEvento === 'function' && !window.__adminDashboardCountdownSyncHook) {
                 window.__adminDashboardCountdownSyncHook = true;
                 window.rifaplusConfig.escucharEvento('configuracionActualizada', () => {
-                    iniciarCuentaRegresiva();
+                    programarCuentaRegresivaCuandoEsteLista();
                 });
             }
             const tokenGuardado = await ADMIN_LAYOUT.esperarAutenticacion();

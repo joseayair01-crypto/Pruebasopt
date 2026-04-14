@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="rifaplus-api-base" content="https://sadev-production.up.railway.app">
+    <meta name="rifaplus-api-base" content="http://localhost:5001">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:* http://localhost:* http://localhost:5001; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://fonts.googleapis.com http://localhost:5001 http://127.0.0.1:5001; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' http://127.0.0.1:* http://localhost:* https: http://localhost:5001 http://127.0.0.1:5001 ws: wss: ws://localhost:5001 wss://localhost:5001 ws://127.0.0.1:5001 wss://127.0.0.1:5001; img-src 'self' data: https:;">
     <!-- METADATOS DINÁMICOS - Cloudflare Functions y js/meta-inyector los actualizan desde la configuración actual -->
     <title>Sorteo en linea</title>
@@ -799,9 +799,29 @@
             <!-- AVISO DE OPORTUNIDADES -->
             <p id="oportunidadesTexto" class="oportunidades-texto" style="display: none;"></p>
             
-            <!-- PROMOCIONES/DESCUENTOS - Grid responsivo centrado -->
-            <div class="precios-grid-promos" id="preciosGrid">
-                <!-- Se carga dinámicamente desde config.js -->
+            <!-- PROMOCIONES/DESCUENTOS -->
+            <div class="precios-promos-panel" id="preciosPromosPanel" style="display: none;">
+                <div class="precios-promos-sections">
+                    <section class="precios-promos-block precios-promos-block--oportunidades" id="indexOportunidadesBlock" style="display: none;">
+                        <div class="precios-promos-header">
+                            <h3 class="precios-promos-title">Oportunidades extra</h3>
+                            <p class="precios-promos-sub" id="indexOportunidadesSub">Cada boleto multiplica tus posibilidades de ganar.</p>
+                        </div>
+                        <div class="precios-grid-promos" id="indexOportunidadesGrid">
+                            <!-- Se carga dinámicamente desde config.js -->
+                        </div>
+                    </section>
+
+                    <section class="precios-promos-block" id="indexDescuentosBlock" style="display: none;">
+                        <div class="precios-promos-header">
+                            <h3 class="precios-promos-title">Ahorra al comprar más</h3>
+                            <p class="precios-promos-sub" id="indexDescuentosSub">Llévate más boletos por un mejor precio.</p>
+                        </div>
+                        <div class="precios-grid-promos" id="preciosGrid">
+                            <!-- Se carga dinámicamente desde config.js -->
+                        </div>
+                    </section>
+                </div>
             </div>
         </div>
     </section>

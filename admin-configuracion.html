@@ -2491,10 +2491,10 @@
                         <div class="form-group-single" style="margin: 0;">
                             <label class="form-label">Tiempo de apartado <span class="required">*</span></label>
                             <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                <input type="number" class="form-input" id="tiempo-apartado-horas" min="0.5" step="0.5" required style="flex: 1;" data-number-guard="strict" data-number-mode="step" inputmode="decimal" autocomplete="off">
+                                <input type="text" class="form-input" id="tiempo-apartado-horas" required style="flex: 1;" inputmode="decimal" autocomplete="off" spellcheck="false" aria-describedby="tiempo-apartado-horas-help">
                                 <span style="color: #6B7280; font-size: 0.95rem;">horas</span>
                             </div>
-                            <div class="form-helper">Tiempo máximo que un boleto permanece apartado sin pago antes de liberarse.</div>
+                            <div class="form-helper" id="tiempo-apartado-horas-help">Tiempo máximo que un boleto permanece apartado sin pago antes de liberarse.</div>
                         </div>
 
                         <div class="form-group-single" style="margin: 0;">
@@ -6392,10 +6392,11 @@
                     }
 
                     // Actualizar en memoria con merge completo desde servidor
-                    window.rifaplusConfig.rifa = {
-                        ...window.rifaplusConfig.rifa,
-                        ...result.data.rifa
-                    };
+                    sincronizarBoletajeYRangosEnMemoria({
+                        ...result.data.rifa,
+                        totalBoletos: result.data.rifa?.totalBoletos ?? result.data.totalBoletos,
+                        tiempoApartadoHoras: result.data.rifa?.tiempoApartadoHoras ?? result.data.tiempoApartadoHoras
+                    });
 
                     if (result.data.rifa.oportunidades) {
                         window.rifaplusConfig.rifa.oportunidades = {
@@ -6436,7 +6437,7 @@
                         mostrarAlerta('⚠️ Se detectaron URLs de imagen inválidas y fueron omitidas en la vista previa del admin', 'warning');
                     }
 
-                    const actualizoBoletaje = cargarConfiguracionBoletajeYRangos({ origen: 'servidor' });
+                    const actualizoBoletaje = cargarConfiguracionBoletajeYRangos({ origen: 'servidor', forzar: true });
                     if (actualizoBoletaje) {
                         guardarValoresOriginaleSorteo();
                         restaurarBorradorBoletajeYRangosSiExiste();
@@ -7416,8 +7417,8 @@
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
-            volcarDebugVolumenPendiente();
             bloquearCambiosAccidentalesPorScrollEnNumeros();
+            inicializarCampoTiempoApartadoAdmin();
 
             // Decodificar token y establecer usuario actual
             const usuario = decodificarJWT();
@@ -7829,6 +7830,188 @@
             rangoOculto: ''
         };
 
+        const BOLETAJE_RANGOS_CANONICAL_KEY = 'rifaplus_admin_boletaje_rangos_canonical_v1';
+
+        function leerBoletajeYRangosCanonico() {
+            try {
+                const raw = localStorage.getItem(BOLETAJE_RANGOS_CANONICAL_KEY);
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                return parsed && typeof parsed === 'object' ? parsed : null;
+            } catch (error) {
+                console.warn('⚠️ No se pudo leer el snapshot canónico de boletaje/rangos:', error.message);
+                return null;
+            }
+        }
+
+        function persistirBoletajeYRangosCanonico(snapshot = {}) {
+            try {
+                localStorage.setItem(BOLETAJE_RANGOS_CANONICAL_KEY, JSON.stringify(snapshot));
+            } catch (error) {
+                console.warn('⚠️ No se pudo guardar el snapshot canónico de boletaje/rangos:', error.message);
+            }
+        }
+
+        function resolverBoletajeYRangosCanonico(rifa = {}) {
+            const fallback = leerBoletajeYRangosCanonico() || {};
+            const totalBoletosActual = Number(rifa?.totalBoletos);
+            const totalBoletosFallback = Number(fallback?.totalBoletos);
+            const tiempoApartadoActual = Number(rifa?.tiempoApartadoHoras);
+            const tiempoApartadoFallback = Number(fallback?.tiempoApartadoHoras);
+            const limiteActual = Number(rifa?.maquinaSuerte?.limiteBoletos);
+            const limiteFallback = Number(fallback?.maquinaSuerte?.limiteBoletos);
+
+            const rangosActuales = Array.isArray(rifa?.rangos)
+                ? rifa.rangos.map((rango, index) => normalizarRangoAdmin(rango, `Rango ${index + 1}`)).filter(Boolean)
+                : [];
+            const rangosFallback = Array.isArray(fallback?.rangos)
+                ? fallback.rangos.map((rango, index) => normalizarRangoAdmin(rango, `Rango ${index + 1}`)).filter(Boolean)
+                : [];
+
+            const rangoVisibleActual = normalizarRangoAdmin(rifa?.oportunidades?.rango_visible, 'Visible');
+            const rangoVisibleFallback = normalizarRangoAdmin(fallback?.oportunidades?.rango_visible, 'Visible');
+            const rangoOcultoActual = normalizarRangoAdmin(rifa?.oportunidades?.rango_oculto, 'Oculto');
+            const rangoOcultoFallback = normalizarRangoAdmin(fallback?.oportunidades?.rango_oculto, 'Oculto');
+
+            const totalBoletos = Number.isInteger(totalBoletosActual) && totalBoletosActual > 0
+                ? totalBoletosActual
+                : (Number.isInteger(totalBoletosFallback) && totalBoletosFallback > 0 ? totalBoletosFallback : '');
+
+            const tiempoApartadoHoras = Number.isFinite(tiempoApartadoActual) && tiempoApartadoActual > 0
+                ? tiempoApartadoActual
+                : (Number.isFinite(tiempoApartadoFallback) && tiempoApartadoFallback > 0 ? tiempoApartadoFallback : '');
+
+            const rangos = rangosActuales.length > 0 ? rangosActuales : rangosFallback;
+            const rangoVisible = rangoVisibleActual || rangoVisibleFallback || null;
+            const rangoOculto = rangoOcultoActual || rangoOcultoFallback || null;
+
+            const maquinaSuerte = {
+                ...(fallback?.maquinaSuerte || {}),
+                ...(rifa?.maquinaSuerte || {}),
+                limiteBoletos: Number.isFinite(limiteActual) && limiteActual > 0
+                    ? limiteActual
+                    : (Number.isFinite(limiteFallback) && limiteFallback > 0 ? limiteFallback : undefined),
+                mostrarNotaDisponibilidad: typeof rifa?.maquinaSuerte?.mostrarNotaDisponibilidad === 'boolean'
+                    ? rifa.maquinaSuerte.mostrarNotaDisponibilidad
+                    : (typeof fallback?.maquinaSuerte?.mostrarNotaDisponibilidad === 'boolean'
+                        ? fallback.maquinaSuerte.mostrarNotaDisponibilidad
+                        : true)
+            };
+
+            const busquedaBoletos = {
+                ...(fallback?.busquedaBoletos || {}),
+                ...(rifa?.busquedaBoletos || {}),
+                modoAvanzado: typeof rifa?.busquedaBoletos?.modoAvanzado === 'boolean'
+                    ? rifa.busquedaBoletos.modoAvanzado
+                    : (fallback?.busquedaBoletos?.modoAvanzado === true)
+            };
+
+            return {
+                totalBoletos,
+                tiempoApartadoHoras,
+                rangos,
+                maquinaSuerte,
+                busquedaBoletos,
+                oportunidades: {
+                    ...(fallback?.oportunidades || {}),
+                    ...(rifa?.oportunidades || {}),
+                    rango_visible: rangoVisible ? { inicio: rangoVisible.inicio, fin: rangoVisible.fin } : false,
+                    rango_oculto: rangoOculto ? { inicio: rangoOculto.inicio, fin: rangoOculto.fin } : null
+                }
+            };
+        }
+
+        function obtenerFuenteBoletajeYRangosAdmin() {
+            const configGlobal = window.rifaplusConfig || {};
+            const rifaBase = (configGlobal.rifa && typeof configGlobal.rifa === 'object') ? configGlobal.rifa : {};
+            const rangosDirectos = Array.isArray(rifaBase.rangos) && rifaBase.rangos.length > 0
+                ? rifaBase.rangos
+                : (Array.isArray(configGlobal.rangos) ? configGlobal.rangos : []);
+
+            return {
+                ...rifaBase,
+                totalBoletos: rifaBase.totalBoletos ?? configGlobal.totalBoletos ?? '',
+                tiempoApartadoHoras: rifaBase.tiempoApartadoHoras ?? configGlobal.tiempoApartadoHoras ?? '',
+                rangos: rangosDirectos,
+                maquinaSuerte: {
+                    ...(configGlobal.maquinaSuerte || {}),
+                    ...(rifaBase.maquinaSuerte || {})
+                },
+                busquedaBoletos: {
+                    ...(configGlobal.busquedaBoletos || {}),
+                    ...(rifaBase.busquedaBoletos || {})
+                },
+                oportunidades: {
+                    ...(configGlobal.oportunidades || {}),
+                    ...(rifaBase.oportunidades || {})
+                }
+            };
+        }
+
+        function sincronizarBoletajeYRangosEnMemoria(rifaParcial = {}) {
+            if (!window.rifaplusConfig || typeof window.rifaplusConfig !== 'object') {
+                window.rifaplusConfig = {};
+            }
+            if (!window.rifaplusConfig.rifa || typeof window.rifaplusConfig.rifa !== 'object') {
+                window.rifaplusConfig.rifa = {};
+            }
+
+            const rifaActual = window.rifaplusConfig.rifa;
+            window.rifaplusConfig.rifa = {
+                ...rifaActual,
+                ...rifaParcial,
+                totalBoletos: rifaParcial?.totalBoletos ?? rifaActual?.totalBoletos ?? window.rifaplusConfig?.totalBoletos,
+                tiempoApartadoHoras: rifaParcial?.tiempoApartadoHoras ?? rifaActual?.tiempoApartadoHoras ?? window.rifaplusConfig?.tiempoApartadoHoras,
+                rangos: Array.isArray(rifaParcial?.rangos)
+                    ? rifaParcial.rangos
+                    : (Array.isArray(rifaActual?.rangos) ? rifaActual.rangos : [])
+            };
+
+            actualizarBoletajeYRangosCanonicoDesdeRifa(window.rifaplusConfig.rifa);
+            return window.rifaplusConfig.rifa;
+        }
+
+        function normalizarTiempoApartadoAdmin(valor, fallback = '') {
+            const candidatos = [valor, fallback];
+
+            for (const candidato of candidatos) {
+                const textoBase = String(candidato ?? '').trim();
+                if (!textoBase) continue;
+
+                const textoNormalizado = textoBase
+                    .replace(',', '.')
+                    .replace(/[^0-9.]/g, '')
+                    .replace(/(\..*)\./g, '$1');
+
+                if (!textoNormalizado) continue;
+
+                const numero = Number(textoNormalizado);
+                if (!Number.isFinite(numero) || numero <= 0) continue;
+
+                const ajustado = Math.max(0.5, Math.round(numero / 0.5) * 0.5);
+                return ajustado.toFixed(1);
+            }
+
+            return '';
+        }
+
+        function resolverTiempoApartadoAdmin(valor, fallback = '') {
+            return normalizarTiempoApartadoAdmin(valor, fallback);
+        }
+
+        function actualizarBoletajeYRangosCanonicoDesdeRifa(rifa = {}) {
+            const canonico = resolverBoletajeYRangosCanonico(rifa);
+            if (!Number.isInteger(Number(canonico.totalBoletos)) || Number(canonico.totalBoletos) <= 0) {
+                return canonico;
+            }
+            if (!Array.isArray(canonico.rangos) || canonico.rangos.length === 0) {
+                return canonico;
+            }
+
+            persistirBoletajeYRangosCanonico(canonico);
+            return canonico;
+        }
+
         function normalizarRangoAdmin(rango, fallbackNombre = 'Rango') {
             const inicio = parseInt(rango?.inicio, 10);
             const fin = parseInt(rango?.fin, 10);
@@ -7912,18 +8095,43 @@
                 return false;
             }
 
-            const rifa = window.rifaplusConfig?.rifa || {};
+            const rifaFuente = obtenerFuenteBoletajeYRangosAdmin();
+            const rifa = resolverBoletajeYRangosCanonico(rifaFuente);
             const totalBoletos = Number(rifa.totalBoletos) || '';
-            const tiempoApartadoHoras = Number(rifa.tiempoApartadoHoras) || '';
+            const tiempoApartadoHoras = resolverTiempoApartadoAdmin(
+                rifa?.tiempoApartadoHoras,
+                leerBoletajeYRangosCanonico()?.tiempoApartadoHoras
+            );
             const rangos = Array.isArray(rifa.rangos) ? rifa.rangos : [];
             const rangoVisible = rifa.oportunidades?.rango_visible || null;
             const rangoOculto = rifa.oportunidades?.rango_oculto || null;
             const busquedaModoAvanzado = rifa.busquedaBoletos?.modoAvanzado === true;
+            const tieneDatosEntrantes = Boolean(
+                (Number.isInteger(totalBoletos) && totalBoletos > 0)
+                || rangos.length > 0
+                || rangoVisible
+                || rangoOculto
+                || Number.isFinite(Number(rifa?.maquinaSuerte?.limiteBoletos))
+            );
 
             const totalInput = document.getElementById('sorteo-total-boletos');
+            const formularioYaTieneDatos = Boolean(
+                String(totalInput?.value || '').trim()
+                || obtenerRangosPublicosDesdeDOM().length > 0
+                || String(document.getElementById('oportunidades-rango-visible-inicio')?.value || '').trim()
+                || String(document.getElementById('oportunidades-rango-visible-fin')?.value || '').trim()
+                || String(document.getElementById('oportunidades-rango-oculto-inicio')?.value || '').trim()
+                || String(document.getElementById('oportunidades-rango-oculto-fin')?.value || '').trim()
+            );
+
+            if (!forzar && !tieneDatosEntrantes && formularioYaTieneDatos) {
+                console.warn(`[BoletajeYRangos] Se omitió una recarga parcial desde "${origen}" para no vaciar el formulario`);
+                return false;
+            }
+
             if (totalInput) totalInput.value = totalBoletos;
             const tiempoApartadoInput = document.getElementById('tiempo-apartado-horas');
-            if (tiempoApartadoInput) tiempoApartadoInput.value = tiempoApartadoHoras || 1;
+            if (tiempoApartadoInput) tiempoApartadoInput.value = tiempoApartadoHoras || '1.0';
             const toggleBusqueda = document.getElementById('busqueda-boletos-modo-avanzado');
             if (toggleBusqueda) toggleBusqueda.checked = busquedaModoAvanzado;
             const toggleNotaDisponibilidad = document.getElementById('maquina-suerte-mostrar-nota-disponibilidad');
@@ -7960,6 +8168,11 @@
             if (inventarioFin && inventarioFin.value === '' && Number.isInteger(totalBoletos) && totalBoletos > 0) {
                 inventarioFin.value = Math.max(0, totalBoletos - 1);
             }
+
+            if (tieneDatosEntrantes) {
+                actualizarBoletajeYRangosCanonicoDesdeRifa(rifa);
+            }
+
             actualizarCantidadRangoInventarioBoletos();
             return true;
         }
@@ -7970,14 +8183,37 @@
             resumen: null
         };
 
-        const BOLETAJE_RANGOS_DRAFT_KEY = 'rifaplus_admin_boletaje_rangos_draft_v1';
+        const BOLETAJE_RANGOS_DRAFT_KEY_LEGACY = 'rifaplus_admin_boletaje_rangos_draft_v1';
+        const BOLETAJE_RANGOS_DRAFT_KEY = 'rifaplus_admin_boletaje_rangos_draft_v2';
+        const BOLETAJE_RANGOS_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
         let ultimoAvisoSyncBoletajeTs = 0;
         let borradorBoletajeRestaurado = false;
+
+        function parsearJsonSeguroAdmin(valor, fallback) {
+            try {
+                return JSON.parse(valor);
+            } catch (error) {
+                return fallback;
+            }
+        }
+
+        function normalizarSnapshotBoletajeYRangos(snapshot = {}) {
+            return {
+                totalBoletos: String(snapshot.totalBoletos || '').trim(),
+                tiempoApartadoHoras: normalizarTiempoApartadoAdmin(snapshot.tiempoApartadoHoras, ''),
+                maquinaSuerteLimite: String(snapshot.maquinaSuerteLimite || '').trim(),
+                maquinaSuerteMostrarNotaDisponibilidad: snapshot.maquinaSuerteMostrarNotaDisponibilidad === 'false' ? 'false' : 'true',
+                busquedaBoletosModoAvanzado: snapshot.busquedaBoletosModoAvanzado === 'true' ? 'true' : 'false',
+                rangos: Array.isArray(snapshot.rangos) ? snapshot.rangos : [],
+                rangoVisible: typeof snapshot.rangoVisible === 'string' ? snapshot.rangoVisible : '',
+                rangoOculto: typeof snapshot.rangoOculto === 'string' ? snapshot.rangoOculto : ''
+            };
+        }
 
         function obtenerSnapshotBoletajeYRangos() {
             return {
                 totalBoletos: document.getElementById('sorteo-total-boletos')?.value?.trim() || '',
-                tiempoApartadoHoras: document.getElementById('tiempo-apartado-horas')?.value?.trim() || '',
+                tiempoApartadoHoras: normalizarTiempoApartadoAdmin(document.getElementById('tiempo-apartado-horas')?.value?.trim() || '', ''),
                 maquinaSuerteLimite: document.getElementById('maquina-suerte-limite')?.value?.trim() || '',
                 maquinaSuerteMostrarNotaDisponibilidad: document.getElementById('maquina-suerte-mostrar-nota-disponibilidad')?.checked ? 'true' : 'false',
                 busquedaBoletosModoAvanzado: document.getElementById('busqueda-boletos-modo-avanzado')?.checked ? 'true' : 'false',
@@ -7991,11 +8227,11 @@
             const originales = window.sorteoValoresOriginales || {};
             return {
                 totalBoletos: originales.totalBoletos || '',
-                tiempoApartadoHoras: originales.tiempoApartadoHoras || '',
+                tiempoApartadoHoras: normalizarTiempoApartadoAdmin(originales.tiempoApartadoHoras || '', ''),
                 maquinaSuerteLimite: originales.maquinaSuerteLimite || '',
                 maquinaSuerteMostrarNotaDisponibilidad: originales.maquinaSuerteMostrarNotaDisponibilidad || 'true',
                 busquedaBoletosModoAvanzado: originales.busquedaBoletosModoAvanzado || 'false',
-                rangos: JSON.parse(originales.rangos || '[]'),
+                rangos: parsearJsonSeguroAdmin(originales.rangos || '[]', []),
                 rangoVisible: originales.rangoVisible || '',
                 rangoOculto: originales.rangoOculto || ''
             };
@@ -8006,17 +8242,17 @@
                 return false;
             }
 
-            const actual = obtenerSnapshotBoletajeYRangos();
-            const original = obtenerSnapshotBoletajeYRangosOriginal();
+            const actual = normalizarSnapshotBoletajeYRangos(obtenerSnapshotBoletajeYRangos());
+            const original = normalizarSnapshotBoletajeYRangos(obtenerSnapshotBoletajeYRangosOriginal());
 
             return JSON.stringify(actual) !== JSON.stringify(original);
         }
 
         function guardarBorradorBoletajeYRangos() {
             try {
-                const snapshot = obtenerSnapshotBoletajeYRangos();
+                const snapshot = normalizarSnapshotBoletajeYRangos(obtenerSnapshotBoletajeYRangos());
                 localStorage.setItem(BOLETAJE_RANGOS_DRAFT_KEY, JSON.stringify({
-                    version: 1,
+                    version: 2,
                     timestamp: Date.now(),
                     data: snapshot
                 }));
@@ -8027,6 +8263,7 @@
 
         function eliminarBorradorBoletajeYRangos() {
             try {
+                localStorage.removeItem(BOLETAJE_RANGOS_DRAFT_KEY_LEGACY);
                 localStorage.removeItem(BOLETAJE_RANGOS_DRAFT_KEY);
                 borradorBoletajeRestaurado = false;
             } catch (error) {
@@ -8039,7 +8276,7 @@
             if (totalInput) totalInput.value = snapshot.totalBoletos || '';
 
             const tiempoApartadoInput = document.getElementById('tiempo-apartado-horas');
-            if (tiempoApartadoInput) tiempoApartadoInput.value = snapshot.tiempoApartadoHoras || '';
+            if (tiempoApartadoInput) tiempoApartadoInput.value = normalizarTiempoApartadoAdmin(snapshot.tiempoApartadoHoras || '', '') || '1.0';
 
             const inputLimite = document.getElementById('maquina-suerte-limite');
             if (inputLimite) inputLimite.value = snapshot.maquinaSuerteLimite || '';
@@ -8053,8 +8290,12 @@
 
             renderizarRangosPublicosEditor(Array.isArray(snapshot.rangos) ? snapshot.rangos : []);
 
-            const rangoVisible = snapshot.rangoVisible ? JSON.parse(snapshot.rangoVisible) : null;
-            const rangoOculto = snapshot.rangoOculto ? JSON.parse(snapshot.rangoOculto) : null;
+            const rangoVisible = snapshot.rangoVisible
+                ? parsearJsonSeguroAdmin(snapshot.rangoVisible, null)
+                : null;
+            const rangoOculto = snapshot.rangoOculto
+                ? parsearJsonSeguroAdmin(snapshot.rangoOculto, null)
+                : null;
 
             const visibleInicio = document.getElementById('oportunidades-rango-visible-inicio');
             const visibleFin = document.getElementById('oportunidades-rango-visible-fin');
@@ -8083,12 +8324,26 @@
 
                 const draft = JSON.parse(raw);
                 if (!draft?.data) return false;
-                if (!hayCambiosPendientesBoletajeYRangos() && JSON.stringify(draft.data) === JSON.stringify(obtenerSnapshotBoletajeYRangosOriginal())) {
+                if (draft.version !== 2) {
                     eliminarBorradorBoletajeYRangos();
                     return false;
                 }
 
-                aplicarSnapshotBoletajeYRangos(draft.data);
+                const edadBorrador = Date.now() - Number(draft.timestamp || 0);
+                if (!Number.isFinite(edadBorrador) || edadBorrador < 0 || edadBorrador > BOLETAJE_RANGOS_DRAFT_TTL_MS) {
+                    eliminarBorradorBoletajeYRangos();
+                    return false;
+                }
+
+                const draftNormalizado = normalizarSnapshotBoletajeYRangos(draft.data);
+                const originalNormalizado = normalizarSnapshotBoletajeYRangos(obtenerSnapshotBoletajeYRangosOriginal());
+
+                if (!hayCambiosPendientesBoletajeYRangos() && JSON.stringify(draftNormalizado) === JSON.stringify(originalNormalizado)) {
+                    eliminarBorradorBoletajeYRangos();
+                    return false;
+                }
+
+                aplicarSnapshotBoletajeYRangos(draftNormalizado);
                 borradorBoletajeRestaurado = true;
                 mostrarAlerta('📝 Recuperamos tu borrador local de boletaje y rangos para que no tengas que empezar de nuevo', 'info');
                 return true;
@@ -8104,6 +8359,41 @@
             } else {
                 eliminarBorradorBoletajeYRangos();
             }
+        }
+
+        function inicializarCampoTiempoApartadoAdmin() {
+            const input = document.getElementById('tiempo-apartado-horas');
+            if (!input || input.dataset.tiempoApartadoReady === 'true') return;
+
+            const sanitizarParcial = (valor) => {
+                const base = String(valor ?? '').replace(',', '.').replace(/[^0-9.]/g, '');
+                const primerPunto = base.indexOf('.');
+                if (primerPunto === -1) return base;
+                return `${base.slice(0, primerPunto + 1)}${base.slice(primerPunto + 1).replace(/\./g, '')}`;
+            };
+
+            input.addEventListener('input', () => {
+                const cursor = input.selectionStart;
+                const sanitizado = sanitizarParcial(input.value);
+                if (sanitizado !== input.value) {
+                    input.value = sanitizado;
+                    if (typeof cursor === 'number') {
+                        const siguienteCursor = Math.max(0, Math.min(sanitizado.length, cursor - 1));
+                        input.setSelectionRange(siguienteCursor, siguienteCursor);
+                    }
+                }
+                manejarCambioBoletajeYRangos();
+            });
+
+            input.addEventListener('blur', () => {
+                input.value = normalizarTiempoApartadoAdmin(
+                    input.value,
+                    leerBoletajeYRangosCanonico()?.tiempoApartadoHoras || '1'
+                ) || '1.0';
+                manejarCambioBoletajeYRangos();
+            });
+
+            input.dataset.tiempoApartadoReady = 'true';
         }
 
         function bloquearCambiosAccidentalesPorScrollEnNumeros() {
@@ -8821,15 +9111,30 @@
             const originalHTML = btn?.innerHTML;
 
             try {
-                const totalBoletos = parseInt(document.getElementById('sorteo-total-boletos')?.value, 10);
-                const tiempoApartadoHoras = parseFloat(document.getElementById('tiempo-apartado-horas')?.value);
+                const boletajeCanonico = leerBoletajeYRangosCanonico() || {};
+                const totalBoletosInput = document.getElementById('sorteo-total-boletos');
+                const totalBoletosCapturado = parseInt(totalBoletosInput?.value, 10);
+                const totalBoletos = Number.isInteger(totalBoletosCapturado)
+                    ? totalBoletosCapturado
+                    : parseInt(boletajeCanonico.totalBoletos, 10);
+                const tiempoApartadoInput = document.getElementById('tiempo-apartado-horas');
+                const tiempoApartadoNormalizado = normalizarTiempoApartadoAdmin(
+                    tiempoApartadoInput?.value,
+                    boletajeCanonico.tiempoApartadoHoras || '1'
+                );
+                const tiempoApartadoHoras = Number(tiempoApartadoNormalizado);
                 const limiteMaquinaSuerte = obtenerLimiteMaquinaSuerteNormalizado(
                     document.getElementById('maquina-suerte-limite')?.value,
                     maquinaSuerteLimiteTemporal || 500
                 );
                 const maquinaSuerteMostrarNotaDisponibilidad = document.getElementById('maquina-suerte-mostrar-nota-disponibilidad')?.checked !== false;
                 const busquedaBoletosModoAvanzado = document.getElementById('busqueda-boletos-modo-avanzado')?.checked === true;
-                const rangos = obtenerRangosPublicosDesdeDOM();
+                const rangosCapturados = obtenerRangosPublicosDesdeDOM();
+                const rangos = rangosCapturados.length > 0
+                    ? rangosCapturados
+                    : (Array.isArray(boletajeCanonico.rangos)
+                        ? boletajeCanonico.rangos.map((rango, index) => normalizarRangoAdmin(rango, `Rango ${index + 1}`)).filter(Boolean)
+                        : []);
                 const rangoVisible = normalizarRangoAdmin({
                     inicio: document.getElementById('oportunidades-rango-visible-inicio')?.value,
                     fin: document.getElementById('oportunidades-rango-visible-fin')?.value
@@ -8843,8 +9148,16 @@
                     throw new Error('El total de boletos debe ser un entero entre 1 y 10,000,000');
                 }
 
+                if (totalBoletosInput && !String(totalBoletosInput.value || '').trim()) {
+                    totalBoletosInput.value = totalBoletos;
+                }
+
                 if (!Number.isFinite(tiempoApartadoHoras) || tiempoApartadoHoras <= 0) {
                     throw new Error('El tiempo de apartado debe ser mayor a 0 horas');
+                }
+
+                if (tiempoApartadoInput) {
+                    tiempoApartadoInput.value = tiempoApartadoNormalizado;
                 }
 
                 if (rangos.length === 0) {
@@ -8970,6 +9283,7 @@
                     rango_visible: rangoVisible ? { inicio: rangoVisible.inicio, fin: rangoVisible.fin } : false,
                     rango_oculto: rangoOculto ? { inicio: rangoOculto.inicio, fin: rangoOculto.fin } : null
                 };
+                actualizarBoletajeYRangosCanonicoDesdeRifa(window.rifaplusConfig.rifa);
                 maquinaSuerteLimiteTemporal = limiteMaquinaSuerte;
                 actualizarAyudaLimiteMaquinaSuerte();
 
@@ -9003,7 +9317,10 @@
             const modalidadEnlaceTipoActual = normalizarTipoModalidadEnlace(document.getElementById('sorteo-modalidad-enlace-tipo')?.value);
             const imagenPrincipalActual = document.getElementById('sorteo-imagen-principal-url').value.trim();
             const totalBoletosActual = document.getElementById('sorteo-total-boletos')?.value?.trim() || '';
-            const tiempoApartadoHorasActual = document.getElementById('tiempo-apartado-horas')?.value?.trim() || '';
+            const tiempoApartadoHorasActual = normalizarTiempoApartadoAdmin(
+                document.getElementById('tiempo-apartado-horas')?.value?.trim() || '',
+                ''
+            );
             const maquinaSuerteLimiteActual = document.getElementById('maquina-suerte-limite')?.value?.trim() || '';
             const maquinaSuerteMostrarNotaDisponibilidadActual = document.getElementById('maquina-suerte-mostrar-nota-disponibilidad')?.checked ? 'true' : 'false';
             const busquedaBoletosModoAvanzadoActual = document.getElementById('busqueda-boletos-modo-avanzado')?.checked ? 'true' : 'false';
@@ -9040,7 +9357,7 @@
                 modalidadEnlaceTipo: normalizarTipoModalidadEnlace(document.getElementById('sorteo-modalidad-enlace-tipo')?.value),
                 imagenPrincipal: document.getElementById('sorteo-imagen-principal-url').value.trim(),
                 totalBoletos: document.getElementById('sorteo-total-boletos')?.value?.trim() || '',
-                tiempoApartadoHoras: document.getElementById('tiempo-apartado-horas')?.value?.trim() || '',
+                tiempoApartadoHoras: normalizarTiempoApartadoAdmin(document.getElementById('tiempo-apartado-horas')?.value?.trim() || '', ''),
                 maquinaSuerteLimite: document.getElementById('maquina-suerte-limite')?.value?.trim() || '',
                 maquinaSuerteMostrarNotaDisponibilidad: document.getElementById('maquina-suerte-mostrar-nota-disponibilidad')?.checked ? 'true' : 'false',
                 busquedaBoletosModoAvanzado: document.getElementById('busqueda-boletos-modo-avanzado')?.checked ? 'true' : 'false',
@@ -9208,6 +9525,12 @@
                         if (response.ok) {
                             const data = await response.json();
                             config = data.data?.rifa || {};
+                            sincronizarBoletajeYRangosEnMemoria({
+                                ...config,
+                                totalBoletos: config.totalBoletos ?? data.data?.totalBoletos,
+                                tiempoApartadoHoras: config.tiempoApartadoHoras ?? data.data?.tiempoApartadoHoras
+                            });
+                            config = obtenerFuenteBoletajeYRangosAdmin();
                             console.log('[CARGAR FECHAS] ✅ Config FRESCO del servidor:', {
                                 tiempoApartadoHoras: config.tiempoApartadoHoras,
                                 fechaSorteo: config.fechaSorteo
@@ -9286,13 +9609,25 @@
                     console.log('ℹ️ No hay fechaPresorteo, dejando campos vacíos');
                 }
                 
-                // Cargar tiempo de apartado
-                if (config.tiempoApartadoHoras !== undefined && config.tiempoApartadoHoras !== null) {
-                    document.getElementById('tiempo-apartado-horas').value = config.tiempoApartadoHoras;
-                    console.log('✅ Tiempo de apartado cargado:', config.tiempoApartadoHoras);
-                } else {
-                    document.getElementById('tiempo-apartado-horas').value = 1;
-                    console.log('⚠️ NO HAY tiempoApartadoHoras en config, usando default 1 hora');
+                // Cargar tiempo de apartado sin pisar un valor válido en edición
+                const inputTiempoApartado = document.getElementById('tiempo-apartado-horas');
+                if (inputTiempoApartado) {
+                    const tiempoNormalizado = resolverTiempoApartadoAdmin(
+                        config?.tiempoApartadoHoras,
+                        leerBoletajeYRangosCanonico()?.tiempoApartadoHoras
+                    );
+                    const valorActual = String(inputTiempoApartado.value || '').trim();
+                    const hayEdicionPendiente = typeof hayCambiosPendientesBoletajeYRangos === 'function' && hayCambiosPendientesBoletajeYRangos();
+
+                    if (tiempoNormalizado) {
+                        if (!hayEdicionPendiente || !valorActual) {
+                            inputTiempoApartado.value = tiempoNormalizado;
+                        }
+                        console.log('✅ Tiempo de apartado cargado:', tiempoNormalizado);
+                    } else if (!valorActual) {
+                        inputTiempoApartado.value = '1.0';
+                        console.log('⚠️ NO HAY tiempoApartadoHoras válido en config, usando default 1 hora');
+                    }
                 }
                 
                 console.log('✅ Fechas y horarios cargados correctamente');
@@ -10248,7 +10583,7 @@
                 return;
             }
 
-            const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('rifaplus_admin_token');
+            const token = obtenerToken();
             if (!token) {
                 mostrarAlerta('❌ No hay sesión activa para guardar oportunidades', 'error');
                 return;
@@ -10346,7 +10681,7 @@
 
             cargarConfiguracionOportunidades();
 
-            const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('rifaplus_admin_token');
+            const token = obtenerToken();
             if (!token) {
                 mostrarAlerta('❌ No hay sesión activa para guardar oportunidades', 'error');
                 checkbox.checked = !enabled;
@@ -10455,20 +10790,16 @@
                     return;
                 }
                 
-                // Obtener config actual
-                let config = window.rifaplusConfig || {};
-                if (!config.rifa) config.rifa = {};
-                if (!config.rifa.promocionesOportunidades) config.rifa.promocionesOportunidades = {};
-                if (!config.rifa.promocionesOportunidades.ejemplos) config.rifa.promocionesOportunidades.ejemplos = [];
+                if (!window.rifaplusConfig) window.rifaplusConfig = {};
+                if (!window.rifaplusConfig.rifa) window.rifaplusConfig.rifa = {};
+                if (!window.rifaplusConfig.rifa.promocionesOportunidades) window.rifaplusConfig.rifa.promocionesOportunidades = {};
+                if (!window.rifaplusConfig.rifa.promocionesOportunidades.ejemplos) window.rifaplusConfig.rifa.promocionesOportunidades.ejemplos = [];
                 
                 // Agregar nuevo ejemplo
-                config.rifa.promocionesOportunidades.ejemplos.push({
+                window.rifaplusConfig.rifa.promocionesOportunidades.ejemplos.push({
                     boletos: boletos,
                     oportunidades: oportunidades
                 });
-                
-                // Actualizar config global
-                window.rifaplusConfig = config;
                 
                 // Limpiar inputs
                 document.getElementById('ejemplo-boletos').value = '';
@@ -10492,10 +10823,8 @@
             try {
                 if (!confirm('¿Estás seguro de eliminar este ejemplo?')) return;
                 
-                let config = window.rifaplusConfig || {};
-                if (config.rifa?.promocionesOportunidades?.ejemplos) {
-                    config.rifa.promocionesOportunidades.ejemplos.splice(idx, 1);
-                    window.rifaplusConfig = config;
+                if (window.rifaplusConfig?.rifa?.promocionesOportunidades?.ejemplos) {
+                    window.rifaplusConfig.rifa.promocionesOportunidades.ejemplos.splice(idx, 1);
                     cargarEjemplosOportunidades();
                     
                     // ✅ GUARDAR A SERVIDOR INMEDIATAMENTE
@@ -10521,7 +10850,10 @@
                 console.log('💾 Guardando promociones de oportunidades...', promosConfig);
                 
                 // ✅ OBTENER TOKEN (esto era lo que faltaba)
-                const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('rifaplus_admin_token');
+                const token = obtenerToken();
+                if (!token) {
+                    throw new Error('No hay sesión activa');
+                }
                 console.log(`🔐 Token disponible: ${token ? 'SÍ' : 'NO'}`);
                 
                 const response = await fetch(`${API_BASE}/api/admin/config`, {
@@ -10549,10 +10881,7 @@
                 console.log('✅ Promociones guardadas exitosamente:', result);
                 mostrarAlerta('✅ Cambios guardados correctamente', 'success');
                 
-                // Disparar evento para actualizar otras páginas
-                window.dispatchEvent(new CustomEvent('configActualizada', {
-                    detail: { promocionesOportunidades: promosConfig }
-                }));
+                emitirEventoConfiguracionAdmin('promocionesOportunidades', promosConfig);
                 
                 return result;
             } catch (error) {
@@ -10571,39 +10900,6 @@
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
             });
-        }
-
-        const DEBUG_VOLUMEN_STORAGE_KEY = 'rifaplus_debug_volumen';
-
-        function registrarDebugVolumen(mensaje, datos = null) {
-            try {
-                const historial = JSON.parse(sessionStorage.getItem(DEBUG_VOLUMEN_STORAGE_KEY) || '[]');
-                historial.push({
-                    timestamp: new Date().toISOString(),
-                    mensaje,
-                    datos
-                });
-                sessionStorage.setItem(DEBUG_VOLUMEN_STORAGE_KEY, JSON.stringify(historial.slice(-40)));
-            } catch (error) {
-                console.warn('⚠️ No se pudo registrar debug de volumen:', error.message);
-            }
-        }
-
-        function volcarDebugVolumenPendiente() {
-            try {
-                const historial = JSON.parse(sessionStorage.getItem(DEBUG_VOLUMEN_STORAGE_KEY) || '[]');
-                if (!historial.length) return;
-
-                console.group('🧭 Debug persistente descuento por volumen');
-                historial.forEach((item) => {
-                    console.log(item.timestamp, item.mensaje, item.datos || '');
-                });
-                console.groupEnd();
-
-                sessionStorage.removeItem(DEBUG_VOLUMEN_STORAGE_KEY);
-            } catch (error) {
-                console.warn('⚠️ No se pudo leer debug persistente de volumen:', error.message);
-            }
         }
 
         function normalizarReglaVolumen(regla) {
@@ -10629,9 +10925,8 @@
         }
 
         async function guardarDescuentosVolumenEnServidor(mensajeExito = '✅ Descuentos por volumen guardados correctamente') {
-            const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('rifaplus_admin_token');
+            const token = obtenerToken();
             if (!token) {
-                registrarDebugVolumen('sin token al guardar descuentos');
                 throw new Error('No hay sesión activa para guardar descuentos');
             }
 
@@ -10661,8 +10956,6 @@
             };
 
             console.log('📦 [Volumen] Guardando descuentos:', payload.rifa.descuentos);
-            registrarDebugVolumen('iniciando fetch PATCH descuentos', payload.rifa.descuentos);
-
             const response = await fetch(`${API_BASE}/api/admin/config`, {
                 method: 'PATCH',
                 headers: {
@@ -10673,20 +10966,13 @@
                 body: JSON.stringify(payload)
             });
 
-            registrarDebugVolumen('respuesta fetch descuentos', {
-                status: response.status,
-                ok: response.ok
-            });
-
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                registrarDebugVolumen('fetch descuentos fallo', errorData);
                 throw new Error(errorData.message || `HTTP ${response.status}`);
             }
 
             const result = await response.json();
             console.log('✅ [Volumen] Respuesta del backend:', result);
-            registrarDebugVolumen('fetch descuentos json ok', result);
             const descuentosGuardados = result?.data?.rifa?.descuentos || payload.rifa.descuentos;
 
             window.rifaplusConfig.rifa.descuentos = {
@@ -10749,12 +11035,6 @@
                 event.stopPropagation();
             }
 
-            registrarDebugVolumen('click en btn-agregar-regla-volumen', {
-                cantidad: document.getElementById('volumen-cantidad')?.value,
-                total: document.getElementById('volumen-precio')?.value,
-                toggle: document.getElementById('promo-volumen-enabled')?.checked
-            });
-
             agregarReglaVolumen(event);
             return false;
         }
@@ -10770,13 +11050,7 @@
                 const cantidad = parseInt(document.getElementById('volumen-cantidad').value, 10);
                 const total = parseFloat(document.getElementById('volumen-precio').value);
 
-                registrarDebugVolumen('entrando a agregarReglaVolumen', {
-                    cantidadRaw: document.getElementById('volumen-cantidad').value,
-                    totalRaw: document.getElementById('volumen-precio').value
-                });
-
                 if (!Number.isFinite(cantidad) || cantidad <= 0 || !Number.isFinite(total) || total <= 0) {
-                    registrarDebugVolumen('validacion fallida en agregarReglaVolumen', { cantidad, total });
                     mostrarAlerta('Captura una cantidad de boletos y un costo total válidos.', 'error');
                     return;
                 }
@@ -10810,18 +11084,8 @@
                 document.getElementById('volumen-precio').value = '';
 
                 cargarConfiguracionDescuentoVolumen();
-                registrarDebugVolumen('antes de guardarDescuentosVolumenEnServidor', {
-                    descuentos: window.rifaplusConfig.rifa.descuentos
-                });
                 await guardarDescuentosVolumenEnServidor('✅ Regla de volumen guardada correctamente');
-                registrarDebugVolumen('guardado de regla completado', {
-                    descuentos: window.rifaplusConfig.rifa.descuentos
-                });
             } catch (error) {
-                registrarDebugVolumen('error en agregarReglaVolumen', {
-                    message: error.message,
-                    stack: error.stack
-                });
                 console.error('❌ Error agregando regla de volumen:', error);
                 mostrarAlerta(`❌ Error al agregar la regla: ${error.message}`, 'error');
             }
@@ -10901,45 +11165,6 @@
                 mostrarAlerta(`❌ Error al eliminar la regla: ${error.message}`, 'error');
             }
         }
-
-        /** Función de DEBUG para verificar estado de la promoción */
-        window.debugPromocionTiempo = function() {
-            console.log('========== DEBUG PROMOCIÓN POR TIEMPO ==========');
-            
-            // Estado del config global
-            const promo = window.rifaplusConfig?.rifa?.promocionPorTiempo || {};
-            console.log('1️⃣ Config Global:', promo);
-            
-            // Estado del DOM
-            const checkbox = document.getElementById('promo-tiempo-enabled');
-            const precio = document.getElementById('promo-tiempo-precio');
-            const inicio = document.getElementById('promo-tiempo-inicio');
-            const fin = document.getElementById('promo-tiempo-fin');
-            const contenedor = document.getElementById('contenedor-promo-tiempo');
-            
-            console.log('2️⃣ DOM State:', {
-                checkboxExiste: !!checkbox,
-                checkboxChecked: checkbox?.checked,
-                precioValue: precio?.value,
-                inicioValue: inicio?.value,
-                finValue: fin?.value,
-                contenedorVisible: contenedor?.style.display !== 'none'
-            });
-            
-            // Token
-            const token = localStorage.getItem('rifaplus_admin_token');
-            console.log('3️⃣ Token:', token ? '✅ Disponible' : '❌ No encontrado');
-            
-            // API Base
-            const apiBase = window.rifaplusConfig?.backend?.apiBase
-                || window.rifaplusConfig?.obtenerApiBase?.()
-                || window.location.origin;
-            console.log('4️⃣ API Base:', apiBase);
-            
-            console.log('==============================================');
-            console.log('💡 Para guardar manualmente, ejecuta: guardarPromocionTiempo()');
-            console.log('💡 Para cargar manualmente, ejecuta: cargarPromocionPorTiempo()');
-        };
 
         /** Cargar promoción por tiempo existente */
         function cargarPromocionPorTiempo() {
@@ -11027,252 +11252,6 @@
             }
         }
 
-        // 🧪 TEST CON PROTECCIÓN DE NAVEGACIÓN - PREVIENE REDIRECTS
-        window.testPromocionTiempo = async function() {
-            let logs = ['🔴 TEST PROMOCIÓN POR TIEMPO INICIADO'];
-            
-            function addLog(msg) {
-                logs.push(msg);
-                localStorage.setItem('promoTestLogs', JSON.stringify(logs));
-                console.log(msg);
-            }
-            
-            // ⚠️ PREVENIR CUALQUIER NAVEGACIÓN O CAMBIO DE TAB
-            addLog('\n🛡️ ACTIVANDO PROTECCIONES');
-            
-            // Prevenir cambio de tabs
-            const originalCambiarTab = window.cambiarTab;
-            window.cambiarTab = function() {
-                addLog('⚠️ BLOQUEADO: Intento de cambiar tab durante test');
-                return false;
-            };
-            
-            // Prevenir reloads
-            const handleBeforeUnload = (e) => {
-                addLog('⚠️ BLOQUEADO: Intento de reload/navegación');
-                e.preventDefault();
-                e.returnValue = '';
-            };
-            window.addEventListener('beforeunload', handleBeforeUnload);
-            
-            addLog('✅ Protecciones activadas');
-            
-            try {
-                addLog('\n1️⃣ OBTENER VALORES');
-                const enabled = document.getElementById('promo-tiempo-enabled')?.checked;
-                const precio = document.getElementById('promo-tiempo-precio')?.value;
-                const inicio = document.getElementById('promo-tiempo-inicio')?.value;
-                const fin = document.getElementById('promo-tiempo-fin')?.value;
-                
-                addLog(JSON.stringify({ enabled, precio, inicio, fin }, null, 2));
-                
-                addLog('\n2️⃣ OBTENER TOKEN');
-                const token = localStorage.getItem('rifaplus_admin_token');
-                addLog('Token existe: ' + !!token);
-                
-                if (!token) {
-                    addLog('❌ No hay token - abortando');
-                    throw new Error('No token');
-                }
-                
-                addLog('\n3️⃣ PREPARAR PAYLOAD');
-                const payload = {
-                    rifa: {
-                        promocionPorTiempo: {
-                            enabled: enabled === true,
-                            precioProvisional: enabled ? parseFloat(precio) : null,
-                            fechaInicio: enabled ? inicio : null,
-                            fechaFin: enabled ? fin : null
-                        }
-                    }
-                };
-                addLog('Payload completo:\n' + JSON.stringify(payload, null, 2));
-                
-                addLog('\n4️⃣ HACER FETCH');
-                const base = window.rifaplusConfig?.backend?.apiBase
-                    || window.rifaplusConfig?.obtenerApiBase?.()
-                    || window.location.origin;
-                const url = `${base}/api/admin/config`;
-                addLog('URL: ' + url);
-                addLog('Método: PATCH');
-                
-                const response = await fetch(url, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
-                    },
-                    body: JSON.stringify(payload)
-                });
-                
-                addLog('\n5️⃣ RESPUESTA HTTP');
-                addLog('Status: ' + response.status + ' ' + response.statusText);
-                addLog('Headers: Content-Type = ' + response.headers.get('content-type'));
-                
-                const data = await response.json();
-                addLog('\n6️⃣ JSON RESPONSE');
-                addLog(JSON.stringify(data, null, 2));
-                
-                if (data.success) {
-                    addLog('\n✅✅✅ ÉXITO - DATA GUARDADA ✅✅✅');
-                } else {
-                    addLog('\n❌ RESPUESTA NO EXITOSA - ' + (data.error || 'sin mensaje de error'));
-                }
-                
-            } catch (e) {
-                addLog('\n❌ ERROR/EXCEPCIÓN');
-                addLog('Mensaje: ' + e.message);
-                addLog('Stack: ' + e.stack);
-            } finally {
-                // Restaurar funciones
-                addLog('\n🛡️ DESACTIVANDO PROTECCIONES');
-                window.cambiarTab = originalCambiarTab;
-                window.removeEventListener('beforeunload', handleBeforeUnload);
-                
-                addLog('\n═══════════════════════════════════════');
-                addLog('TEST COMPLETADO - LOGS GUARDADOS EN LOCALSTORAGE');
-                addLog('EJECUTA: window.verLogsTest()');
-            }
-        };
-        
-        // 📊 Ver logs guardados (NO ALERTA, SOLO CONSOLA)
-        window.verLogsTest = function() {
-            const logs = JSON.parse(localStorage.getItem('promoTestLogs') || '[]');
-            console.clear();
-            console.log('%c📊 ========== LOGS DEL TEST DE PROMOCIÓN ==========', 'font-size: 14px; font-weight: bold; color: blue; background-color: #f0f0f0; padding: 10px');
-            console.log('%c(Guardados en localStorage)', 'font-size: 11px; color: gray; font-style: italic');
-            console.log('');
-            logs.forEach((log, i) => {
-                if (log.includes('✅') || log.includes('ÉXITO')) console.log('%c' + log, 'color: green; font-weight: bold');
-                else if (log.includes('❌') || log.includes('ERROR')) console.log('%c' + log, 'color: red; font-weight: bold');
-                else if (log.includes('⚠️')) console.log('%c' + log, 'color: orange; font-weight: bold');
-                else if (log.includes('1️⃣') || log.includes('2️⃣') || log.includes('3️⃣') || log.includes('4️⃣') || log.includes('5️⃣') || log.includes('6️⃣')) console.log('%c' + log, 'color: blue; font-weight: bold; font-size: 12px');
-                else console.log(log);
-            });
-            console.log('%c========== FIN DE LOGS ==========', 'font-size: 14px; font-weight: bold; color: blue; background-color: #f0f0f0; padding: 10px');
-        };
-        
-        // 🧹 Limpiar logs
-        window.limpiarLogsTest = function() {
-            localStorage.removeItem('promoTestLogs');
-            console.log('✅ Logs limpiados');
-        };
-
-        // ⏲️ PROMOCIÓN POR TIEMPO - GUARDADO ULTRA-SIMPLE
-        window.guardarPromoTiempoSimple = async function() {
-            console.clear();
-            console.log('%c🔵 GUARDANDO PROMOCIÓN POR TIEMPO', 'font-size: 16px; font-weight: bold; color: blue');
-            
-            // Bloquear navegación durante el guardado
-            let bloqueNavegacion = false;
-            const handleBeforeUnload = (e) => {
-                if (bloqueNavegacion) {
-                    e.preventDefault();
-                    e.returnValue = '';
-                }
-            };
-            window.addEventListener('beforeunload', handleBeforeUnload);
-            bloqueNavegacion = true;
-            
-            // 1. Obtener valores
-            const chk = document.getElementById('promo-tiempo-enabled')?.checked;
-            const p = document.getElementById('promo-tiempo-precio')?.value;
-            const i = document.getElementById('promo-tiempo-inicio')?.value;
-            const f = document.getElementById('promo-tiempo-fin')?.value;
-            
-            console.log('📋 Datos:', { checked: chk, precio: p, inicio: i, fin: f });
-            
-            // 2. Validar
-            if (chk && (!p || !i || !f)) {
-                console.error('❌ Faltan campos');
-                bloqueNavegacion = false;
-                window.removeEventListener('beforeunload', handleBeforeUnload);
-                return;
-            }
-            
-            // 3. Preparar payload
-            const payload = { 
-                rifa: { 
-                    promocionPorTiempo: { 
-                        enabled: chk, 
-                        precioProvisional: chk ? parseFloat(p) : null, 
-                        fechaInicio: chk ? i : null, 
-                        fechaFin: chk ? f : null 
-                    } 
-                } 
-            };
-            console.log('📤 Payload:', JSON.stringify(payload, null, 2));
-            
-            // 4. Obtener token y URL
-            const tok = localStorage.getItem('rifaplus_admin_token');
-            const base = window.rifaplusConfig?.backend?.apiBase
-                || window.rifaplusConfig?.obtenerApiBase?.()
-                || window.location.origin;
-            const u = (base.endsWith('/') ? base : base + '/') + 'api/admin/config';
-            
-            if (!tok) {
-                console.error('❌ Sin token');
-                bloqueNavegacion = false;
-                window.removeEventListener('beforeunload', handleBeforeUnload);
-                return;
-            }
-            
-            console.log('🔑 Token:', tok.substring(0, 20) + '...');
-            console.log('🌐 URL:', u);
-            
-            // 5. FETCH
-            try {
-                console.log('📡 Enviando PATCH...');
-                
-                const resp = await fetch(u, {
-                    method: 'PATCH',
-                    headers: { 
-                        'Content-Type': 'application/json', 
-                        'Authorization': 'Bearer ' + tok 
-                    },
-                    body: JSON.stringify(payload)
-                });
-                
-                console.log('📊 HTTP Status:', resp.status, resp.statusText);
-                
-                if (!resp.ok) {
-                    const text = await resp.text();
-                    console.error('❌ HTTP Error:', resp.status, text);
-                    bloqueNavegacion = false;
-                    window.removeEventListener('beforeunload', handleBeforeUnload);
-                    return;
-                }
-                
-                const j = await resp.json();
-                console.log('✅ Respuesta JSON:', JSON.stringify(j, null, 2));
-                
-                if (j.success && j.data?.rifa?.promocionPorTiempo) {
-                    window.rifaplusConfig.rifa.promocionPorTiempo = j.data.rifa.promocionPorTiempo;
-                    console.log('%c✅✅✅ GUARDADO EXITOSO', 'font-size: 14px; color: green; font-weight: bold');
-                    console.log('💾 Config guardada en memoria:', window.rifaplusConfig.rifa.promocionPorTiempo);
-                    
-                    // Validar que se guardó
-                    const verificacion = window.rifaplusConfig.rifa.promocionPorTiempo;
-                    console.log('🔍 Verificación final:', {
-                        enabled: verificacion.enabled,
-                        precio: verificacion.precioProvisional,
-                        inicio: verificacion.fechaInicio,
-                        fin: verificacion.fechaFin
-                    });
-                } else {
-                    console.error('❌ Respuesta no exitosa o sin datos:', j);
-                }
-                
-            } catch (e) {
-                console.error('❌ Excepción:', e.message);
-                console.error('Stack:', e.stack);
-            } finally {
-                bloqueNavegacion = false;
-                window.removeEventListener('beforeunload', handleBeforeUnload);
-                console.log('═══════════════════════════════════════');
-            }
-        };
-        
         async function guardarPromocionTiempo(event) {
             // Prevenir cualquier comportamiento por defecto
             if (event) event.preventDefault();
@@ -11307,7 +11286,7 @@
             console.log('📤 Datos a guardar:', datos);
             
             // Obtener token y URL
-            const token = localStorage.getItem('rifaplus_admin_token');
+            const token = obtenerToken();
             const apiBase = window.rifaplusConfig?.backend?.apiBase
                 || window.rifaplusConfig?.obtenerApiBase?.()
                 || window.location.origin;
@@ -11392,64 +11371,6 @@
             }
         }
         
-        // 🔍 VERIFICAR que los datos se guardaron correctamente
-        window.verificarPromocionPorTiempo = async function() {
-            console.clear();
-            console.log('%c🔍 VERIFICANDO PROMOCIÓN POR TIEMPO EN SERVIDOR', 'font-size: 14px; color: blue; font-weight: bold');
-            
-            const token = localStorage.getItem('rifaplus_admin_token');
-            const apiBase = window.rifaplusConfig?.backend?.apiBase
-                || window.rifaplusConfig?.obtenerApiBase?.()
-                || window.location.origin;
-            const url = (apiBase.endsWith('/') ? apiBase : apiBase + '/') + 'api/admin/config';
-            
-            if (!token) {
-                console.error('❌ No hay token');
-                return;
-            }
-            
-            try {
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
-                    }
-                });
-                
-                const data = await response.json();
-                const promo = data.data?.rifa?.promocionPorTiempo;
-                
-                console.log('\n📊 DATOS GUARDADOS EN SERVIDOR:');
-                console.log(JSON.stringify(promo, null, 2));
-                
-                if (promo.enabled) {
-                    console.log('%c✅ PROMOCIÓN HABILITADA', 'color: green; font-weight: bold');
-                    console.log('Precio: ' + promo.precioProvisional);
-                    console.log('Inicio: ' + promo.fechaInicio);
-                    console.log('Fin: ' + promo.fechaFin);
-                } else {
-                    console.log('%c❌ PROMOCIÓN DESHABILITADA', 'color: orange');
-                }
-                
-            } catch (e) {
-                console.error('Error:', e.message);
-            }
-        };
-        
-        // 👁️ VER CONFIG LOCAL EN ESTE NAVEGADOR
-        window.verConfigLocal = function() {
-            console.clear();
-            console.log('%c👁️ CONFIG LOCAL EN ESTE NAVEGADOR', 'font-size: 14px; color: purple; font-weight: bold');
-            console.log('\n✏️ VALORES EN LOS INPUTS:');
-            console.log('checkbox.checked:', document.getElementById('promo-tiempo-enabled')?.checked);
-            console.log('precio:', document.getElementById('promo-tiempo-precio')?.value);
-            console.log('inicio:', document.getElementById('promo-tiempo-inicio')?.value);
-            console.log('fin:', document.getElementById('promo-tiempo-fin')?.value);
-            
-            console.log('\n📍 VALORES EN window.rifaplusConfig:');
-            console.log(JSON.stringify(window.rifaplusConfig?.rifa?.promocionPorTiempo, null, 2));
-        };
         async function guardarPromocionPorcentaje(event) {
             // Prevenir cualquier comportamiento por defecto
             if (event) event.preventDefault();
@@ -11493,7 +11414,7 @@
             console.log('📤 Datos a guardar:', datos);
             
             // Obtener token y URL
-            const token = localStorage.getItem('rifaplus_admin_token');
+            const token = obtenerToken();
             const apiBase = window.rifaplusConfig?.backend?.apiBase
                 || window.rifaplusConfig?.obtenerApiBase?.()
                 || window.location.origin;
@@ -11545,7 +11466,7 @@
                 
                 // Actualizar config global
                 if (result.data?.rifa?.descuentoPorcentaje) {
-                    window.rifaplusConfig.rifa.descuentoPorcentaje = result.data.rifa.descuentoPorcentaje;
+                    asegurarConfigAdminGlobal().rifa.descuentoPorcentaje = result.data.rifa.descuentoPorcentaje;
                     console.log('💾 Config global actualizada:', window.rifaplusConfig.rifa.descuentoPorcentaje);
                 }
                 
@@ -11568,6 +11489,8 @@
                     document.getElementById('promo-porcentaje-preview').textContent = datos.porcentaje || '0';
                     actualizarPreviewPromocionPorcentaje();
                 }
+
+                emitirEventoConfiguracionAdmin('descuentoPorcentaje', datos);
                 
                 console.log('═══════════════════════════════════════');
                 console.log('✅✅✅ GUARDADO COMPLETADO');
@@ -11608,7 +11531,10 @@
                     window.rifaplusConfig.rifa.descuentoPorcentaje.enabled = false;
                     
                     // Guardar al servidor
-                    const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('rifaplus_admin_token');
+                    const token = obtenerToken();
+                    if (!token) {
+                        throw new Error('No hay sesión activa');
+                    }
                     const payload = {
                         rifa: {
                             descuentoPorcentaje: window.rifaplusConfig.rifa.descuentoPorcentaje
@@ -11776,7 +11702,10 @@
                 console.log('📦 PAYLOAD A GUARDAR:', JSON.stringify(payloadRifa, null, 2));
                 
                 // Enviar al backend
-                const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('rifaplus_admin_token');
+                const token = obtenerToken();
+                if (!token) {
+                    throw new Error('No hay sesión activa');
+                }
                 const response = await fetch(`${API_BASE}/api/admin/config`, {
                     method: 'PATCH',
                     headers: {
@@ -11802,16 +11731,12 @@
                 });
                 mostrarAlerta('✅ Todas las promociones guardadas correctamente', 'success');
                 
-                // ✅ DISPARAR EVENTO para actualizar páginas públicas
-                console.log('🔔 Disparando evento configActualizada...');
-                window.dispatchEvent(new CustomEvent('configActualizada', {
-                    detail: { 
-                        promocionesOportunidades: config.rifa?.promocionesOportunidades,
-                        descuentoPorcentaje: config.rifa?.descuentoPorcentaje,
-                        promocionPorTiempo: config.rifa?.promocionPorTiempo,
-                        descuentos: config.rifa?.descuentos
-                    }
-                }));
+                emitirEventoConfiguracionAdmin('promociones', {
+                    promocionesOportunidades: config.rifa?.promocionesOportunidades,
+                    descuentoPorcentaje: config.rifa?.descuentoPorcentaje,
+                    promocionPorTiempo: config.rifa?.promocionPorTiempo,
+                    descuentos: config.rifa?.descuentos
+                });
                 
                 console.log('✅ FIN: guardarTodasLasPromociones()\n');
             } catch (error) {
@@ -11827,8 +11752,11 @@
         /** Función auxiliar para guardar configuración */
         async function guardarConfiguracion(config, mensaje) {
             try {
-                window.rifaplusConfig = config;
-                const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('rifaplus_admin_token');
+                fusionarConfigAdminGlobal(config);
+                const token = obtenerToken();
+                if (!token) {
+                    throw new Error('No hay sesión activa');
+                }
                 
                 const response = await fetch(`${API_BASE}/api/admin/config`, {
                     method: 'PATCH',
@@ -11847,12 +11775,7 @@
                 });
                 mostrarAlerta('✅ ' + mensaje, 'success');
                 
-                if (window.rifaplusConfig?.emitirEvento) {
-                    window.rifaplusConfig.emitirEvento('configuracionActualizada', {
-                        tipo: 'promocion',
-                        timestamp: new Date().toISOString()
-                    });
-                }
+                emitirEventoConfiguracionAdmin('promocion', config?.rifa || config);
             } catch (error) {
                 console.error('❌ Error:', error);
                 mostrarAlerta('Error al guardar: ' + error.message, 'error');
@@ -13145,6 +13068,55 @@
                    localStorage.getItem('token');
         }
 
+        function asegurarConfigAdminGlobal() {
+            if (!window.rifaplusConfig || typeof window.rifaplusConfig !== 'object') {
+                window.rifaplusConfig = {};
+            }
+
+            if (!window.rifaplusConfig.rifa || typeof window.rifaplusConfig.rifa !== 'object') {
+                window.rifaplusConfig.rifa = {};
+            }
+
+            return window.rifaplusConfig;
+        }
+
+        function fusionarConfigAdminGlobal(configParcial = {}) {
+            const configGlobal = asegurarConfigAdminGlobal();
+
+            Object.entries(configParcial).forEach(([clave, valor]) => {
+                if (clave === 'rifa' && valor && typeof valor === 'object' && !Array.isArray(valor)) {
+                    configGlobal.rifa = {
+                        ...configGlobal.rifa,
+                        ...valor
+                    };
+                    return;
+                }
+
+                configGlobal[clave] = valor;
+            });
+
+            return configGlobal;
+        }
+
+        function emitirEventoConfiguracionAdmin(tipo, datos = {}) {
+            if (typeof window.rifaplusConfig?.emitirEvento === 'function') {
+                window.rifaplusConfig.emitirEvento('configuracionActualizada', {
+                    tipo,
+                    datos,
+                    timestamp: new Date().toISOString()
+                });
+                return;
+            }
+
+            window.dispatchEvent(new CustomEvent('configuracionActualizada', {
+                detail: {
+                    tipo,
+                    datos,
+                    timestamp: new Date().toISOString()
+                }
+            }));
+        }
+
         async function subirImagenAdmin(file, assetType = 'gallery') {
             if (!file) {
                 throw new Error('No se seleccionó archivo');
@@ -14404,6 +14376,7 @@
             if (toggleMostrarNotaDisponibilidadMaquina) {
                 toggleMostrarNotaDisponibilidadMaquina.addEventListener('change', manejarCambioBoletajeYRangos);
             }
+            inicializarCampoTiempoApartadoAdmin();
             
             setTimeout(() => {
                 cargarBonos();

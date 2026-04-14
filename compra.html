@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="rifaplus-api-base" content="https://sadev-production.up.railway.app">
+    <meta name="rifaplus-api-base" content="http://localhost:5001">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:* http://localhost:* http://localhost:5001; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://fonts.googleapis.com http://localhost:5001 http://127.0.0.1:5001; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' http://127.0.0.1:* http://localhost:* https: http://localhost:5001 http://127.0.0.1:5001 ws: wss: ws://localhost:5001 wss://localhost:5001 ws://127.0.0.1:5001 wss://127.0.0.1:5001; img-src 'self' data: https:;">
     <!-- METADATOS DINÁMICOS - Cloudflare Functions y js/meta-inyector los actualizan desde la configuración actual -->
     <title>Compra tus boletos</title>
@@ -369,7 +369,7 @@
     <!-- SECCIÓN PRINCIPAL DE COMPRA: precio, promociones, máquina y selección -->
     <section class="compra-pricing-section">
         <div class="container">
-            <div class="precio-card-main loading" id="precioCardCompra" aria-busy="true">
+            <div class="precio-card-main loading" id="precioCardCompra" aria-busy="true" data-shell-critical="true">
                 <!-- PRECIO NORMAL (cuando no hay promoción) -->
                 <div id="precioNormalCompra" class="precio-normal-mode">
                     <p class="precio-kicker">Precio por boleto</p>
@@ -408,13 +408,33 @@
                 <span class="vigencia-text" id="vigenciaOfertaCompra">Vigencia hasta: 15/03/2026 a las 23:59</span>
             </div>
             
-            <div class="promociones-header">
-                <h3 class="promociones-title">Promociones</h3>
-                <p class="promociones-sub" id="promocionesSubText">Aprovecha los paquetes y ahorra al comprar varios boletos</p>
-            </div>
+            <div class="promociones-panel" id="promocionesPanel" style="display: none;">
+                <div class="promociones-header" id="promocionesHeader">
+                    <h3 class="promociones-title">Promociones</h3>
+                    <p class="promociones-sub" id="promocionesSubText">Aprovecha descuentos por volumen y oportunidades extra al comprar más boletos.</p>
+                </div>
 
-            <div class="promos-cards" id="promosCards">
-                <!-- Se carga dinámicamente desde config.js -->
+                <div class="promociones-sections">
+                    <section class="promociones-block promociones-block--oportunidades" id="oportunidadesBlock" style="display: none;">
+                        <div class="promociones-block-header">
+                            <h4 class="promociones-block-title">Oportunidades extra</h4>
+                            <p class="promociones-block-sub" id="oportunidadesSubText">Cada boleto multiplica tus posibilidades de ganar.</p>
+                        </div>
+                        <div class="promos-cards" id="oportunidadesCards">
+                            <!-- Se carga dinámicamente desde config.js -->
+                        </div>
+                    </section>
+
+                    <section class="promociones-block" id="descuentosBlock" style="display: none;">
+                        <div class="promociones-block-header">
+                            <h4 class="promociones-block-title">Ahorra al comprar más</h4>
+                            <p class="promociones-block-sub" id="descuentosSubText">Llévate más boletos por un mejor precio.</p>
+                        </div>
+                        <div class="promos-cards" id="promosCards">
+                            <!-- Se carga dinámicamente desde config.js -->
+                        </div>
+                    </section>
+                </div>
             </div>
         </div>
     </section>

@@ -7,6 +7,12 @@
         if (INDEX_DEBUG) console.warn(...args);
     };
 
+    function notificarPaginaListaIndex() {
+        window.dispatchEvent(new CustomEvent('rifaplus:page-ready', {
+            detail: { page: 'index' }
+        }));
+    }
+
     const state = window.__RIFAPLUS_INDEX_STATE__ = window.__RIFAPLUS_INDEX_STATE__ || {
         firmas: {},
         precioRefreshTimeoutId: 0,
@@ -16,8 +22,61 @@
         activatedSections: {},
         footerBounceTimerId: 0,
         boletosObserver: null,
-        initialized: false
+        initialized: false,
+        pageReadyEmitida: false
     };
+
+    function esHeroIndexListo() {
+        const hero = document.querySelector('.hero');
+        const titleEl = document.getElementById('heroTitle');
+        const descEl = document.getElementById('heroDescription');
+
+        if (!hero || !titleEl || !descEl) {
+            return false;
+        }
+
+        return Boolean(String(titleEl.textContent || '').trim())
+            && Boolean(String(descEl.textContent || '').trim());
+    }
+
+    function esCarruselIndexListo() {
+        const carruselSection = document.querySelector('.carrusel-section');
+        if (!carruselSection) {
+            return true;
+        }
+
+        const style = window.getComputedStyle(carruselSection);
+        if (style.display === 'none' || carruselSection.hidden) {
+            return true;
+        }
+
+        const slides = Array.isArray(window.carruselState?.slides) ? window.carruselState.slides : [];
+        if (slides.length === 0) {
+            return false;
+        }
+
+        const slideActivo = slides[window.carruselState?.currentIndex || 0] || slides[0];
+        const imagenActiva = slideActivo?.querySelector('img');
+
+        return Boolean(imagenActiva)
+            && imagenActiva.complete
+            && imagenActiva.naturalWidth > 0;
+    }
+
+    function evaluarPaginaListaIndex() {
+        if (state.pageReadyEmitida) {
+            return;
+        }
+
+        if (!esHeroIndexListo() || !esCarruselIndexListo()) {
+            return;
+        }
+
+        state.pageReadyEmitida = true;
+        requestAnimationFrame(() => {
+            notificarPaginaListaIndex();
+        });
+    }
 
     function obtenerRifaPublica() {
         return window.rifaplusConfig?.rifa || window.config?.rifa || null;
@@ -373,6 +432,8 @@
                 persistirDatoHero('rifaplus_index_hero_nombre', nombreCompleto, 'nombre');
             }
         }
+
+        evaluarPaginaListaIndex();
     }
 
     function cancelarActualizacionPrecioUnitario() {
@@ -566,6 +627,7 @@
         if (!galeria.enabled || !Array.isArray(galeria.imagenes) || galeria.imagenes.length === 0) {
             carruselSection.style.display = 'none';
             detenerAutoAdvanceCarrusel();
+            evaluarPaginaListaIndex();
             return;
         }
 
@@ -578,6 +640,7 @@
             if (!document.hidden && window.carruselState.isInitialized) {
                 reiniciarAutoAdvanceCarrusel();
             }
+            evaluarPaginaListaIndex();
             return;
         }
 
@@ -611,6 +674,7 @@
                 if (slide.classList.contains('active')) {
                     actualizarModoCarrusel(slide);
                 }
+                evaluarPaginaListaIndex();
             };
 
             slide.appendChild(img);
@@ -624,6 +688,7 @@
         window.carruselState.slides = Array.from(carruselInner.querySelectorAll('.carrusel-item'));
         window.carruselState.currentIndex = 0;
         inicializarCarruselControles();
+        evaluarPaginaListaIndex();
 
         try {
             const galleryCache = galeria.imagenes
@@ -644,9 +709,15 @@
     }
 
     function cargarPreciosYDescuentos() {
+        const panel = document.getElementById('preciosPromosPanel');
         const preciosGrid = document.getElementById('preciosGrid');
+        const oportunidadesGrid = document.getElementById('indexOportunidadesGrid');
+        const descuentosBlock = document.getElementById('indexDescuentosBlock');
+        const oportunidadesBlock = document.getElementById('indexOportunidadesBlock');
+        const descuentosSub = document.getElementById('indexDescuentosSub');
+        const oportunidadesSub = document.getElementById('indexOportunidadesSub');
         const config = obtenerRifaPublica();
-        if (!preciosGrid || !config) return;
+        if (!panel || !preciosGrid || !oportunidadesGrid || !descuentosBlock || !oportunidadesBlock || !config) return;
 
         const firmaPromociones = {
             descuentos: config.descuentos || null,
@@ -656,31 +727,41 @@
         if (!actualizarFirmaIndex('preciosYDescuentosIndex', firmaPromociones)) return;
 
         preciosGrid.innerHTML = '';
-        preciosGrid.style.display = 'grid';
-        let tarjetasRenderizadas = 0;
+        oportunidadesGrid.innerHTML = '';
+        let tarjetasDescuento = 0;
+        let tarjetasOportunidad = 0;
         const oportunidadesPromosActivas = config.oportunidades?.enabled === true
             && config.promocionesOportunidades?.enabled === true
             && Array.isArray(config.promocionesOportunidades?.ejemplos)
             && config.promocionesOportunidades.ejemplos.length > 0;
 
-        const aplicarLayoutPreciosGrid = () => {
-            preciosGrid.classList.remove(
+        const aplicarLayoutPreciosGrid = (grid) => {
+            if (!grid) return;
+            grid.classList.remove(
                 'precios-grid-promos--1',
                 'precios-grid-promos--2',
                 'precios-grid-promos--3',
                 'precios-grid-promos--4',
                 'precios-grid-promos--many'
             );
-            const totalCards = preciosGrid.children.length;
-            if (totalCards === 1) preciosGrid.classList.add('precios-grid-promos--1');
-            else if (totalCards === 2) preciosGrid.classList.add('precios-grid-promos--2');
-            else if (totalCards === 3) preciosGrid.classList.add('precios-grid-promos--3');
-            else if (totalCards === 4) preciosGrid.classList.add('precios-grid-promos--4');
-            else if (totalCards > 4) preciosGrid.classList.add('precios-grid-promos--many');
+            const totalCards = grid.children.length;
+            if (totalCards === 1) grid.classList.add('precios-grid-promos--1');
+            else if (totalCards === 2) grid.classList.add('precios-grid-promos--2');
+            else if (totalCards === 3) grid.classList.add('precios-grid-promos--3');
+            else if (totalCards === 4) grid.classList.add('precios-grid-promos--4');
+            else if (totalCards > 4) grid.classList.add('precios-grid-promos--many');
         };
 
         if (config.descuentos?.enabled && config.descuentos?.reglas?.length > 0) {
-            config.descuentos.reglas.forEach((regla) => {
+            const reglasOrdenadas = [...config.descuentos.reglas]
+                .map((regla) => ({
+                    cantidad: Number(regla?.cantidad),
+                    total: Number(regla?.total ?? regla?.precio ?? 0)
+                }))
+                .filter((regla) => Number.isFinite(regla.cantidad) && regla.cantidad > 0 && Number.isFinite(regla.total) && regla.total > 0)
+                .sort((a, b) => a.cantidad - b.cantidad);
+
+            reglasOrdenadas.forEach((regla) => {
                 const precioCard = document.createElement('div');
                 precioCard.className = 'promo-card-grande descuento-card';
                 const totalPaquete = Number(regla.total ?? regla.precio ?? 0);
@@ -694,36 +775,75 @@
                     <button class="btn btn-secondary promo-card-btn" onclick="window.location.href='compra.html'">Comprar Ahora</button>
                 `;
                 preciosGrid.appendChild(precioCard);
-                tarjetasRenderizadas++;
+                tarjetasDescuento++;
             });
         }
 
         if (oportunidadesPromosActivas) {
-            config.promocionesOportunidades.ejemplos.forEach((ejemplo) => {
+            const ejemplosOrdenados = [...config.promocionesOportunidades.ejemplos]
+                .map((ejemplo) => ({
+                    boletos: Number(ejemplo?.boletos),
+                    oportunidades: Number(ejemplo?.oportunidades)
+                }))
+                .filter((ejemplo) => Number.isFinite(ejemplo.boletos) && ejemplo.boletos > 0 && Number.isFinite(ejemplo.oportunidades) && ejemplo.oportunidades > 0)
+                .sort((a, b) => a.boletos - b.boletos);
+
+            ejemplosOrdenados.forEach((ejemplo) => {
                 const oportunidadCard = document.createElement('div');
                 oportunidadCard.className = 'promo-card-grande oportunidad-card';
                 oportunidadCard.innerHTML = `
                     <div class="promo-card-body">
-                        <span class="promo-card-tag">Oportunidades</span>
                         <div class="promo-card-cantidad">${ejemplo.boletos} Boleto${ejemplo.boletos > 1 ? 's' : ''}</div>
                         <div class="promo-card-equals">=</div>
                         <div class="promo-card-precio promo-card-precio--dark">${ejemplo.oportunidades} Oportunidade${ejemplo.oportunidades > 1 ? 's' : ''}</div>
-                        <div class="promo-card-note">Mas oportunidades de ganar</div>
                     </div>
                     <button class="btn btn-secondary promo-card-btn" onclick="window.location.href='compra.html'">Comprar Ahora</button>
                 `;
-                preciosGrid.appendChild(oportunidadCard);
-                tarjetasRenderizadas++;
+                oportunidadesGrid.appendChild(oportunidadCard);
+                tarjetasOportunidad++;
             });
         }
 
-        if (tarjetasRenderizadas === 0) {
+        const multiplicador = Number(config.oportunidades?.multiplicador) > 0
+            ? Number(config.oportunidades.multiplicador)
+            : 1;
+
+        if (descuentosSub) {
+            descuentosSub.textContent = 'Llevate mas boletos por un mejor precio.';
+        }
+
+        if (oportunidadesSub) {
+            oportunidadesSub.textContent = 'Cada boleto multiplica tus posibilidades de ganar.';
+        }
+
+        if (tarjetasDescuento === 0 && tarjetasOportunidad === 0) {
+            panel.style.display = 'none';
+            descuentosBlock.style.display = 'none';
+            oportunidadesBlock.style.display = 'none';
             preciosGrid.style.display = 'none';
+            oportunidadesGrid.style.display = 'none';
             return;
         }
 
-        preciosGrid.style.display = 'grid';
-        aplicarLayoutPreciosGrid();
+        panel.style.display = '';
+
+        if (tarjetasOportunidad > 0) {
+            oportunidadesBlock.style.display = '';
+            oportunidadesGrid.style.display = 'grid';
+            aplicarLayoutPreciosGrid(oportunidadesGrid);
+        } else {
+            oportunidadesBlock.style.display = 'none';
+            oportunidadesGrid.style.display = 'none';
+        }
+
+        if (tarjetasDescuento > 0) {
+            descuentosBlock.style.display = '';
+            preciosGrid.style.display = 'grid';
+            aplicarLayoutPreciosGrid(preciosGrid);
+        } else {
+            descuentosBlock.style.display = 'none';
+            preciosGrid.style.display = 'none';
+        }
     }
 
     function renderizarBonos() {
@@ -1142,9 +1262,11 @@
     }
 
     function onConfigRefresh() {
+        state.pageReadyEmitida = false;
         actualizarContenidoIndexCritico();
         programarActualizacionIndexSecundaria();
         actualizarMensajeComprasDebounced();
+        evaluarPaginaListaIndex();
     }
 
     function inicializar() {
@@ -1160,6 +1282,7 @@
         animarEntradaBotonFlotante();
         actualizarMensajeComprasDebounced();
         configurarObservadorBoletos();
+        evaluarPaginaListaIndex();
 
         window.addEventListener('configSyncCompleto', onConfigRefresh);
         window.addEventListener('configuracionActualizada', onConfigRefresh);

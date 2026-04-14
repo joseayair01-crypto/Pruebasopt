@@ -1278,6 +1278,11 @@ async function guardarOrden() {
                 } else {
                     // Fallback si el modal no está cargado
                     console.warn('Modal no disponible, redirigiendo directamente');
+                    try {
+                        sessionStorage.setItem('rifaplus_skip_mis_boletos_shell_once', 'true');
+                    } catch (error) {
+                        // Ignorar errores de storage para no bloquear la navegación.
+                    }
                     window.location.href = `mis-boletos.html?ordenId=${encodeURIComponent(datosFinalesOrden.ordenId)}&autoOpen=true`;
                 }
                 
@@ -1322,6 +1327,11 @@ async function guardarOrden() {
                                     
                                     if (ordenReciente.cantidad_boletos === cantidadBoletos) {
                                         logOrdenFormalDebug('[Orden-Formal] La orden se encontró en el servidor después del timeout:', ordenReciente.numero_orden);
+                                        try {
+                                            sessionStorage.setItem('rifaplus_skip_mis_boletos_shell_once', 'true');
+                                        } catch (error) {
+                                            // Ignorar errores de storage para no bloquear la navegación.
+                                        }
                                         window.location.href = `mis-boletos.html?ordenId=${encodeURIComponent(ordenReciente.numero_orden)}&autoOpen=true`;
                                         return;
                                     }
@@ -1334,6 +1344,11 @@ async function guardarOrden() {
                             logOrdenFormalDebug('[Orden-Formal] Asumiendo guardado tras timeout final y redirigiendo');
                             // Usar última orden conocida para la redirección
                             const ordenId = datosFinalesOrden?.numero_orden || payload?.cliente?.ordenId || 'unknown';
+                            try {
+                                sessionStorage.setItem('rifaplus_skip_mis_boletos_shell_once', 'true');
+                            } catch (error) {
+                                // Ignorar errores de storage para no bloquear la navegación.
+                            }
                             window.location.href = `mis-boletos.html?ordenId=${encodeURIComponent(ordenId)}&autoOpen=true`;
                             return;
                         }

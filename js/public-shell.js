@@ -1,12 +1,15 @@
 (() => {
     const SHOW_DELAY_MS = 180;
+    const READY_STABLE_MS = 180;
     const MIN_VISIBLE_MS = 320;
-    const SOFT_FALLBACK_MS = 900;
-    const MAX_WAIT_MS = 2400;
+    const SOFT_FALLBACK_MS = 1600;
+    const MAX_WAIT_MS = 5200;
     const POLL_INTERVAL_MS = 120;
     const LEAVE_ANIMATION_MS = 320;
     const PLACEHOLDER_LOGO = 'images/placeholder-logo.svg';
     const LOGO_PLACEHOLDER_DATA_PREFIX = 'data:image/svg+xml';
+    const PAGE_READY_EVENT = 'rifaplus:page-ready';
+    const SHELL_PENDING_SELECTOR = '[data-shell-critical="true"], [aria-busy="true"]:not(body):not(#rifaplusPublicShell), .is-loading';
 
     function cuandoDomEsteListo(callback) {
         if (document.readyState === 'loading') {
@@ -17,19 +20,24 @@
         callback();
     }
 
+    function leerLogoCacheado() {
+        const logoEnMemoria = String(window.__RIFAPLUS_CACHED_LOGO__ || '').trim();
+        if (logoEnMemoria) {
+            return logoEnMemoria;
+        }
+
+        try {
+            return String(localStorage.getItem('rifaplus_cached_logo') || '').trim();
+        } catch (error) {
+            return '';
+        }
+    }
+
     function resolverLogoShell() {
         const imageDelivery = window.RifaPlusImageDelivery;
         const config = window.rifaplusConfig || {};
         const logoPreferido = config?.cliente?.logo || config?.cliente?.logotipo || '';
-        let logoCacheado = window.__RIFAPLUS_CACHED_LOGO__ || '';
-
-        if (!logoCacheado) {
-            try {
-                logoCacheado = localStorage.getItem('rifaplus_cached_logo') || '';
-            } catch (error) {
-                logoCacheado = '';
-            }
-        }
+        const logoCacheado = leerLogoCacheado();
 
         const fallback = PLACEHOLDER_LOGO;
         const logo = String(logoPreferido || logoCacheado || fallback).trim() || fallback;
@@ -71,44 +79,29 @@
         }
     }
 
+    function esLogoReal(url) {
+        const logo = normalizarRutaLogo(url);
+        return Boolean(logo)
+            && !logo.includes(PLACEHOLDER_LOGO)
+            && !logo.startsWith(LOGO_PLACEHOLDER_DATA_PREFIX);
+    }
+
     function resolverLogoObjetivo() {
         return normalizarRutaLogo(resolverLogoShell());
     }
 
     function logoObjetivoVieneDeCacheReal() {
-        const config = window.rifaplusConfig || {};
-        const logoPreferido = String(config?.cliente?.logo || config?.cliente?.logotipo || '').trim();
-        let logoCacheado = String(window.__RIFAPLUS_CACHED_LOGO__ || '').trim();
-
-        if (!logoCacheado) {
-            try {
-                logoCacheado = String(localStorage.getItem('rifaplus_cached_logo') || '').trim();
-            } catch (error) {
-                logoCacheado = '';
-            }
-        }
-
+        const logoCacheado = leerLogoCacheado();
         const logoObjetivo = resolverLogoObjetivo();
-        const tieneCacheReal = Boolean(logoCacheado)
-            && !logoCacheado.includes(PLACEHOLDER_LOGO)
-            && !logoCacheado.startsWith(LOGO_PLACEHOLDER_DATA_PREFIX);
-
-        if (!tieneCacheReal || !logoObjetivo) {
+        if (!esLogoReal(logoCacheado) || !logoObjetivo) {
             return false;
-        }
-
-        if (!logoPreferido) {
-            return normalizarRutaLogo(logoCacheado) === logoObjetivo;
         }
 
         return normalizarRutaLogo(logoCacheado) === logoObjetivo;
     }
 
     function logoObjetivoEsReal() {
-        const logoObjetivo = resolverLogoObjetivo();
-        return Boolean(logoObjetivo)
-            && !logoObjetivo.includes(PLACEHOLDER_LOGO)
-            && !logoObjetivo.startsWith(LOGO_PLACEHOLDER_DATA_PREFIX);
+        return esLogoReal(resolverLogoObjetivo());
     }
 
     function obtenerLogoCabecera() {
@@ -138,6 +131,65 @@
         return Boolean(document.querySelector('header, main, .compra-hero, .hero, .mis-boletos-container, .sorteo-finalizado-page'));
     }
 
+    function esElementoVisibleShell(elemento) {
+        if (!elemento || elemento.hidden) {
+            return false;
+        }
+
+        const style = window.getComputedStyle(elemento);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+            return false;
+        }
+
+        const rect = elemento.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+    }
+
+    function esElementoRelevanteParaShell(elemento) {
+        if (!elemento) {
+            return false;
+        }
+
+        if (elemento.matches('[data-shell-critical="true"]')) {
+            return true;
+        }
+
+        const rect = elemento.getBoundingClientRect();
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+        const margenSuperior = 120;
+        const margenInferior = Math.round(viewportHeight * 0.15);
+
+        return rect.bottom > -margenSuperior && rect.top < viewportHeight + margenInferior;
+    }
+
+    function debeIgnorarseParaShell(elemento) {
+        if (!elemento) {
+            return true;
+        }
+
+        if (elemento.closest('#boletosGridShell')) {
+            return true;
+        }
+
+        if (elemento.id === 'loadingEstadoBoletos' || elemento.id === 'numerosGrid' || elemento.id === 'infiniteScrollSentinel') {
+            return true;
+        }
+
+        return false;
+    }
+
+    function hayPendientesCriticos() {
+        const candidatos = document.querySelectorAll(SHELL_PENDING_SELECTOR);
+
+        return Array.from(candidatos).some((elemento) => {
+            if (debeIgnorarseParaShell(elemento)) {
+                return false;
+            }
+
+            return esElementoVisibleShell(elemento) && esElementoRelevanteParaShell(elemento);
+        });
+    }
+
     function aplicarBodyReady(body) {
         body.classList.remove('rifaplus-shell-loading', 'rifaplus-shell-active');
         body.classList.add('rifaplus-shell-ready');
@@ -157,6 +209,11 @@
         body.classList.remove('rifaplus-logo-ready');
     }
 
+    function crearRegistroEvento(target, type, listener, options) {
+        target.addEventListener(type, listener, options);
+        return () => target.removeEventListener(type, listener, options);
+    }
+
     cuandoDomEsteListo(() => {
         const body = document.body;
         const overlay = document.getElementById('rifaplusPublicShell');
@@ -170,6 +227,8 @@
             visible: false,
             cerrado: false,
             mostradoEn: 0,
+            pageReady: false,
+            estableDesde: 0,
             configSincronizada: tieneConfigMinima(),
             ventanaCargada: document.readyState === 'complete',
             permitirFallbackLogo: false,
@@ -180,6 +239,7 @@
             forceCloseId: 0,
             cacheLogoRealDisponible: logoObjetivoVieneDeCacheReal()
         };
+        const limpiadoresEventos = [];
 
         overlay.setAttribute('hidden', 'hidden');
 
@@ -202,24 +262,66 @@
             }
         };
 
+        const limpiarEventos = () => {
+            while (limpiadoresEventos.length) {
+                const limpiar = limpiadoresEventos.pop();
+                try {
+                    limpiar();
+                } catch (error) {
+                    // Ignorar cleanup defensivo.
+                }
+            }
+        };
+
+        const inferirContenidoCriticoListo = ({ structureReady, busyPending, configReady, logoReady }) => {
+            const puedeInferirse = structureReady
+                && !busyPending
+                && (configReady || estado.ventanaCargada)
+                && (logoReady || estado.cacheLogoRealDisponible || estado.permitirFallbackLogo);
+
+            if (!puedeInferirse) {
+                estado.estableDesde = 0;
+                return false;
+            }
+
+            if (!estado.estableDesde) {
+                estado.estableDesde = performance.now();
+            }
+
+            return performance.now() - estado.estableDesde >= READY_STABLE_MS;
+        };
+
         const obtenerReadiness = () => {
             const elapsed = performance.now() - estado.inicio;
-            const configReady = tieneConfigMinima() || estado.configSincronizada || estado.ventanaCargada;
+            const configReady = tieneConfigMinima() || estado.configSincronizada;
             const structureReady = tieneEstructuraBase();
-            const logoReady = logoCabeceraListo() || estado.permitirFallbackLogo;
-            const canClose = (configReady && logoReady)
-                || (elapsed >= SOFT_FALLBACK_MS && structureReady && (configReady || logoReady || estado.ventanaCargada))
+            const logoReady = logoCabeceraListo();
+            const logoGateReady = logoReady || estado.cacheLogoRealDisponible || estado.permitirFallbackLogo;
+            const busyPending = hayPendientesCriticos();
+            const criticalContentReady = estado.pageReady || inferirContenidoCriticoListo({
+                structureReady,
+                busyPending,
+                configReady,
+                logoReady
+            });
+            const fallbackContentReady = criticalContentReady || (estado.ventanaCargada && structureReady && !busyPending);
+            const canClose = (!busyPending && configReady && logoGateReady && criticalContentReady)
+                || (!busyPending && elapsed >= SOFT_FALLBACK_MS && structureReady && fallbackContentReady && (criticalContentReady || configReady || logoGateReady))
                 || elapsed >= MAX_WAIT_MS;
             const shouldShow = !estado.noMostrarOverlay
                 && !canClose
-                && elapsed >= SHOW_DELAY_MS
-                && (!structureReady || (!configReady && !logoReady));
+                && (elapsed >= SHOW_DELAY_MS || busyPending)
+                && (!structureReady || !criticalContentReady || !configReady || !logoGateReady || busyPending);
 
             return {
                 elapsed,
                 configReady,
                 structureReady,
                 logoReady,
+                logoGateReady,
+                busyPending,
+                criticalContentReady,
+                fallbackContentReady,
                 canClose,
                 shouldShow
             };
@@ -243,6 +345,7 @@
             if (estado.cerrado) return;
             estado.cerrado = true;
             limpiarTimers();
+            limpiarEventos();
             actualizarLogoShell();
 
             if (!estado.visible) {
@@ -273,8 +376,10 @@
             const readiness = obtenerReadiness();
 
             const puedeOmitirOverlayTemprano = readiness.structureReady
+                && !readiness.busyPending
                 && readiness.configReady
-                && (readiness.logoReady || estado.cacheLogoRealDisponible);
+                && readiness.criticalContentReady
+                && readiness.logoGateReady;
 
             if (!estado.visible && puedeOmitirOverlayTemprano && readiness.elapsed < SHOW_DELAY_MS) {
                 estado.noMostrarOverlay = true;
@@ -303,6 +408,11 @@
             evaluar();
         };
 
+        const onPageReady = () => {
+            estado.pageReady = true;
+            evaluar();
+        };
+
         actualizarLogoShell();
         actualizarEstadoLogoHeader(body);
 
@@ -323,31 +433,36 @@
             evaluar();
         }, POLL_INTERVAL_MS);
 
-        window.addEventListener('configSyncCompleto', onConfigSync, { once: true });
-        window.addEventListener('configuracionActualizada', onConfigSync);
-        window.addEventListener('load', onWindowLoad, { once: true });
-        window.addEventListener('pageshow', evaluar, { once: true });
+        limpiadoresEventos.push(crearRegistroEvento(window, 'configSyncCompleto', onConfigSync, { once: true }));
+        limpiadoresEventos.push(crearRegistroEvento(window, 'configuracionActualizada', onConfigSync));
+        limpiadoresEventos.push(crearRegistroEvento(window, 'load', onWindowLoad, { once: true }));
+        limpiadoresEventos.push(crearRegistroEvento(window, 'pageshow', evaluar, { once: true }));
+        limpiadoresEventos.push(crearRegistroEvento(window, PAGE_READY_EVENT, onPageReady));
 
         const headerLogo = obtenerLogoCabecera();
         if (headerLogo) {
-            headerLogo.addEventListener('load', evaluar);
-            headerLogo.addEventListener('error', () => {
+            const onHeaderLogoError = () => {
                 estado.permitirFallbackLogo = true;
                 headerLogo.setAttribute('src', PLACEHOLDER_LOGO);
                 actualizarEstadoLogoHeader(body);
                 evaluar();
-            });
+            };
+
+            limpiadoresEventos.push(crearRegistroEvento(headerLogo, 'load', evaluar));
+            limpiadoresEventos.push(crearRegistroEvento(headerLogo, 'error', onHeaderLogoError));
         }
 
         const shellLogo = document.getElementById('rifaplusShellLogo');
         if (shellLogo) {
-            shellLogo.addEventListener('load', evaluar);
-            shellLogo.addEventListener('error', () => {
+            const onShellLogoError = () => {
                 estado.permitirFallbackLogo = true;
                 shellLogo.setAttribute('src', PLACEHOLDER_LOGO);
                 actualizarEstadoLogoHeader(body);
                 evaluar();
-            });
+            };
+
+            limpiadoresEventos.push(crearRegistroEvento(shellLogo, 'load', evaluar));
+            limpiadoresEventos.push(crearRegistroEvento(shellLogo, 'error', onShellLogoError));
         }
 
         evaluar();

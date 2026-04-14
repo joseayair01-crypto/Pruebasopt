@@ -4,6 +4,9 @@
 (function configurarDeployRifaPlus() {
     const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1']);
     const SOCKET_CDN_URL = 'https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js';
+    const FORCE_LOCAL_ONLY = true;
+    const LOCAL_API_BASE = 'http://localhost:5001';
+    const LOCAL_PUBLIC_BASE = 'http://localhost:5001';
 
     function normalizarBaseUrl(url) {
         return String(url || '').trim().replace(/\/+$/, '');
@@ -47,7 +50,8 @@
     }
 
     const hostname = window.location.hostname;
-    const isLocal = LOCAL_HOSTS.has(hostname);
+    const isLocalHost = LOCAL_HOSTS.has(hostname);
+    const isLocal = FORCE_LOCAL_ONLY || isLocalHost;
     const protocol = window.location.protocol || 'http:';
     const origin = window.location.origin || `${protocol}//${hostname}`;
 
@@ -60,10 +64,14 @@
     //    - frontend en localhost / 127.0.0.1
     //    - backend en http://localhost:5001
     //
-    // 2. MODO PRODUCCION
-    //    Cuando vuelvas a hostear, cambia SOLO estos valores:
-    //    - DEPLOY_TARGETS.production.apiBase
-    //    - DEPLOY_TARGETS.production.publicBase
+    // 2. MODO LOCAL ONLY
+    //    Esta copia esta forzada a usar backend/frontend locales.
+    //    Aunque abras el frontend desde otro host, la API seguira
+    //    apuntando a localhost para evitar usar endpoints remotos.
+    //
+    //    Si despues quieres volver a habilitar despliegue remoto:
+    //    - cambia FORCE_LOCAL_ONLY a false
+    //    - ajusta el bloque `production`
     //
     //    Ejemplo:
     //    apiBase: 'https://tu-backend.up.railway.app'
@@ -85,25 +93,27 @@
     //
     const DEPLOY_TARGETS = {
         local: {
-            apiBase: 'http://localhost:5001',
-            publicBase: origin,
+            apiBase: LOCAL_API_BASE,
+            publicBase: isLocalHost ? origin : LOCAL_PUBLIC_BASE,
             socketScriptUrl: SOCKET_CDN_URL
         },
         production: {
-            apiBase: 'https://sadev-production.up.railway.app',
-            publicBase: 'https://sadev.pages.dev',
+            apiBase: LOCAL_API_BASE,
+            publicBase: LOCAL_PUBLIC_BASE,
             socketScriptUrl: SOCKET_CDN_URL
         }
     };
 
-    const selectedPreset = isLocal ? DEPLOY_TARGETS.local : DEPLOY_TARGETS.production;
+    const selectedPreset = FORCE_LOCAL_ONLY
+        ? DEPLOY_TARGETS.local
+        : (isLocalHost ? DEPLOY_TARGETS.local : DEPLOY_TARGETS.production);
     const existingOverride = window.__RIFAPLUS_DEPLOY__ || {};
 
     const apiBase = normalizarBaseUrl(
         existingOverride.apiBase
         || selectedPreset.apiBase
         || obtenerMeta('rifaplus-api-base')
-        || (isLocal ? 'http://localhost:5001' : origin)
+        || (isLocal ? LOCAL_API_BASE : origin)
     );
 
     const publicBase = normalizarBaseUrl(

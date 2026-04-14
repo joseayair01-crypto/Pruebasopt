@@ -32,8 +32,8 @@
     "edicionNombre": "Demo 1M SaDev - Edición Demo",
     "nombreSorteo": "De Redilas era la nissan",
     "descripcion": "Participa por esta NP 300 Totalmente nueva, ademas en presorteo por iphone 17 pro max con tu mismo boleto",
-    "totalBoletos": 1000000,
-    "precioBoleto": 1,
+    "totalBoletos": 20000,
+    "precioBoleto": 10,
     "tiempoApartadoHoras": 1,
     "intervaloLimpiezaMinutos": 10,
     "rangos": [
