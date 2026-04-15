@@ -4,26 +4,26 @@
 
     const IMAGE_PROFILES = Object.freeze({
         logo: Object.freeze({
-            width: 320,
-            height: 180,
+            width: 280,
+            height: 160,
             crop: 'limit',
-            quality: 'auto:best',
+            quality: 'auto:good',
             format: 'auto',
             dpr: 'auto'
         }),
         logoPreload: Object.freeze({
-            width: 320,
-            height: 180,
+            width: 220,
+            height: 126,
             crop: 'limit',
-            quality: 'auto:best',
+            quality: 'auto:good',
             format: 'auto',
             dpr: 'auto'
         }),
         logoIcon: Object.freeze({
-            width: 180,
-            height: 180,
+            width: 96,
+            height: 96,
             crop: 'limit',
-            quality: 'auto:best',
+            quality: 'auto:good',
             format: 'auto',
             dpr: 'auto'
         }),
@@ -36,8 +36,8 @@
             dpr: 'auto'
         }),
         carouselPreload: Object.freeze({
-            width: 960,
-            height: 960,
+            width: 720,
+            height: 720,
             crop: 'limit',
             quality: 'auto:good',
             format: 'auto',

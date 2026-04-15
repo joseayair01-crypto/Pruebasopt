@@ -89,6 +89,12 @@ function resolverLogoPreferido(logoPath) {
     return logoNormalizado;
 }
 
+function resolverLogoOptimizado(logoPath, profile = 'logo') {
+    const imageDelivery = window.RifaPlusImageDelivery;
+    const logoResuelto = resolverLogoPreferido(logoPath);
+    return imageDelivery?.resolverUrlImagen(logoResuelto, profile) || logoResuelto;
+}
+
 const THEME_DYNAMIC_DEBUG = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 let themeDynamicApplyQueued = false;
 let themeDynamicLastSignature = '';
@@ -197,7 +203,7 @@ function applyDynamicTheme(force = false) {
  * @param {String} logoPath - Ruta del logo desde config
  */
 function updateFavicon(logoPath) {
-    const logoResuelto = resolverLogoPreferido(logoPath);
+    const logoResuelto = resolverLogoOptimizado(logoPath, 'logoIcon');
     if (!logoResuelto) {
         console.warn('⚠️  Logo no especificado en config');
         return;
@@ -230,11 +236,13 @@ function updateFavicon(logoPath) {
  * @param {String} logoPath - Ruta del logo
  */
 function updateAllLogos(logoPath) {
-    const logoResuelto = resolverLogoPreferido(logoPath);
+    const imageDelivery = window.RifaPlusImageDelivery;
+    const logoOriginal = resolverLogoPreferido(logoPath);
+    const logoResuelto = resolverLogoOptimizado(logoPath, 'logo');
     if (!logoResuelto) return;
 
     try {
-        localStorage.setItem('rifaplus_cached_logo', logoResuelto);
+        localStorage.setItem('rifaplus_cached_logo', logoOriginal);
         window.__RIFAPLUS_CACHED_LOGO__ = logoResuelto;
     } catch (error) {
         if (THEME_DYNAMIC_DEBUG) {
@@ -246,7 +254,19 @@ function updateAllLogos(logoPath) {
     const dynamicLogos = document.querySelectorAll('img[data-dynamic-logo="true"], img.dynamic-logo');
     dynamicLogos.forEach(img => {
         const oldSrc = img.src;
-        img.src = logoResuelto;
+        if (imageDelivery?.aplicarImagenOptimizada) {
+            imageDelivery.aplicarImagenOptimizada(img, {
+                originalUrl: logoOriginal,
+                profile: 'logo',
+                widths: [160, 240, 320],
+                sizes: '(max-width: 768px) 160px, 280px',
+                fetchPriority: img.getAttribute('fetchpriority') || 'high',
+                decoding: img.getAttribute('decoding') || 'async',
+                loading: img.getAttribute('loading') || 'eager'
+            });
+        } else {
+            img.src = logoResuelto;
+        }
         themeDynamicLog(`🖼️  Logo actualizado: ${oldSrc} → ${logoResuelto}`);
     });
 
@@ -261,7 +281,19 @@ function updateAllLogos(logoPath) {
         const imgs = document.querySelectorAll(`img[src="${oldLogo}"]`);
         imgs.forEach(img => {
             if (img.getAttribute('data-dynamic-logo') !== 'false') { // Excluir si está marcado como estático
-                img.src = logoResuelto;
+                if (imageDelivery?.aplicarImagenOptimizada) {
+                    imageDelivery.aplicarImagenOptimizada(img, {
+                        originalUrl: logoOriginal,
+                        profile: 'logo',
+                        widths: [160, 240, 320],
+                        sizes: '(max-width: 768px) 160px, 280px',
+                        fetchPriority: img.getAttribute('fetchpriority') || 'high',
+                        decoding: img.getAttribute('decoding') || 'async',
+                        loading: img.getAttribute('loading') || 'eager'
+                    });
+                } else {
+                    img.src = logoResuelto;
+                }
                 img.setAttribute('data-dynamic-logo', 'true');
                 themeDynamicLog(`🖼️  Logo fallback actualizado: ${oldLogo} → ${logoResuelto}`);
             }

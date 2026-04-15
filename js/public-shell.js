@@ -41,7 +41,7 @@
 
         const fallback = PLACEHOLDER_LOGO;
         const logo = String(logoPreferido || logoCacheado || fallback).trim() || fallback;
-        return imageDelivery?.resolverUrlImagen(logo, 'logo') || logo;
+        return imageDelivery?.resolverUrlImagen(logo, 'logoPreload') || logo;
     }
 
     function tieneConfigMinima() {
