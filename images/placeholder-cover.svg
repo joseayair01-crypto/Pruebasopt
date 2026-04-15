@@ -1,11 +1,39 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="Imagen del sorteo">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="Imagen temporal del sorteo">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#eaf3fb"/>
-      <stop offset="1" stop-color="#d5e6f5"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#eef6fb"/>
+      <stop offset="0.55" stop-color="#dfeef8"/>
+      <stop offset="1" stop-color="#d3e7f4"/>
+    </linearGradient>
+    <radialGradient id="glowTop" cx="0" cy="0" r="1" gradientTransform="translate(250 110) rotate(22) scale(420 260)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowBottom" cx="0" cy="0" r="1" gradientTransform="translate(980 610) rotate(-18) scale(360 220)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#c2e7eb" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#c2e7eb" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#ffffff" stop-opacity="0.72"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.28"/>
     </linearGradient>
   </defs>
-  <rect width="1200" height="675" fill="url(#g)"/>
-  <text x="600" y="330" font-size="46" text-anchor="middle" fill="#1b2a38" font-family="Arial, sans-serif">Imagen del sorteo</text>
-  <text x="600" y="385" font-size="24" text-anchor="middle" fill="#5e7283" font-family="Arial, sans-serif">Sincronizando contenido visual</text>
+  <rect width="1200" height="675" fill="url(#bg)"/>
+  <rect width="1200" height="675" fill="url(#glowTop)"/>
+  <rect width="1200" height="675" fill="url(#glowBottom)"/>
+  <g opacity="0.72">
+    <circle cx="1058" cy="126" r="92" fill="#ffffff" fill-opacity="0.34"/>
+    <circle cx="1098" cy="168" r="34" fill="#1fd1c2" fill-opacity="0.18"/>
+    <circle cx="118" cy="566" r="126" fill="#ffffff" fill-opacity="0.28"/>
+  </g>
+  <g transform="translate(208 146)">
+    <rect x="0" y="0" width="784" height="384" rx="34" fill="url(#card)"/>
+    <rect x="0.75" y="0.75" width="782.5" height="382.5" rx="33.25" fill="none" stroke="#ffffff" stroke-opacity="0.46" stroke-width="1.5"/>
+    <rect x="58" y="60" width="236" height="236" rx="26" fill="#ffffff" fill-opacity="0.50"/>
+    <rect x="334" y="86" width="312" height="20" rx="10" fill="#ffffff" fill-opacity="0.60"/>
+    <rect x="334" y="126" width="248" height="16" rx="8" fill="#ffffff" fill-opacity="0.44"/>
+    <rect x="334" y="166" width="286" height="16" rx="8" fill="#ffffff" fill-opacity="0.40"/>
+    <rect x="334" y="238" width="214" height="48" rx="24" fill="#1fd1c2" fill-opacity="0.20"/>
+    <rect x="58" y="326" width="588" height="12" rx="6" fill="#ffffff" fill-opacity="0.30"/>
+  </g>
 </svg>

@@ -240,7 +240,7 @@ Object.assign(window.rifaplusConfig, {
         
         // ✅ ESTRUCTURA LOCAL (no en config.json):
         logo: rifaplusLogoInicial,
-        imagenPrincipal: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 675'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%23eaf3fb'/%3E%3Cstop offset='1' stop-color='%23d5e6f5'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1200' height='675' fill='url(%23g)'/%3E%3Ctext x='600' y='330' font-size='46' text-anchor='middle' fill='%231b2a38' font-family='Arial,sans-serif'%3EImagen principal del sorteo%3C/text%3E%3Ctext x='600' y='385' font-size='24' text-anchor='middle' fill='%235e7283' font-family='Arial,sans-serif'%3ECarga una imagen o pega una URL%3C/text%3E%3C/svg%3E",
+        imagenPrincipal: "images/placeholder-cover.svg",
         colorPrimario: "#0b2238",
         colorSecundario: "#1fd1c2",
         colorAccento: "#1fd1c2",
@@ -307,7 +307,7 @@ Object.assign(window.rifaplusConfig, {
         galeria: {
             enabled: true,  // ✅ HABILITADA por defecto (se sobrescribe desde config.json)
             imagenes: [
-                {url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 675'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%23eaf3fb'/%3E%3Cstop offset='1' stop-color='%23d5e6f5'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1200' height='675' fill='url(%23g)'/%3E%3Ctext x='600' y='330' font-size='46' text-anchor='middle' fill='%231b2a38' font-family='Arial,sans-serif'%3EImagen principal del sorteo%3C/text%3E%3Ctext x='600' y='385' font-size='24' text-anchor='middle' fill='%235e7283' font-family='Arial,sans-serif'%3ECarga una imagen o pega una URL%3C/text%3E%3C/svg%3E", titulo: "Vista Principal", descripcion: "Imagen temporal mientras sincroniza la galeria"},
+                {url: "images/placeholder-cover.svg", titulo: "Vista Principal", descripcion: "Imagen temporal mientras sincroniza la galeria"},
                 {url: "images/placeholder-cover.svg", titulo: "Vista Frontal", descripcion: "Contenido visual sincronizándose"},
                 {url: "images/placeholder-cover.svg", titulo: "Vista Lateral", descripcion: "Contenido visual sincronizándose"}
             ]
