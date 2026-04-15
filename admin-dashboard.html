@@ -2826,8 +2826,18 @@
                 ? Math.max(0, Math.ceil((timestampSorteo - Date.now()) / (1000 * 60 * 60 * 24)))
                 : null;
             const porcentajeApartado = totalBoletos > 0 ? Math.round(((vendidos + apartados) / totalBoletos) * 100) : 0;
+            const inventarioAgotadoPorVenta = totalBoletos > 0 && vendidos >= totalBoletos && disponibles <= 0;
 
             const alertas = [];
+
+            if (inventarioAgotadoPorVenta) {
+                alertas.push({
+                    tipo: 'success',
+                    icono: 'fa-circle-check',
+                    titulo: 'Inventario agotado: todo el sorteo está vendido',
+                    texto: 'Excelente cierre. Ya no quedan boletos disponibles y el sorteo alcanzó venta total.'
+                });
+            }
 
             alertas.push({
                 tipo: pendientes > 0 ? 'danger' : 'success',
@@ -2837,10 +2847,12 @@
             });
 
             alertas.push({
-                tipo: porcentajeVendido >= 70 ? 'success' : (porcentajeVendido >= 35 ? 'warning' : 'danger'),
-                icono: porcentajeVendido >= 70 ? 'fa-chart-line' : (porcentajeVendido >= 35 ? 'fa-gauge-high' : 'fa-bullhorn'),
+                tipo: inventarioAgotadoPorVenta ? 'success' : (porcentajeVendido >= 70 ? 'success' : (porcentajeVendido >= 35 ? 'warning' : 'danger')),
+                icono: inventarioAgotadoPorVenta ? 'fa-trophy' : (porcentajeVendido >= 70 ? 'fa-chart-line' : (porcentajeVendido >= 35 ? 'fa-gauge-high' : 'fa-bullhorn')),
                 titulo: `Avance actual: ${porcentajeVendido}% vendido`,
-                texto: porcentajeVendido >= 70
+                texto: inventarioAgotadoPorVenta
+                    ? 'Se colocó el 100% del inventario. El siguiente foco operativo es cierre, ganadores y seguimiento postventa.'
+                    : porcentajeVendido >= 70
                     ? 'El sorteo va en muy buen ritmo y se acerca a cierre fuerte.'
                     : (porcentajeVendido >= 35
                         ? 'El ritmo es aceptable, pero todavía hay margen para empujar conversión.'

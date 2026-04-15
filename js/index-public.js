@@ -997,19 +997,127 @@
         };
     })();
 
+    function obtenerPaletaGanadoresIndex(tipo) {
+        const paletas = {
+            sorteo: {
+                titulo: 'Ganadores del sorteo',
+                resumen: 'Resultados principales confirmados oficialmente.',
+                icono: '<i class="fas fa-trophy" aria-hidden="true"></i>',
+                headerColor1: 'var(--primary)',
+                color: 'var(--primary)'
+            },
+            presorteo: {
+                titulo: 'Ganadores del presorteo',
+                resumen: 'Premios previos ya declarados y visibles para todos.',
+                icono: '<i class="fas fa-gift" aria-hidden="true"></i>',
+                headerColor1: 'var(--primary)',
+                color: 'var(--primary)'
+            },
+            ruletazos: {
+                titulo: 'Ganadores de ruletazos',
+                resumen: 'Dinámicas activas resueltas antes del cierre final.',
+                icono: '<i class="fas fa-star" aria-hidden="true"></i>',
+                headerColor1: 'var(--primary)',
+                color: 'var(--primary)'
+            }
+        };
+
+        return paletas[tipo] || paletas.sorteo;
+    }
+
+    function formatearFechaDeclaracionGanadorIndex(fechaFuente) {
+        if (!fechaFuente) return '';
+        try {
+            const fecha = new Date(fechaFuente);
+            if (Number.isNaN(fecha.getTime())) return '';
+            return fecha.toLocaleDateString('es-MX', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+        } catch (error) {
+            return '';
+        }
+    }
+
+    function formatearNumeroGanadorIndex(numero) {
+        if (numero === null || numero === undefined || numero === '') return 'N/A';
+        if (typeof window.rifaplusConfig?.formatearNumeroBoleto === 'function') {
+            const numeroNormalizado = Number(numero);
+            if (Number.isFinite(numeroNormalizado)) {
+                return window.rifaplusConfig.formatearNumeroBoleto(numeroNormalizado);
+            }
+        }
+        return String(numero);
+    }
+
+    function obtenerLugarGanadorIndex(tipo, ganador, idx) {
+        const posicion = Number(ganador.lugarGanado || ganador.posicion) || (idx + 1);
+        if (tipo === 'sorteo') {
+            return `${posicion}° lugar`;
+        }
+        if (tipo === 'presorteo') {
+            return `Lugar ${posicion}`;
+        }
+        return `Ruletazo ${posicion}`;
+    }
+
+    function construirNombreGanadorIndex(ganador) {
+        return [
+            ganador.nombre_ganador,
+            ganador.nombre_cliente,
+            ganador.apellido_cliente
+        ].filter(Boolean).join(' ').trim() || ganador.nombre || 'Ganador confirmado';
+    }
+
+    function construirMetaGanadorIndex(ganador) {
+        const ciudad = String(ganador.ciudad || ganador.ciudad_cliente || '').trim();
+        const estado = String(ganador.estado_cliente || '').trim();
+        return [ciudad, estado].filter(Boolean);
+    }
+
+    function mapearGanadorServidorIndex(row = {}, idx = 0) {
+        return {
+            numero: String(row.numero_boleto || row.numero || row.numero_orden || ''),
+            numero_boleto: row.numero_boleto ?? row.numero ?? row.numero_orden ?? '',
+            posicion: row.posicion || (idx + 1),
+            lugarGanado: row.posicion || null,
+            nombre_ganador: row.nombre_ganador || '',
+            nombre_cliente: row.nombre_cliente || '',
+            apellido_cliente: row.apellido_cliente || '',
+            ciudad: row.ciudad || '',
+            ciudad_cliente: row.ciudad_cliente || '',
+            estado_cliente: row.estado_cliente || '',
+            fechaDeclaracion: row.fecha_sorteo || row.created_at || ''
+        };
+    }
+
+    function tipoGanadorVisibleEnIndex(tipo) {
+        const publicacion = obtenerRifaPublica()?.publicacion || {};
+        if (tipo === 'presorteo') return publicacion.presorteo !== false;
+        if (tipo === 'ruletazos') return publicacion.ruletazo !== false;
+        return true;
+    }
+
     async function renderizarSeccionGanadores() {
         const seccion = document.getElementById('seccionGanadores');
         const contenedor = document.getElementById('ganadoresContenedor');
+        const lead = document.getElementById('ganadoresLead');
         if (!seccion || !contenedor) return;
 
         try {
-            const apiBase = window.rifaplusConfig?.backend?.apiBase
-                || window.rifaplusConfig?.obtenerApiBase?.()
-                || window.location.origin;
-            const res = await fetch(`${apiBase}/api/ganadores?limit=500`);
-            if (!res.ok) throw new Error('no_server');
-            const payload = await res.json();
-            const rows = payload?.data || [];
+            let rows = [];
+            if (window.GanadoresManager?.obtenerGanadoresServidor) {
+                rows = await window.GanadoresManager.obtenerGanadoresServidor(500);
+            } else {
+                const apiBase = window.rifaplusConfig?.backend?.apiBase
+                    || window.rifaplusConfig?.obtenerApiBase?.()
+                    || window.location.origin;
+                const res = await fetch(`${apiBase}/api/ganadores?limit=500`);
+                if (!res.ok) throw new Error('no_server');
+                const payload = await res.json();
+                rows = payload?.data || [];
+            }
 
             if (!Array.isArray(rows) || rows.length === 0) {
                 seccion.style.display = 'none';
@@ -1022,39 +1130,86 @@
                 let key = 'sorteo';
                 if (tipoRaw.includes('presorte')) key = 'presorteo';
                 else if (tipoRaw.includes('rulet')) key = 'ruletazos';
-                mapped[key].push({
-                    numero: String(row.numero_boleto || row.numero_orden || ''),
-                    posicion: row.posicion || (idx + 1),
-                    nombre: row.nombre_ganador || row.nombre_cliente || ''
+                mapped[key].push(mapearGanadorServidorIndex(row, idx));
+            });
+
+            Object.keys(mapped).forEach((tipo) => {
+                mapped[tipo].sort((a, b) => {
+                    const lugarA = Number(a.lugarGanado || a.posicion) || 999;
+                    const lugarB = Number(b.lugarGanado || b.posicion) || 999;
+                    return lugarA - lugarB;
                 });
             });
 
             if (!actualizarFirmaIndex('ganadoresIndex', mapped)) return;
 
-            seccion.style.display = 'block';
             contenedor.innerHTML = '';
+            let totalVisibles = 0;
+
             ['sorteo', 'presorteo', 'ruletazos'].forEach((tipo) => {
+                if (!tipoGanadorVisibleEnIndex(tipo)) return;
                 const arr = mapped[tipo];
                 if (!arr || arr.length === 0) return;
+                totalVisibles += arr.length;
+
+                const paleta = obtenerPaletaGanadoresIndex(tipo);
 
                 const tipoSeccion = document.createElement('div');
                 tipoSeccion.className = 'ganadores-por-tipo';
+                tipoSeccion.style.setProperty('--header-color-1', paleta.headerColor1);
+                tipoSeccion.style.setProperty('--header-color-2', paleta.headerColor2);
+                tipoSeccion.style.setProperty('--ganador-color', paleta.color);
                 tipoSeccion.innerHTML = `
                     <div class="ganadores-tipo-header">
-                        <h3>${tipo.toUpperCase()}</h3>
-                        <div class="ganadores-tipo-counter">${arr.length} ganador${arr.length > 1 ? 'es' : ''}</div>
+                        <h3>
+                            <span class="ganadores-tipo-icono">${paleta.icono}</span>
+                            <span>${paleta.titulo}</span>
+                        </h3>
+                        <div class="ganadores-tipo-counter">${arr.length} confirmado${arr.length > 1 ? 's' : ''}</div>
                     </div>
                     <div class="ganadores-lista">
-                        ${arr.map((ganador) => `
-                            <div class="ganador-card">
-                                <div class="ganador-numero">${ganador.numero}</div>
-                                <div class="ganador-nombre">${ganador.nombre}</div>
-                            </div>
-                        `).join('')}
+                        ${arr.map((ganador, idx) => {
+                            const numeroFormateado = formatearNumeroGanadorIndex(ganador.numero_boleto || ganador.numero);
+                            const lugar = obtenerLugarGanadorIndex(tipo, ganador, idx);
+                            const nombre = construirNombreGanadorIndex(ganador);
+                            const meta = construirMetaGanadorIndex(ganador);
+                            const fechaDeclaracion = formatearFechaDeclaracionGanadorIndex(ganador.fechaDeclaracion);
+
+                            return `
+                                <div class="ganador-card">
+                                    <div class="ganador-header">
+                                        <div class="ganador-numero-badge"><i class="fas fa-ticket-alt" aria-hidden="true"></i><span>${numeroFormateado}</span></div>
+                                        <div class="ganador-lugar">${lugar}</div>
+                                    </div>
+                                    <div class="ganador-body">
+                                        <p class="ganador-nombre">${nombre}</p>
+                                        ${meta.length > 0 ? `
+                                            <div class="ganador-meta">
+                                                ${meta.map((parte) => `<span>${parte}</span>`).join('<span>·</span>')}
+                                            </div>
+                                        ` : `<div class="ganador-meta"><span>${paleta.resumen}</span></div>`}
+                                    </div>
+                                    ${fechaDeclaracion ? `<div class="ganador-fecha">${fechaDeclaracion}</div>` : ''}
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
                 `;
                 contenedor.appendChild(tipoSeccion);
             });
+
+            if (totalVisibles === 0) {
+                seccion.style.display = 'none';
+                return;
+            }
+
+            if (lead) {
+                lead.textContent = totalVisibles === 1
+                    ? 'Ya hay un ganador confirmado publicado oficialmente en este sorteo.'
+                    : `Ya hay ${totalVisibles} ganadores confirmados publicados oficialmente en este sorteo.`;
+            }
+
+            seccion.style.display = 'block';
         } catch (error) {
             indexWarn('[index] Error fetching ganadores from server, hiding section', error);
             seccion.style.display = 'none';

@@ -2142,7 +2142,8 @@
 
         // ===== BUSCAR BOLETO =====
         async function buscarBoleto() {
-            const input = document.getElementById('searchBoleto').value.trim();
+            const inputEl = document.getElementById('searchBoleto');
+            const input = inputEl?.value?.trim?.() || '';
             
             if (!input) {
                 showSearchFeedback('Escribe un numero antes de buscar. Puedes consultar boletos normales y, si aplica, tambien oportunidades.', 'warning');
@@ -2150,12 +2151,16 @@
                 return;
             }
 
-            // Validar que sea un número válido
+            // Validar que sea un número entero válido
             const num = Number(input);
-            if (isNaN(num) || num < 0) {
+            if (!Number.isFinite(num) || !Number.isInteger(num) || num < 0) {
                 showSearchFeedback('Ingresa un numero valido mayor o igual a 0 para hacer la busqueda.', 'warning');
                 showError('Ingresa un número válido');
                 return;
+            }
+
+            if (inputEl) {
+                inputEl.value = String(num);
             }
 
             const rangoBusqueda = obtenerRangoBusquedaNumeros();
@@ -2625,6 +2630,26 @@
             return await window.GanadoresManager.obtenerGanadorActual(String(numero), { preferServer: true, syncLocal: true });
         }
 
+        async function refrescarGanadoresDesdeServidorSilencioso() {
+            if (!window.GanadoresManager?.refrescarDesdeServidor) return null;
+            try {
+                return await window.GanadoresManager.refrescarDesdeServidor();
+            } catch (error) {
+                console.warn('[admin-boletos] No se pudieron refrescar ganadores desde servidor:', error);
+                return null;
+            }
+        }
+
+        function obtenerContextoNumeroActual(numero) {
+            const esNumeroActual = Number(currentBoleto?.numero) === Number(numero);
+            const esOportunidad = esNumeroActual && currentBoleto?.es_oportunidad === true;
+            return {
+                etiqueta: esOportunidad ? 'oportunidad' : 'boleto',
+                etiquetaCapitalizada: esOportunidad ? 'Oportunidad' : 'Boleto',
+                esOportunidad
+            };
+        }
+
         window.declararGanadorBackend = window.declararGanadorBackend || async function(numero, tipoGanador, lugarGanado) {
             const apiBase = window.GanadoresManager?.getApiBase?.()
                 || (window.rifaplusConfig?.backend?.apiBase)
@@ -2681,46 +2706,46 @@
                 console.warn('⚠️ Contenedor de botones no encontrado');
                 return;
             }
-
-            if (estadoActual?.esOportunidad) {
-                btnContainer.innerHTML = '';
-                return;
-            }
             
             if (!estadoActual || estadoActual.esDisponible || typeof numero === 'undefined') {
                 btnContainer.innerHTML = '';
                 return;
             }
 
+            const esOportunidad = estadoActual?.esOportunidad === true;
+            const etiquetaNumero = esOportunidad ? 'Oportunidad' : 'Boleto';
+            const botonLiberar = esOportunidad
+                ? ''
+                : `
+                    <button class="btn btn-liberar" onclick="try{window.releaseTicket(${numero})}catch(e){alert('Error: ' + e.message)}" type="button">
+                        🔓 Liberar ${etiquetaNumero}
+                    </button>
+                `;
+
             if (estadoActual && typeof numero !== 'undefined') {
-                // Verificar si el boleto ya es ganador usando fuente real + fallback local
+                // Verificar si el numero ya es ganador usando fuente real + fallback local
                 const ganador = await obtenerGanadorActual(numero);
                 
                 if (ganador) {
-                    // Si es ganador, mostrar botón de desmarcar
                     btnContainer.innerHTML = `
                         <button class="btn btn-ganador" style="background-color: #10b981;" onclick="try{window.unmarkAsWinner(${numero})}catch(e){alert('Error: ' + e.message)}" type="button">
                             ✅ Desmarcar Ganador (${ganador.tipo})
                         </button>
-                        <button class="btn btn-liberar" onclick="try{window.releaseTicket(${numero})}catch(e){alert('Error: ' + e.message)}" type="button">
-                            🔓 Liberar Boleto
-                        </button>
+                        ${botonLiberar}
                     `;
                 } else if (estadoActual.esApartado) {
-                    btnContainer.innerHTML = `
-                        <button class="btn btn-liberar" onclick="try{window.releaseTicket(${numero})}catch(e){alert('Error: ' + e.message)}" type="button">
-                            🔓 Liberar Boleto
-                        </button>
-                    `;
-                } else {
-                    // Si no es ganador, mostrar botón de marcar
                     btnContainer.innerHTML = `
                         <button class="btn btn-ganador" onclick="try{window.markAsWinner(${numero})}catch(e){alert('Error: ' + e.message)}" type="button">
                             ⭐ Marcar como Ganador
                         </button>
-                        <button class="btn btn-liberar" onclick="try{window.releaseTicket(${numero})}catch(e){alert('Error: ' + e.message)}" type="button">
-                            🔓 Liberar Boleto
+                        ${botonLiberar}
+                    `;
+                } else {
+                    btnContainer.innerHTML = `
+                        <button class="btn btn-ganador" onclick="try{window.markAsWinner(${numero})}catch(e){alert('Error: ' + e.message)}" type="button">
+                            ⭐ Marcar como Ganador
                         </button>
+                        ${botonLiberar}
                     `;
                 }
             } else {
@@ -2752,7 +2777,8 @@
         async function declararGanador() {
             if (!currentBoleto) return;
 
-            const confirmar = confirm(`¿Declarar boleto #${currentBoleto.numero} como ganador?`);
+            const contextoNumero = obtenerContextoNumeroActual(currentBoleto.numero);
+            const confirmar = confirm(`¿Declarar ${contextoNumero.etiqueta} #${currentBoleto.numero} como ganador?`);
             if (!confirmar) return;
 
             try {
@@ -2764,7 +2790,7 @@
                 if (!res || !res.ok) throw new Error('Error al declarar ganador');
 
                 const json = await res.json();
-                showSuccess(`¡Boleto #${currentBoleto.numero} declarado como ganador!`);
+                showSuccess(`¡Número #${currentBoleto.numero} declarado como ganador!`);
             } catch (err) {
                 console.error('Error:', err);
                 showError('Error al declarar ganador');
@@ -3018,17 +3044,10 @@
 
         // ===== FUNCIONES PARA GANADORES =====
         /**
-         * Marcar boleto como ganador
-         * @param {Number} numero - Número del boleto
+         * Marcar numero como ganador
+         * @param {Number} numero - Número del boleto u oportunidad
          */
-        window.markAsWinner = function(numero) {
-            console.log('🔴 markAsWinner llamado con número:', numero);
-
-            if (currentBoleto?.es_oportunidad && Number(currentBoleto.numero) === Number(numero)) {
-                alert('⚠️ Las oportunidades no se pueden marcar como ganadoras desde este panel');
-                return;
-            }
-            
+        window.markAsWinner = async function(numero) {
             if (!window.GanadoresManager) {
                 alert('❌ Sistema de ganadores no disponible');
                 console.error('GanadoresManager no cargado');
@@ -3038,26 +3057,24 @@
             // Validar número
             numero = String(numero).trim();
             if (!numero || isNaN(numero)) {
-                alert('❌ Número de boleto inválido');
+                alert('❌ Número inválido');
                 return;
             }
 
-            // Obtener datos del cliente del boleto actual si existe
+            await refrescarGanadoresDesdeServidorSilencioso();
+
             let datosCliente = {};
-            if (currentBoleto) {
+            if (currentBoleto && Number(currentBoleto.numero) === Number(numero)) {
                 datosCliente = {
                     nombre: currentBoleto.nombre_cliente || '',
                     apellido: currentBoleto.apellido_cliente || '',
                     ciudad: currentBoleto.ciudad_cliente || currentBoleto.ciudad || '',
                     estado_cliente: currentBoleto.estado_cliente || ''
                 };
-                console.log('📋 Datos del cliente obtenidos:', datosCliente);
             }
 
-            // Abrir modal para seleccionar tipo de ganador
             window.abrirModalSeleccionarGanador(numero, datosCliente, function(numeroGanador, tipoGanador, exito) {
                 if (exito) {
-                    // Opcionalmente, refrescar búsqueda
                     setTimeout(() => {
                         buscarBoleto();
                     }, 500);
@@ -3070,8 +3087,6 @@
          * @param {Number} numero - Número del boleto
          */
         window.unmarkAsWinner = async function(numero) {
-            console.log('🔴 unmarkAsWinner llamado con número:', numero);
-            
             if (!window.GanadoresManager) {
                 alert('❌ Sistema de ganadores no disponible');
                 console.error('GanadoresManager no cargado');
@@ -3081,7 +3096,7 @@
             // Validar número
             numero = String(numero).trim();
             if (!numero || isNaN(numero)) {
-                alert('❌ Número de boleto inválido');
+                alert('❌ Número inválido');
                 return;
             }
 
@@ -3091,12 +3106,12 @@
                 ganador = await obtenerGanadorActual(numero);
             }
             if (!ganador) {
-                alert('⚠️  Este boleto no está marcado como ganador');
+                alert('⚠️  Este número no está marcado como ganador');
                 return;
             }
 
             // Confirmar
-            if (!confirm(`¿Desmarcar boleto #${numero} como ganador de ${ganador.tipo}?`)) {
+            if (!confirm(`¿Desmarcar el numero #${numero} como ganador de ${ganador.tipo}?`)) {
                 return;
             }
 
@@ -3121,7 +3136,7 @@
             const resultado = window.GanadoresManager.eliminarGanador(numero, ganador.tipo);
 
             if (resultado || eliminadoEnBackend) {
-                alert(`✅ Boleto #${numero} desmarcado como ganador`);
+                alert(`✅ Número #${numero} desmarcado como ganador`);
                 
                 // Refrescar búsqueda para actualizar botones
                 setTimeout(() => {
@@ -3227,8 +3242,6 @@
 
     <!-- SCRIPT CRÍTICO: Inicializar funciones globales antes del resto -->
     <script>
-        console.log('🚀 Inicializando sistema de ganadores...');
-        
         // Variables globales del modal
         let ganadesoresModalNumero = null;
         let ganadesoresModalCallback = null;
@@ -3238,6 +3251,7 @@
         let lugarModalTipo = null;
         let lugarModalDatosCliente = null;
         let lugarModalCallback = null;
+        let guardandoGanador = false;
 
         /**
          * Abrir modal para seleccionar tipo de ganador
@@ -3246,8 +3260,6 @@
          * @param {Function} callback - Función a ejecutar cuando se selecciona tipo
          */
         window.abrirModalSeleccionarGanador = async function(numero, datosCliente = {}, callback = null) {
-            console.log('🔴 abrirModalSeleccionarGanador llamado con:', numero);
-            
             // Si el segundo parámetro es función, es el callback (backwards compatibility)
             if (typeof datosCliente === 'function') {
                 callback = datosCliente;
@@ -3258,7 +3270,7 @@
             numero = String(numero).trim();
             if (!numero || isNaN(numero)) {
                 console.error('❌ Número inválido');
-                alert('❌ Número de boleto inválido');
+                alert('❌ Número inválido');
                 return;
             }
 
@@ -3274,6 +3286,8 @@
             ganadesoresModalCallback = callback;
             window.ganadesoresModalDatosCliente = datosCliente || {};
 
+            await refrescarGanadoresDesdeServidorSilencioso();
+
             // Verificar si el número ya es ganador
             let ganadorExistente = await obtenerGanadorActual(numero);
             if (ganadorExistente) {
@@ -3284,9 +3298,8 @@
             // Actualizar UI
             const numElement = document.getElementById('ganadesoresNumero');
             if (numElement) {
-                numElement.textContent = numero;
-            } else {
-                console.error('❌ No se encontró #ganadesoresNumero');
+                const contextoNumero = obtenerContextoNumeroActual(numero);
+                numElement.textContent = `${numero} (${contextoNumero.etiqueta})`;
             }
 
             // Generar opciones de tipos
@@ -3297,7 +3310,6 @@
             if (modal) {
                 modal.classList.add('active');
             } else {
-                console.error('❌ Modal no encontrado');
                 alert('❌ Modal no encontrado en la página');
             }
         };
@@ -3306,28 +3318,21 @@
          * Generar tarjetas con tipos de ganadores disponibles
          */
         function generarOpciones() {
-            console.log('📋 Generando opciones de ganadores...');
             const contenedor = document.getElementById('tiposGanadores');
             if (!contenedor) {
-                console.error('❌ No se encontró contenedor tiposGanadores');
                 alert('Error: No se encontró contenedor de opciones');
                 return;
             }
             contenedor.innerHTML = '';
 
             if (!window.GanadoresManager) {
-                console.error('❌ GanadoresManager no está disponible');
                 contenedor.innerHTML = '<p style="color: red;">❌ Sistema de ganadores no cargado</p>';
                 alert('❌ GanadoresManager no disponible');
                 return;
             }
 
             const config = window.GanadoresManager.getConfig();
-            console.log('Config:', config);
-            
             const ganadores = window.GanadoresManager.cargarGanadores();
-            console.log('Ganadores actuales:', ganadores);
-            
             const tipos = window.GanadoresManager.getTiposHabilitados();
 
             if (!tipos.length) {
@@ -3359,7 +3364,6 @@
 
                 if (!completo) {
                     card.addEventListener('click', () => {
-                        console.log('Seleccionando tipo:', tipo);
                         seleccionarTipo(tipo);
                     });
                 }
@@ -3402,7 +3406,6 @@
          * Cerrar modal
          */
         window.cerrarModalSeleccionarGanador = function() {
-            console.log('❌ Cerrando modal...');
             const modal = document.getElementById('modalSeleccionarGanador');
             if (modal) {
                 modal.classList.remove('active');
@@ -3415,16 +3418,13 @@
          * Generar opciones de lugares disponibles
          */
         function generarOpcionesLugar(tipo) {
-            console.log('📋 Generando opciones de lugares...');
             const contenedor = document.getElementById('lugaresDisponibles');
             if (!contenedor) {
-                console.error('❌ No se encontró contenedor lugaresDisponibles');
                 return;
             }
             contenedor.innerHTML = '';
 
             if (!window.GanadoresManager) {
-                console.error('❌ GanadoresManager no está disponible');
                 return;
             }
 
@@ -3459,7 +3459,6 @@
 
                 if (!ocupado) {
                     btn.addEventListener('click', () => {
-                        console.log('🥇 Seleccionando lugar:', lugar);
                         seleccionarLugar(lugar);
                     });
                 } else {
@@ -3500,17 +3499,23 @@
          * @param {Number} lugar - Lugar seleccionado
          */
         async function seleccionarLugar(lugar) {
-
             if (!lugarModalNumero || !lugarModalTipo || isNaN(lugar)) {
                 console.error('❌ Datos inválidos');
                 alert('Error: Datos inválidos');
                 return;
             }
 
+            if (guardandoGanador) {
+                return;
+            }
+
             try {
+                guardandoGanador = true;
                 if (typeof window.declararGanadorBackend !== 'function') {
                     throw new Error('No se encontró la función de guardado en backend');
                 }
+
+                await refrescarGanadoresDesdeServidorSilencioso();
 
                 await window.declararGanadorBackend(
                     lugarModalNumero,
@@ -3537,7 +3542,11 @@
                 window.cerrarModalSeleccionarLugar();
             } catch (error) {
                 console.error('❌', error);
+                await refrescarGanadoresDesdeServidorSilencioso();
+                generarOpcionesLugar(lugarModalTipo);
                 alert('❌ ' + (error.message || 'No se pudo registrar el ganador'));
+            } finally {
+                guardandoGanador = false;
             }
         }
 
@@ -3545,7 +3554,6 @@
          * Cerrar modal de lugar
          */
         window.cerrarModalSeleccionarLugar = function() {
-            console.log('❌ Cerrando modal de lugar...');
             const modal = document.getElementById('modalSeleccionarLugar');
             if (modal) {
                 modal.classList.remove('active');
@@ -3553,6 +3561,7 @@
             lugarModalNumero = null;
             lugarModalTipo = null;
             lugarModalDatosCliente = null;
+            guardandoGanador = false;
             lugarModalCallback = null;
         };
 

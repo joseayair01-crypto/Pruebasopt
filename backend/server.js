@@ -712,6 +712,8 @@ async function buscarOrdenActivaPorBoleto(numero, options = {}) {
     }
 
     const incluirCanceladas = options.incluirCanceladas === true;
+    const configActual = options.configActual || obtenerConfigActual();
+    const oportunidadesHabilitadas = obtenerConfigOportunidadesSistema(configActual).enabled === true;
     const boletoEstado = await db('boletos_estado')
         .select('numero', 'estado', 'numero_orden', 'created_at', 'updated_at')
         .where('numero', numeroBoleto)
@@ -731,6 +733,37 @@ async function buscarOrdenActivaPorBoleto(numero, options = {}) {
                 orden: ordenPorEstado,
                 boletoEstado,
                 origen: 'boletos_estado'
+            };
+        }
+    }
+
+    const oportunidadEstado = oportunidadesHabilitadas
+        ? await db('orden_oportunidades')
+            .select('numero_oportunidad', 'estado', 'numero_orden', 'numero_boleto')
+            .where('numero_oportunidad', numeroBoleto)
+            .first()
+        : null;
+
+    if (oportunidadEstado?.numero_orden) {
+        const ordenPorOportunidad = await db('ordenes')
+            .select('*')
+            .where('numero_orden', oportunidadEstado.numero_orden)
+            .modify((qb) => {
+                if (!incluirCanceladas) qb.whereNot('estado', 'cancelada');
+            })
+            .first();
+
+        if (ordenPorOportunidad) {
+            return {
+                orden: ordenPorOportunidad,
+                boletoEstado: {
+                    numero: numeroBoleto,
+                    estado: oportunidadEstado.estado || null,
+                    numero_orden: oportunidadEstado.numero_orden,
+                    numero_boleto_base: oportunidadEstado.numero_boleto ?? null,
+                    es_oportunidad: true
+                },
+                origen: 'orden_oportunidades'
             };
         }
     }
@@ -760,6 +793,36 @@ async function buscarOrdenActivaPorBoleto(numero, options = {}) {
         orden: ordenLegacy,
         boletoEstado,
         origen: ordenLegacy ? 'ordenes.boletos' : null
+    };
+}
+
+function normalizarTipoGanadorPersistencia(valor) {
+    const tipo = String(valor || 'sorteo').toLowerCase().trim();
+    if (tipo === 'sorteo' || tipo === 'principal') return 'principal';
+    if (tipo === 'presorteo' || tipo === 'presorte') return 'presorte';
+    if (tipo === 'ruletazos' || tipo === 'ruletazo') return 'ruletazo';
+    return 'principal';
+}
+
+function obtenerLimitesGanadoresConfig(configActual = {}) {
+    const rifa = configActual?.rifa || {};
+    const ganadores = rifa.ganadores || {};
+    const sistemaPremios = rifa.sistemaPremios || {};
+
+    const totalSorteo = Number(ganadores.sorteo)
+        || (Array.isArray(sistemaPremios.sorteo) ? sistemaPremios.sorteo.length : 0)
+        || 0;
+    const totalPresorteo = Number(ganadores.presorteo)
+        || (Array.isArray(sistemaPremios.presorteo) ? sistemaPremios.presorteo.length : 0)
+        || 0;
+    const totalRuletazos = Number(ganadores.ruletazos)
+        || (Array.isArray(sistemaPremios.ruletazos) ? sistemaPremios.ruletazos.length : 0)
+        || 0;
+
+    return {
+        principal: totalSorteo,
+        presorte: totalPresorteo,
+        ruletazo: totalRuletazos
     };
 }
 
@@ -8239,39 +8302,103 @@ app.get('/api/admin/sales-stats', verificarToken, async (req, res) => {
 app.post('/api/admin/declarar-ganador', verificarToken, async (req, res) => {
     try {
         const { numero, premio, valor_premio, tipo_ganador, posicion } = req.body || {};
+        const configActualGanador = obtenerConfigActual();
+        const numeroNormalizado = Number(numero);
 
-        if (!numero) {
-            return res.status(400).json({ success: false, message: 'Número de boleto requerido' });
+        if (!Number.isInteger(numeroNormalizado) || numeroNormalizado <= 0) {
+            return res.status(400).json({ success: false, message: 'Número requerido' });
         }
 
-        const { orden: ordenEncontrada, boletoEstado, origen } = await buscarOrdenActivaPorBoleto(numero);
-
-        if (!ordenEncontrada) {
-            return res.status(404).json({ success: false, message: 'Boleto no encontrado o no vendido' });
-        }
-
-        console.log(`[declarar-ganador] Resolviendo boleto #${numero} usando ${origen || 'sin-origen'}`, {
-            numero_orden: ordenEncontrada.numero_orden,
-            estadoOrden: ordenEncontrada.estado,
-            estadoBoleto: boletoEstado?.estado || null
+        const { orden: ordenEncontrada, boletoEstado, origen } = await buscarOrdenActivaPorBoleto(numeroNormalizado, {
+            configActual: configActualGanador
         });
 
-        const tipoGanadorNormalizado = (() => {
-            const valor = String(tipo_ganador || 'sorteo').toLowerCase().trim();
-            if (valor === 'sorteo' || valor === 'principal') return 'principal';
-            if (valor === 'presorteo' || valor === 'presorte') return 'presorte';
-            if (valor === 'ruletazos' || valor === 'ruletazo') return 'ruletazo';
-            return 'principal';
+        if (!ordenEncontrada) {
+            return res.status(404).json({ success: false, message: 'Número no encontrado o no vendido/apartado' });
+        }
+
+        console.log(`[declarar-ganador] Resolviendo número #${numeroNormalizado} usando ${origen || 'sin-origen'}`, {
+            numero_orden: ordenEncontrada.numero_orden,
+            estadoOrden: ordenEncontrada.estado,
+            estadoBoleto: boletoEstado?.estado || null,
+            esOportunidad: boletoEstado?.es_oportunidad === true
+        });
+
+        const tipoGanadorNormalizado = normalizarTipoGanadorPersistencia(tipo_ganador);
+        const limitesGanadores = obtenerLimitesGanadoresConfig(configActualGanador);
+        const limiteTipoGanador = Number(limitesGanadores[tipoGanadorNormalizado]) || 0;
+
+        if (limiteTipoGanador <= 0) {
+            return res.status(409).json({
+                success: false,
+                message: 'Ese tipo de ganador no está habilitado en la configuración actual'
+            });
+        }
+
+        const posicionSolicitada = posicion === null || typeof posicion === 'undefined' || posicion === ''
+            ? null
+            : Number(posicion);
+
+        if (posicionSolicitada !== null && (!Number.isInteger(posicionSolicitada) || posicionSolicitada <= 0)) {
+            return res.status(400).json({
+                success: false,
+                message: 'La posición del ganador es inválida'
+            });
+        }
+
+        if (posicionSolicitada !== null && posicionSolicitada > limiteTipoGanador) {
+            return res.status(409).json({
+                success: false,
+                message: `La posición solicitada excede el máximo configurado para este tipo (${limiteTipoGanador})`
+            });
+        }
+
+        const aliasesTipoGanador = tipoGanadorNormalizado === 'principal'
+            ? ['principal', 'sorteo']
+            : tipoGanadorNormalizado === 'presorte'
+                ? ['presorte', 'presorteo']
+                : ['ruletazo', 'ruletazos'];
+
+        const ganadoresTipoExistentes = await db('ganadores')
+            .select('id', 'numero_boleto', 'tipo_ganador', 'posicion')
+            .whereIn('tipo_ganador', aliasesTipoGanador);
+
+        const posicionesOcupadas = new Set(
+            ganadoresTipoExistentes
+                .map((item) => Number(item.posicion))
+                .filter((value) => Number.isInteger(value) && value > 0)
+        );
+
+        const posicionFinal = (() => {
+            if (posicionSolicitada !== null) return posicionSolicitada;
+            for (let idx = 1; idx <= limiteTipoGanador; idx += 1) {
+                if (!posicionesOcupadas.has(idx)) return idx;
+            }
+            return null;
         })();
 
+        if (!posicionFinal) {
+            return res.status(409).json({
+                success: false,
+                message: 'Ya no hay lugares disponibles para este tipo de ganador'
+            });
+        }
+
+        if (posicionesOcupadas.has(posicionFinal)) {
+            return res.status(409).json({
+                success: false,
+                message: `La posición ${posicionFinal} ya fue asignada a otro ganador`
+            });
+        }
+
         const ganadorExistente = await db('ganadores')
-            .where({ numero_boleto: Number(numero) })
+            .where({ numero_boleto: numeroNormalizado })
             .first();
 
         if (ganadorExistente) {
             return res.status(409).json({
                 success: false,
-                message: 'Este boleto ya fue declarado como ganador',
+                message: 'Este número ya fue declarado como ganador',
                 ganador: ganadorExistente
             });
         }
@@ -8283,7 +8410,7 @@ app.post('/api/admin/declarar-ganador', verificarToken, async (req, res) => {
         // Compatibilidad con esquemas viejos donde numero_orden quedó como UNIQUE.
         // Si ya existe otro ganador de la misma orden, preservar referencia pero evitar choque.
         const numeroOrdenPersistir = ganadorMismaOrden
-            ? `${ordenEncontrada.numero_orden}:${Number(numero)}`
+            ? `${ordenEncontrada.numero_orden}:${numeroNormalizado}`
             : ordenEncontrada.numero_orden;
 
         const [
@@ -8315,15 +8442,14 @@ app.post('/api/admin/declarar-ganador', verificarToken, async (req, res) => {
         ]);
 
         // Insertar solo columnas realmente existentes para soportar esquemas viejos y optimizados.
-        const configActualGanador = obtenerConfigActual();
         const payload = {};
         if (hasNumeroOrden) payload.numero_orden = numeroOrdenPersistir;
-        if (hasNumeroBoleto) payload.numero_boleto = Number(numero) || null;
+        if (hasNumeroBoleto) payload.numero_boleto = numeroNormalizado || null;
         if (hasWhatsapp) payload.whatsapp = ordenEncontrada.telefono_cliente || null;
         if (hasEmail) payload.email = ordenEncontrada.email || ordenEncontrada.email_cliente || null;
         if (hasNombreGanador) payload.nombre_ganador = ordenEncontrada.nombre_cliente || null;
         if (hasNombreSorteo) payload.nombre_sorteo = configActualGanador?.rifa?.nombreSorteo || null;
-        if (hasPosicion) payload.posicion = Number(posicion) || null;
+        if (hasPosicion) payload.posicion = posicionFinal;
         if (hasTipoGanador) payload.tipo_ganador = tipoGanadorNormalizado;
         if (hasPremio) payload.premio = premio || null;
         if (hasValorPremio) payload.valor_premio = valor_premio || null;
@@ -8333,7 +8459,7 @@ app.post('/api/admin/declarar-ganador', verificarToken, async (req, res) => {
         await db('ganadores').insert(payload);
 
         const creado = await db('ganadores')
-            .where({ numero_boleto: Number(numero) })
+            .where({ numero_boleto: numeroNormalizado })
             .orderBy('id', 'desc')
             .first();
 

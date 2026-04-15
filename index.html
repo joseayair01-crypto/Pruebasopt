@@ -1326,7 +1326,11 @@
     </style>
     <section class="seccion-ganadores perf-defer-mobile perf-defer-mobile--large" id="seccionGanadores" style="display: none;">
         <div class="container">
-            <h2 class="section-title">Ganadores Registrados</h2>
+            <div class="ganadores-hero">
+                <span class="ganadores-kicker">Resultados publicados</span>
+                <h2 class="section-title">Ganadores confirmados del sorteo</h2>
+                <p class="ganadores-lead" id="ganadoresLead">Aquí aparecerán los boletos ganadores que ya hayan sido declarados oficialmente, incluyendo presorteos y ruletazos activos.</p>
+            </div>
             <div class="ganadores-contenedor" id="ganadoresContenedor">
                 <!-- Se genera dinámicamente con JavaScript -->
             </div>
@@ -1335,76 +1339,129 @@
 
     <style>
         .seccion-ganadores {
-            background: linear-gradient(135deg, rgba(124, 58, 237, 0.05) 0%, rgba(124, 58, 237, 0.02) 100%);
-            padding: 3rem 1.5rem;
-            border-top: 1px solid var(--border-color);
-            border-bottom: 1px solid var(--border-color);
+            position: relative;
+            padding: 4rem 1.5rem;
+            background:
+                radial-gradient(circle at top left, rgba(var(--secondary-rgb), 0.16), transparent 32%),
+                radial-gradient(circle at bottom right, rgba(var(--primary-rgb), 0.11), transparent 28%),
+                linear-gradient(180deg, rgba(247, 250, 252, 0.94), rgba(255, 255, 255, 0.99));
+            border-top: 1px solid rgba(15, 23, 42, 0.08);
+            border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+        }
+
+        .ganadores-hero {
+            max-width: 840px;
+            margin: 0 auto 2.2rem;
+            text-align: center;
+        }
+
+        .ganadores-kicker {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 0.8rem;
+            padding: 0.42rem 0.85rem;
+            border-radius: 999px;
+            background: rgba(var(--primary-rgb), 0.08);
+            border: 1px solid rgba(var(--primary-rgb), 0.12);
+            color: var(--primary-dark);
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
         }
 
         .seccion-ganadores .section-title {
-            margin-bottom: 2rem;
+            margin-bottom: 0.8rem;
             text-align: center;
+        }
+
+        .ganadores-lead {
+            margin: 0 auto;
+            max-width: 720px;
+            color: var(--text-light);
+            font-size: 1rem;
+            line-height: 1.7;
         }
 
         .ganadores-contenedor {
             display: grid;
-            gap: 2rem;
+            gap: 1.4rem;
         }
 
         .ganadores-por-tipo {
-            background: white;
-            border-radius: var(--radius-lg);
+            background: rgba(255, 255, 255, 0.92);
+            border-radius: 28px;
             overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            box-shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
+            backdrop-filter: blur(10px);
         }
 
         .ganadores-tipo-header {
-            background: linear-gradient(135deg, var(--header-color-1) 0%, var(--header-color-2) 100%);
+            background: var(--header-color-1, var(--primary));
             color: white;
-            padding: 1rem 1.5rem;
+            padding: 1rem 1.2rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 1rem;
         }
 
         .ganadores-tipo-header h3 {
             margin: 0;
-            font-size: 1.2rem;
+            font-size: 1.05rem;
             display: flex;
             align-items: center;
             gap: 0.75rem;
+            letter-spacing: 0.01em;
         }
 
         .ganadores-tipo-icono {
-            font-size: 1.5rem;
+            width: 40px;
+            height: 40px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.16);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            font-size: 1.1rem;
         }
 
         .ganadores-tipo-counter {
-            background: rgba(255, 255, 255, 0.25);
-            padding: 0.5rem 1rem;
-            border-radius: var(--radius-sm);
-            font-size: 0.9rem;
-            font-weight: 600;
+            background: rgba(255, 255, 255, 0.18);
+            padding: 0.44rem 0.85rem;
+            border-radius: 999px;
+            font-size: 0.76rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
         }
 
         .ganadores-lista {
-            padding: 1.5rem;
+            padding: 1.15rem;
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 1.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 260px));
+            justify-content: center;
+            gap: 0.95rem;
         }
 
         .ganador-card {
-            background: linear-gradient(135deg, white 0%, var(--bg-light) 100%);
-            border: 2px solid var(--border-color);
-            border-radius: var(--radius-md);
-            padding: 1.5rem;
-            transition: all var(--transition-fast);
+            width: 100%;
+            background: linear-gradient(180deg, #ffffff 0%, color-mix(in srgb, var(--ganador-color) 4%, white) 100%);
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 20px;
+            padding: 1rem;
+            transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
             animation: slideInUp 0.4s ease-out backwards;
             display: flex;
             flex-direction: column;
+            gap: 0.8rem;
             position: relative;
             overflow: hidden;
+            min-height: 156px;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
         }
 
         .ganador-card::before {
@@ -1423,7 +1480,7 @@
         .ganador-card:hover {
             border-color: var(--ganador-color);
             transform: translateY(-4px);
-            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
         }
 
         .ganador-card:hover::before {
@@ -1432,104 +1489,77 @@
 
         .ganador-header {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
+            gap: 0.75rem;
+            margin-bottom: 0;
         }
 
-        .ganador-logo {
-            width: 60px;
-            height: 60px;
-            min-width: 60px;
-            background: var(--ganador-bg);
-            border-radius: var(--radius-sm);
-            display: flex;
+        .ganador-numero-badge {
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
-            font-weight: 700;
-            overflow: hidden;
-        }
-
-        .ganador-logo-img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            object-position: center;
-            padding: 4px;
-        }
-
-        .ganador-header-info {
-            flex: 1;
-        }
-
-        .ganador-numero {
-            font-size: 1.3rem;
-            font-weight: 700;
+            gap: 0.48rem;
+            min-height: 42px;
+            padding: 0.55rem 0.85rem;
+            background: rgba(255, 255, 255, 0.84);
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 14px;
             color: var(--ganador-color);
-            margin: 0;
-            line-height: 1.2;
-        }
-
-        .ganador-fecha {
-            font-size: 0.75rem;
-            color: var(--ganador-color);
-            font-weight: 600;
-            text-transform: uppercase;
-            margin-top: 0.25rem;
-            opacity: 0.9;
+            font-weight: 700;
+            font-size: 0.96rem;
+            line-height: 1;
         }
 
         .ganador-lugar {
-            font-size: 0.7rem;
-            color: white;
-            background: var(--ganador-color);
-            padding: 0.35rem 0.6rem;
-            border-radius: 0.25rem;
+            font-size: 0.74rem;
+            color: var(--text-light);
+            background: rgba(15, 23, 42, 0.05);
+            padding: 0.42rem 0.68rem;
+            border-radius: 999px;
             font-weight: 700;
             text-transform: uppercase;
             white-space: nowrap;
-            margin-left: auto;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
-        .ganador-posicion {
-            font-size: 0.75rem;
-            color: var(--ganador-color);
-            font-weight: 600;
-            text-transform: uppercase;
-            margin-top: 0.25rem;
-        }
-
-        .ganador-cliente {
+        .ganador-body {
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 1px solid var(--border-color);
+            gap: 0.42rem;
+            min-height: 0;
         }
 
-        .ganador-cliente-row {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-
-        .ganador-cliente-label {
-            font-size: 0.7rem;
-            color: var(--text-light);
-            text-transform: uppercase;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-
-        .ganador-cliente-valor {
-            font-size: 0.95rem;
+        .ganador-nombre {
+            margin: 0;
+            font-size: 1rem;
+            line-height: 1.4;
+            font-weight: 800;
             color: var(--text-dark);
-            font-weight: 500;
+        }
+
+        .ganador-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.42rem;
+            color: var(--text-light);
+            font-size: 0.82rem;
+            line-height: 1.45;
+        }
+
+        .ganador-meta span {
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .ganador-fecha {
+            margin-top: auto;
+            font-size: 0.78rem;
+            color: var(--text-light);
+            font-weight: 600;
+            text-align: right;
         }
 
         @keyframes slideInUp {
@@ -1544,8 +1574,20 @@
         }
 
         @media (max-width: 768px) {
+            .seccion-ganadores {
+                padding: 3rem 1rem;
+            }
+
+            .ganadores-hero {
+                margin-bottom: 1.5rem;
+            }
+
+            .ganadores-lead {
+                font-size: 0.95rem;
+            }
+
             .ganadores-lista {
-                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+                grid-template-columns: 1fr;
                 gap: 1rem;
                 padding: 1rem;
             }
@@ -1555,46 +1597,29 @@
             }
 
             .ganador-header {
-                margin-bottom: 1rem;
-            }
-
-            .ganador-logo {
-                width: 50px;
-                height: 50px;
-                font-size: 1.5rem;
-                overflow: hidden;
-            }
-
-            .ganador-numero {
-                font-size: 1.1rem;
-            }
-
-            .ganador-numero {
-                font-size: 1.2rem;
+                align-items: flex-start;
+                flex-direction: column;
             }
 
             .ganadores-tipo-header h3 {
-                font-size: 1.1rem;
+                font-size: 1rem;
             }
         }
 
         @media (max-width: 480px) {
-            .ganadores-lista {
-                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            .ganadores-tipo-header {
+                flex-direction: column;
+                align-items: flex-start;
             }
 
             .ganador-card {
-                padding: 0.5rem;
+                min-height: 0;
+                padding: 0.9rem;
             }
 
-            .ganador-numero {
-                font-size: 1rem;
-            }
-
-            .ganador-posicion {
-                width: 1.75rem;
-                height: 1.75rem;
-                font-size: 0.75rem;
+            .ganador-numero-badge {
+                width: 100%;
+                justify-content: flex-start;
             }
         }
     </style>
