@@ -405,11 +405,31 @@
                                 .replace(/&/g, '&amp;')
                                 .replace(/"/g, '&quot;');
 
-                            document.write(
-                                '<div class="carrusel-item active" data-rifaplus-cached-slide="true">' +
-                                    '<img src="' + src + '" alt="' + alt + '" loading="eager" fetchpriority="high" decoding="async" onload="this.closest(\\'.carrusel-inner\\')?.classList.remove(\\'is-loading\\')" onerror="this.closest(\\'.carrusel-inner\\')?.classList.remove(\\'is-loading\\')">' +
-                                '</div>'
-                            );
+                            const carruselInner = document.currentScript?.parentElement;
+                            if (!carruselInner) {
+                                return;
+                            }
+
+                            const slide = document.createElement('div');
+                            slide.className = 'carrusel-item active';
+                            slide.setAttribute('data-rifaplus-cached-slide', 'true');
+
+                            const img = document.createElement('img');
+                            img.src = src;
+                            img.alt = alt;
+                            img.loading = 'eager';
+                            img.fetchPriority = 'high';
+                            img.decoding = 'async';
+
+                            const finalizarCargaCacheada = () => {
+                                carruselInner.classList.remove('is-loading');
+                            };
+
+                            img.addEventListener('load', finalizarCargaCacheada, { once: true });
+                            img.addEventListener('error', finalizarCargaCacheada, { once: true });
+
+                            slide.appendChild(img);
+                            carruselInner.insertBefore(slide, document.currentScript);
                         })();
                     </script>
                 </div>
