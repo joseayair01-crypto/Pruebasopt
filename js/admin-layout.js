@@ -37,6 +37,52 @@ const ADMIN_LAYOUT = {
         return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 96'%3E%3Crect width='240' height='96' rx='20' fill='%230b2235'/%3E%3Ctext x='120' y='58' font-size='34' text-anchor='middle' fill='%23ffffff' font-family='Arial,sans-serif'%3ESorteo%3C/text%3E%3C/svg%3E";
     },
 
+    normalizarMarcaAdmin(valor) {
+        const texto = String(valor || '').trim();
+        if (!texto) return '';
+        if (/^aqu[ií]\s+va\b/i.test(texto)) return '';
+
+        return texto
+            .replace(/^sorteos?\s+/i, '')
+            .replace(/\s+-\s+admin$/i, '')
+            .trim();
+    },
+
+    obtenerMarcaAdmin(config) {
+        const candidatos = [
+            config?.cliente?.id,
+            config?.cliente?.nombre,
+            config?.cliente?.eslogan,
+            'SaDev'
+        ];
+
+        for (const candidato of candidatos) {
+            const marca = this.normalizarMarcaAdmin(candidato);
+            if (marca) {
+                return marca;
+            }
+        }
+
+        return 'SaDev';
+    },
+
+    obtenerTituloAdmin(baseTitle, marcaAdmin) {
+        const limpio = String(baseTitle || '').trim();
+        const genericos = new Set([
+            '',
+            'panel admin',
+            'panel administrativo',
+            'admin',
+            'dashboard'
+        ]);
+
+        if (genericos.has(limpio.toLowerCase())) {
+            return `Panel Admin - ${marcaAdmin}`;
+        }
+
+        return `${limpio} - Panel Admin - ${marcaAdmin}`;
+    },
+
     esPaginaLoginAdmin() {
         const rawPath = window.location.pathname || '';
         const paginaActual = rawPath.split('/').pop() || 'admin-dashboard.html';
@@ -173,6 +219,7 @@ const ADMIN_LAYOUT = {
     configurarLogo() {
         const config = window.rifaplusConfig || {};
         const nombreCliente = String(config.cliente?.nombre || '').trim() || 'Sorteo';
+        const marcaAdmin = this.obtenerMarcaAdmin(config);
         const logoCliente = config.cliente?.logo || config.cliente?.logotipo || this.fallbackLogo;
         
         debugAdminLayout('Actualizando header admin', {
@@ -199,7 +246,7 @@ const ADMIN_LAYOUT = {
 
         const loginTitle = document.getElementById('loginTitle');
         if (loginTitle) {
-            loginTitle.textContent = `${nombreCliente} - Admin`;
+            loginTitle.textContent = `Panel Admin - ${marcaAdmin}`;
         }
 
         const loginLogo = document.getElementById('loginLogo');
@@ -214,16 +261,18 @@ const ADMIN_LAYOUT = {
             dashboardLogo.alt = `Logo de ${nombreCliente}`;
         }
 
-        this.configurarMetadatosBranding(nombreCliente, logoCliente);
+        this.configurarMetadatosBranding(nombreCliente, marcaAdmin, logoCliente);
     },
 
-    configurarMetadatosBranding(nombreCliente, logoCliente) {
+    configurarMetadatosBranding(nombreCliente, marcaAdmin, logoCliente) {
         const tituloActual = String(document.title || '').trim();
         const baseTitle = tituloActual
+            .replace(/\s*[-|]\s*Panel Admin\s*[-|]\s*.*$/i, '')
+            .replace(/\s*[-|]\s*SaDev\s*$/i, '')
             .replace(/\s*[-|]\s*.*$/, '')
             .trim() || 'Panel Admin';
 
-        document.title = `${baseTitle} | ${nombreCliente}`;
+        document.title = this.obtenerTituloAdmin(baseTitle, marcaAdmin);
 
         document.querySelectorAll('link[rel="icon"], link[rel="apple-touch-icon"], link[rel="preload"][as="image"]').forEach((link) => {
             link.href = logoCliente;
