@@ -556,7 +556,18 @@
         isInitialized: false,
         controlsBound: false,
         slides: [],
-        autoAdvanceId: 0
+        autoAdvanceId: 0,
+        resumeTimeoutId: 0,
+        interactionBound: false,
+        swipeState: {
+            pointerId: null,
+            pointerType: '',
+            startX: 0,
+            startY: 0,
+            deltaX: 0,
+            deltaY: 0,
+            tracking: false
+        }
     };
 
     function actualizarModoCarrusel(slideActivo) {
@@ -566,10 +577,35 @@
     }
 
     function detenerAutoAdvanceCarrusel() {
+        if (window.carruselState.resumeTimeoutId) {
+            clearTimeout(window.carruselState.resumeTimeoutId);
+            window.carruselState.resumeTimeoutId = 0;
+        }
+
         if (window.carruselState.autoAdvanceId) {
             clearInterval(window.carruselState.autoAdvanceId);
             window.carruselState.autoAdvanceId = 0;
         }
+    }
+
+    function reanudarAutoAdvanceCarrusel(delay = 1200) {
+        detenerAutoAdvanceCarrusel();
+        if (document.hidden || window.carruselState.slides.length <= 1) return;
+
+        window.carruselState.resumeTimeoutId = window.setTimeout(() => {
+            window.carruselState.resumeTimeoutId = 0;
+            reiniciarAutoAdvanceCarrusel();
+        }, delay);
+    }
+
+    function resetearSwipeCarrusel() {
+        window.carruselState.swipeState.pointerId = null;
+        window.carruselState.swipeState.pointerType = '';
+        window.carruselState.swipeState.startX = 0;
+        window.carruselState.swipeState.startY = 0;
+        window.carruselState.swipeState.deltaX = 0;
+        window.carruselState.swipeState.deltaY = 0;
+        window.carruselState.swipeState.tracking = false;
     }
 
     function mostrarSlideCarrusel(index) {
@@ -614,6 +650,85 @@
         mostrarSlideCarrusel(0);
         window.carruselState.isInitialized = true;
         reiniciarAutoAdvanceCarrusel();
+    }
+
+    function inicializarInteraccionesCarrusel() {
+        const carrusel = document.querySelector('.carrusel');
+        if (!carrusel || window.carruselState.interactionBound) return;
+
+        window.carruselState.interactionBound = true;
+
+        carrusel.addEventListener('mouseenter', detenerAutoAdvanceCarrusel);
+        carrusel.addEventListener('mouseleave', () => {
+            reanudarAutoAdvanceCarrusel(250);
+        });
+
+        if (!window.PointerEvent) {
+            carrusel.addEventListener('touchstart', detenerAutoAdvanceCarrusel, { passive: true });
+            carrusel.addEventListener('touchend', () => {
+                reanudarAutoAdvanceCarrusel(1800);
+            }, { passive: true });
+            carrusel.addEventListener('touchcancel', () => {
+                reanudarAutoAdvanceCarrusel(1800);
+            }, { passive: true });
+            return;
+        }
+
+        carrusel.addEventListener('pointerdown', (event) => {
+            if (event.pointerType === 'mouse' && event.button !== 0) {
+                return;
+            }
+
+            window.carruselState.swipeState.pointerId = event.pointerId;
+            window.carruselState.swipeState.pointerType = event.pointerType || 'mouse';
+            window.carruselState.swipeState.startX = event.clientX;
+            window.carruselState.swipeState.startY = event.clientY;
+            window.carruselState.swipeState.deltaX = 0;
+            window.carruselState.swipeState.deltaY = 0;
+            window.carruselState.swipeState.tracking = true;
+
+            detenerAutoAdvanceCarrusel();
+        });
+
+        carrusel.addEventListener('pointermove', (event) => {
+            if (!window.carruselState.swipeState.tracking || event.pointerId !== window.carruselState.swipeState.pointerId) {
+                return;
+            }
+
+            window.carruselState.swipeState.deltaX = event.clientX - window.carruselState.swipeState.startX;
+            window.carruselState.swipeState.deltaY = event.clientY - window.carruselState.swipeState.startY;
+        });
+
+        const finalizarInteraccion = (event) => {
+            if (!window.carruselState.swipeState.tracking || event.pointerId !== window.carruselState.swipeState.pointerId) {
+                return;
+            }
+
+            const { deltaX, deltaY, pointerType } = window.carruselState.swipeState;
+            const esSwipe = pointerType !== 'mouse'
+                && Math.abs(deltaX) >= 40
+                && Math.abs(deltaX) > Math.abs(deltaY) * 1.15;
+
+            if (esSwipe) {
+                mostrarSlideCarrusel(window.carruselState.currentIndex + (deltaX < 0 ? 1 : -1));
+                reanudarAutoAdvanceCarrusel(4200);
+            } else {
+                reanudarAutoAdvanceCarrusel(pointerType === 'mouse' ? 250 : 1800);
+            }
+
+            resetearSwipeCarrusel();
+        };
+
+        carrusel.addEventListener('pointerup', finalizarInteraccion);
+        carrusel.addEventListener('pointercancel', finalizarInteraccion);
+        carrusel.addEventListener('pointerleave', (event) => {
+            if (!window.carruselState.swipeState.tracking || event.pointerId !== window.carruselState.swipeState.pointerId) {
+                return;
+            }
+
+            reanudarAutoAdvanceCarrusel(window.carruselState.swipeState.pointerType === 'mouse' ? 250 : 1800);
+            resetearSwipeCarrusel();
+        });
     }
 
     function cargarGaleria() {
@@ -687,6 +802,7 @@
 
         window.carruselState.slides = Array.from(carruselInner.querySelectorAll('.carrusel-item'));
         window.carruselState.currentIndex = 0;
+        inicializarInteraccionesCarrusel();
         inicializarCarruselControles();
         evaluarPaginaListaIndex();
 
