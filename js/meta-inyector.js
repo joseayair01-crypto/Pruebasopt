@@ -22,6 +22,18 @@
 (function InyectorMetadat() {
     'use strict';
 
+    function esTextoSeoConfiable(valor) {
+        const texto = String(valor || '').trim();
+        if (!texto) return false;
+        return !/^(aqui va|aquí va|aqui puedes|aquí puedes|demo\b|titulo seo|descripci[oó]n seo)$/i.test(texto);
+    }
+
+    function esUrlBaseSeoConfiable(valor) {
+        const url = String(valor || '').trim();
+        if (!/^https?:\/\//i.test(url)) return false;
+        return !/tu-dominio\.com/i.test(url);
+    }
+
     function resolverAliasRutaSeo(ruta = '/') {
         const rutaNormalizada = String(ruta || '/')
             .split('?')[0]
@@ -64,11 +76,20 @@
             seoPagina.titulo ||
             seoPagina.metaTitle ||
             '';
+        const tituloSeoGlobal =
+            seo.title ||
+            seo.titulo ||
+            seo.metaTitle ||
+            '';
         const tituloCliente = [nombreSorteo, nombreCliente].filter(Boolean).join(' | ');
         const tituloBase = tituloCliente || nombreSorteo || nombreCliente || String(fallbackTitle || document.title || 'Sorteos').trim();
 
         if (tituloPagina) {
             return tituloPagina;
+        }
+
+        if (esTextoSeoConfiable(tituloSeoGlobal)) {
+            return tituloSeoGlobal;
         }
 
         switch (aliasRuta) {
@@ -99,8 +120,12 @@
     window.rifaplusResolverTituloPagina = resolverTituloPaginaDesdeConfig;
 
     function resolverBaseUrl(config) {
-        const desdeConfig = config?.seo?.urlBase || config?.backend?.apiBase || window.location.origin;
-        return String(desdeConfig || window.location.origin).replace(/\/api\/?$/, '').replace(/\/+$/, '');
+        const desdeConfig = config?.seo?.urlBase;
+        if (esUrlBaseSeoConfiable(desdeConfig)) {
+            return String(desdeConfig).replace(/\/api\/?$/, '').replace(/\/+$/, '');
+        }
+        const alterna = config?.backend?.apiBase || window.location.origin;
+        return String(alterna || window.location.origin).replace(/\/api\/?$/, '').replace(/\/+$/, '');
     }
 
     function resolverUrlPublica(valor, baseUrl) {
@@ -135,8 +160,18 @@
         const descripcionDerivada = rifa.descripcion || (rifa.nombreSorteo
             ? `Participa en el sorteo de ${rifa.nombreSorteo}.`
             : (cliente.eslogan || 'Compra tus boletos en linea.'));
+        const aliasRuta = resolverAliasRutaSeo(window.location.pathname || '/');
+        const seoPagina = obtenerSeoPaginaConfig(seo, aliasRuta);
+        const descripcionPagina =
+            seoPagina.description ||
+            seoPagina.descripcion ||
+            '';
         const title = tituloDerivado;
-        const description = seo.description || seo.descripcion || og.descripcion || twitter.descripcion || descripcionDerivada;
+        const description = (esTextoSeoConfiable(descripcionPagina) ? descripcionPagina : '')
+            || (esTextoSeoConfiable(seo.description || seo.descripcion) ? (seo.description || seo.descripcion) : '')
+            || (esTextoSeoConfiable(og.descripcion) ? og.descripcion : '')
+            || (esTextoSeoConfiable(twitter.descripcion) ? twitter.descripcion : '')
+            || descripcionDerivada;
         const imageRaw = seo.image || seo.imagen || og.imagen || twitter.imagen || cliente.imagenPrincipal || cliente.logo || cliente.logotipo || '/images/placeholder-cover.svg';
 
         return {

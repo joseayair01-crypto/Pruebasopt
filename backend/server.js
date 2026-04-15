@@ -1318,6 +1318,18 @@ function construirUrlCanonica(baseUrl, ruta = '/') {
     return `${baseNormalizada}${rutaNormalizada}`;
 }
 
+function esTextoSeoConfiable(valor) {
+    const texto = String(valor || '').trim();
+    if (!texto) return false;
+    return !/^(aqui va|aquí va|aqui puedes|aquí puedes|demo\b|titulo seo|descripci[oó]n seo)$/i.test(texto);
+}
+
+function esUrlBaseSeoConfiable(valor) {
+    const url = String(valor || '').trim();
+    if (!/^https?:\/\//i.test(url)) return false;
+    return !/tu-dominio\.com/i.test(url);
+}
+
 function formatearPrecioSeo(precio) {
     const numero = Number(precio);
     if (!Number.isFinite(numero)) return '';
@@ -1411,9 +1423,14 @@ function construirSeoPorRuta(config = {}, ruta = '/', baseUrl = '') {
         description: descripcionBase
     };
 
+    const tituloPaginaEspecifico = esTextoSeoConfiable(paginaSeo.title || paginaSeo.titulo) ? (paginaSeo.title || paginaSeo.titulo) : '';
+    const descripcionPaginaEspecifica = esTextoSeoConfiable(paginaSeo.description || paginaSeo.descripcion) ? (paginaSeo.description || paginaSeo.descripcion) : '';
+    const tituloGlobal = esTextoSeoConfiable(tituloBase) ? tituloBase : '';
+    const descripcionGlobal = esTextoSeoConfiable(descripcionBase) ? descripcionBase : '';
+
     return {
-        title: paginaSeo.title || paginaSeo.titulo || pagina.title,
-        description: paginaSeo.description || paginaSeo.descripcion || pagina.description,
+        title: tituloPaginaEspecifico || tituloGlobal || pagina.title,
+        description: descripcionPaginaEspecifica || descripcionGlobal || pagina.description,
         canonical
     };
 }
@@ -1590,9 +1607,10 @@ function normalizarSeoConfigParaPersistencia(seo = {}, configActual = {}) {
         || limpiarSeo(leerCampo(seoActual, ['keywords', 'palabrasLlave']))
         || palabrasLlaveDerivadas;
 
-    const urlBase = limpiarSeo(leerCampo(seo, ['urlBase']))
+    const urlBaseSeo = limpiarSeo(leerCampo(seo, ['urlBase']))
         || limpiarSeo(leerCampo(seoActual, ['urlBase']))
         || '';
+    const urlBase = esUrlBaseSeoConfiable(urlBaseSeo) ? urlBaseSeo : '';
 
     const autor = limpiarSeo(leerCampo(seo, ['author', 'autor']))
         || limpiarSeo(leerCampo(seoActual, ['author', 'autor']))
@@ -1670,7 +1688,14 @@ function construirMetadatosSeo(config = {}, req, routePath = '', publicBase = ''
     const twitterGlobal = seo.twitter || {};
     const ogPagina = seoPaginaConfig.openGraph || seoPaginaConfig.og || {};
     const twitterPagina = seoPaginaConfig.twitter || {};
-    const usarOverrideGlobalParaRutaBase = !aliasRuta || aliasRuta === 'inicio';
+    const tituloOgPagina = esTextoSeoConfiable(ogPagina.titulo) ? ogPagina.titulo : '';
+    const descripcionOgPagina = esTextoSeoConfiable(ogPagina.descripcion) ? ogPagina.descripcion : '';
+    const tituloOgGlobal = esTextoSeoConfiable(ogGlobal.titulo) ? ogGlobal.titulo : '';
+    const descripcionOgGlobal = esTextoSeoConfiable(ogGlobal.descripcion) ? ogGlobal.descripcion : '';
+    const tituloTwitterPagina = esTextoSeoConfiable(twitterPagina.titulo) ? twitterPagina.titulo : '';
+    const descripcionTwitterPagina = esTextoSeoConfiable(twitterPagina.descripcion) ? twitterPagina.descripcion : '';
+    const tituloTwitterGlobal = esTextoSeoConfiable(twitterGlobal.titulo) ? twitterGlobal.titulo : '';
+    const descripcionTwitterGlobal = esTextoSeoConfiable(twitterGlobal.descripcion) ? twitterGlobal.descripcion : '';
     const imagenBase = seoPaginaConfig.image || seoPaginaConfig.imagen || seo.image || seo.imagen;
     const imagen = resolverUrlPublica(imagenBase, urlBase);
 
@@ -1680,9 +1705,9 @@ function construirMetadatosSeo(config = {}, req, routePath = '', publicBase = ''
         keywords: seo.keywords || seo.palabrasLlave || `sorteo, rifa, ${rifa.nombreSorteo || ''}, ${cliente.nombre || 'Sorteos'}`,
         author: seo.author || seo.autor || cliente.nombre || 'Sorteos',
         og: {
-            title: ogPagina.titulo || (usarOverrideGlobalParaRutaBase ? ogGlobal.titulo : '') || titulo,
-            description: ogPagina.descripcion || (usarOverrideGlobalParaRutaBase ? ogGlobal.descripcion : '') || descripcion,
-            image: resolverUrlPublica(ogPagina.imagen || (usarOverrideGlobalParaRutaBase ? ogGlobal.imagen : '') || imagen, urlBase),
+            title: tituloOgPagina || tituloOgGlobal || titulo,
+            description: descripcionOgPagina || descripcionOgGlobal || descripcion,
+            image: resolverUrlPublica(ogPagina.imagen || ogGlobal.imagen || imagen, urlBase),
             url: seoPagina.canonical || urlBase,
             type: ogPagina.tipo || ogGlobal.tipo || 'website',
             locale: ogPagina.locale || ogGlobal.locale || 'es_MX',
@@ -1690,9 +1715,9 @@ function construirMetadatosSeo(config = {}, req, routePath = '', publicBase = ''
         },
         twitter: {
             card: twitterPagina.card || twitterGlobal.card || 'summary_large_image',
-            title: twitterPagina.titulo || (usarOverrideGlobalParaRutaBase ? twitterGlobal.titulo : '') || titulo,
-            description: twitterPagina.descripcion || (usarOverrideGlobalParaRutaBase ? twitterGlobal.descripcion : '') || descripcion,
-            image: resolverUrlPublica(twitterPagina.imagen || (usarOverrideGlobalParaRutaBase ? twitterGlobal.imagen : '') || imagen, urlBase),
+            title: tituloTwitterPagina || tituloTwitterGlobal || titulo,
+            description: descripcionTwitterPagina || descripcionTwitterGlobal || descripcion,
+            image: resolverUrlPublica(twitterPagina.imagen || twitterGlobal.imagen || imagen, urlBase),
             creator: twitterPagina.creador || twitterGlobal.creador || cliente.redesSociales?.twitter || ''
         },
         canonical: seoPagina.canonical || urlBase,
