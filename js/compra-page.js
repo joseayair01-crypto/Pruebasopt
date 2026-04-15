@@ -466,7 +466,6 @@
     function renderizarPromociones(rifa) {
         const promocionesPanel = document.getElementById('promocionesPanel');
         const promocionesHeader = document.getElementById('promocionesHeader');
-        const promocionesSubText = document.getElementById('promocionesSubText');
         const promosCards = document.getElementById('promosCards');
         const descuentosBlock = document.getElementById('descuentosBlock');
         const descuentosSubText = document.getElementById('descuentosSubText');
@@ -474,7 +473,7 @@
         const oportunidadesSubText = document.getElementById('oportunidadesSubText');
         const oportunidadesCards = document.getElementById('oportunidadesCards');
 
-        if (!promocionesPanel || !promocionesSubText || !promosCards || !descuentosBlock || !oportunidadesBlock || !oportunidadesCards) {
+        if (!promocionesPanel || !promosCards || !descuentosBlock || !oportunidadesBlock || !oportunidadesCards) {
             return;
         }
 
@@ -539,21 +538,8 @@
             });
         }
 
-        const multiplicador = Number(oportunidadesConfig?.multiplicador) > 0
-            ? Number(oportunidadesConfig.multiplicador)
-            : 1;
         const tieneDescuentos = promocionesDescuento.length > 0;
         const tieneOportunidades = tarjetasOportunidades.length > 0;
-
-        if (tieneDescuentos && tieneOportunidades) {
-            promocionesSubText.textContent = `Aprovecha descuentos por volumen y recibe ${multiplicador} oportunidades extra por cada boleto.`;
-        } else if (tieneDescuentos) {
-            promocionesSubText.textContent = 'Mientras más boletos compras, mejor precio obtienes.';
-        } else if (tieneOportunidades) {
-            promocionesSubText.textContent = `Cada boleto te da ${multiplicador} oportunidades extra para participar con más fuerza.`;
-        } else {
-            promocionesSubText.textContent = 'Promociones disponibles por tiempo limitado';
-        }
 
         if (descuentosSubText) {
             descuentosSubText.textContent = 'Llevate mas boletos por un mejor precio.';

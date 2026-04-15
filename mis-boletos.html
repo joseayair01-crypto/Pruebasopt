@@ -39,19 +39,6 @@
             ['rifaplus_fecha_sorteo','rifaplus_timestamp_sorteo','rifaplus_fecha_cierre'].forEach(k => localStorage.removeItem(k));
         })();
     </script>
-    <script>
-        (function prepararShellMisBoletos() {
-            let omitirShell = false;
-
-            try {
-                omitirShell = sessionStorage.getItem('rifaplus_skip_mis_boletos_shell_once') === 'true';
-            } catch (error) {
-                omitirShell = false;
-            }
-
-            window.__RIFAPLUS_SKIP_PUBLIC_SHELL__ = omitirShell;
-        })();
-    </script>
     <script src="js/theme-dynamic.js?v=20260410.1"></script>
     <script src="js/boletos-loader.js"></script>
     <script src="js/modal-scroll-lock.js"></script>
@@ -61,44 +48,7 @@
     <!-- 🎯 OPORTUNIDADES MANAGER: Debe cargarse ANTES de carrito-global para funcionar cross-page -->
     <script defer src="js/oportunidades-manager.js"></script>
 </head>
-<body class="rifaplus-shell-loading" aria-busy="true">
-    <script>
-        (function aplicarSupresionShellMisBoletos() {
-            if (!window.__RIFAPLUS_SKIP_PUBLIC_SHELL__) {
-                return;
-            }
-
-            document.body.classList.remove('rifaplus-shell-loading', 'rifaplus-shell-active');
-            document.body.classList.add('rifaplus-shell-ready');
-            document.body.removeAttribute('aria-busy');
-        })();
-    </script>
-    <div class="rifaplus-shell-overlay rifaplus-shell-overlay--logo-only" id="rifaplusPublicShell" role="status" aria-live="polite" aria-label="Cargando">
-        <div class="rifaplus-shell-card">
-            <div class="rifaplus-shell-logo-frame">
-                <img id="rifaplusShellLogo" class="rifaplus-shell-logo" src="images/placeholder-logo.svg" alt="Logo del organizador" width="112" height="112">
-            </div>
-        </div>
-    </div>
-    <script>
-        (function finalizarSupresionShellMisBoletos() {
-            if (!window.__RIFAPLUS_SKIP_PUBLIC_SHELL__) {
-                return;
-            }
-
-            const overlay = document.getElementById('rifaplusPublicShell');
-            if (overlay) {
-                overlay.setAttribute('hidden', 'hidden');
-                overlay.classList.remove('is-visible', 'is-leaving');
-            }
-
-            try {
-                sessionStorage.removeItem('rifaplus_skip_mis_boletos_shell_once');
-            } catch (error) {
-                // Ignorar errores de storage para no afectar la página.
-            }
-        })();
-    </script>
+<body class="rifaplus-shell-ready">
     <!-- HEADER CON MENÚ -->
     <header class="header">
         <div class="container">

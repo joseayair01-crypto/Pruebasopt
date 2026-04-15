@@ -4306,7 +4306,29 @@ footer {
 .compra-pricing-section{ padding:1rem 0 1.65rem; display: flex; flex-direction: column; align-items: center; width: 100%; background: linear-gradient(180deg, #eff6fa 0%, #f6fafc 100%); }
 .precio-card-main{ text-align:center; background: var(--card-bg-soft); padding:1rem; border-radius:26px; box-shadow:var(--shadow-sm); display:block; margin:-0.3rem auto 1.25rem; width: clamp(300px, 46vw, 436px); }
 .promociones-header{ margin: 0.9rem 0 0.7rem 0; text-align:center }
-.promociones-title{ margin:0; font-size:clamp(2rem, 3vw, 2.5rem); color:var(--primary-dark); font-weight:700; letter-spacing:-0.02em }
+.promociones-title{
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.55rem;
+    margin: 0;
+    font-size: clamp(2rem, 3vw, 2.5rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    color: var(--primary-dark);
+    text-shadow: 0 8px 20px rgba(var(--primary-rgb), 0.10);
+}
+.promociones-title::after{
+    content: '';
+    width: clamp(84px, 10vw, 118px);
+    height: 6px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(var(--secondary-rgb), 0.28) 0%, var(--secondary) 48%, rgba(var(--primary-rgb), 0.18) 100%);
+    box-shadow:
+        0 8px 18px rgba(var(--secondary-rgb), 0.18),
+        0 3px 10px rgba(var(--primary-rgb), 0.08);
+}
 .promociones-sub{ margin: 0.25rem 0 0 0; color:var(--text-light); font-size:0.98rem; max-width:720px; margin-left:auto; margin-right:auto }
 .promociones-panel{
     width: 100%;
