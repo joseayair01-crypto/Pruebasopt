@@ -1418,6 +1418,7 @@ body.rifaplus-logo-ready .logo-circle img[data-dynamic-logo="true"] {
     max-width: 100%;
     margin: 0 auto;
     border: 1px solid rgba(15, 23, 42, 0.08);
+    touch-action: pan-y pinch-zoom;
 }
 
 .carrusel::before {
@@ -1493,6 +1494,9 @@ body.rifaplus-logo-ready .logo-circle img[data-dynamic-logo="true"] {
     transform: scale(1.03);
     transform-origin: center;
     filter: drop-shadow(0 24px 38px rgba(15, 23, 42, 0.18));
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
 }
 
 @keyframes rifaplusCarruselSkeleton {

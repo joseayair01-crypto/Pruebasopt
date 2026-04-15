@@ -571,29 +571,260 @@ document.addEventListener('DOMContentLoaded', function() {
  */
 function inicializarCarrusel() {
     const imageDelivery = window.RifaPlusImageDelivery;
-    // Buscar contenedor del carrusel
     const carruselInner = document.querySelector('.carrusel-inner');
-    
+    const carrusel = document.querySelector('.carrusel');
+
     if (!carruselInner) {
         return;
     }
 
-    // Obtener imágenes desde config
     const imagenes = window.rifaplusConfig?.rifa?.premios?.[0]?.imagenes || [];
-    
+
     if (imagenes.length === 0) {
         console.debug('⏳ No hay imágenes de premios aún (sincronizando desde servidor)');
         return;
     }
 
+    const state = window.__RIFAPLUS_MAIN_CARRUSEL__ = window.__RIFAPLUS_MAIN_CARRUSEL__ || {
+        currentIndex: 0,
+        slides: [],
+        autoAdvanceId: 0,
+        resumeTimeoutId: 0,
+        controlsBound: false,
+        interactionBound: false,
+        lifecycleBound: false,
+        swipeState: {
+            pointerId: null,
+            pointerType: '',
+            startX: 0,
+            startY: 0,
+            deltaX: 0,
+            deltaY: 0,
+            tracking: false
+        }
+    };
+
+    function obtenerSlides() {
+        return Array.isArray(state.slides) ? state.slides : [];
+    }
+
+    function totalSlides() {
+        return obtenerSlides().length;
+    }
+
+    function limpiarReinicioPendiente() {
+        if (state.resumeTimeoutId) {
+            clearTimeout(state.resumeTimeoutId);
+            state.resumeTimeoutId = 0;
+        }
+    }
+
+    function resetearSwipeState() {
+        state.swipeState.pointerId = null;
+        state.swipeState.pointerType = '';
+        state.swipeState.startX = 0;
+        state.swipeState.startY = 0;
+        state.swipeState.deltaX = 0;
+        state.swipeState.deltaY = 0;
+        state.swipeState.tracking = false;
+    }
+
+    function pausarAutoavance() {
+        limpiarReinicioPendiente();
+        if (state.autoAdvanceId) {
+            clearInterval(state.autoAdvanceId);
+            state.autoAdvanceId = 0;
+        }
+    }
+
+    function mostrarSlide(indice) {
+        const slides = obtenerSlides();
+        if (slides.length === 0) {
+            return;
+        }
+
+        if (indice >= slides.length) indice = 0;
+        if (indice < 0) indice = slides.length - 1;
+
+        slides.forEach((slide) => {
+            slide.classList.remove('active');
+            slide.style.opacity = '0';
+        });
+
+        slides[indice].classList.add('active');
+        slides[indice].style.opacity = '1';
+        state.currentIndex = indice;
+    }
+
+    function siguienteSlide() {
+        mostrarSlide(state.currentIndex + 1);
+    }
+
+    function slideAnterior() {
+        mostrarSlide(state.currentIndex - 1);
+    }
+
+    function iniciarAutoavance() {
+        if (state.autoAdvanceId || totalSlides() <= 1 || document.hidden) {
+            return;
+        }
+
+        state.autoAdvanceId = setInterval(() => {
+            siguienteSlide();
+        }, 10000);
+    }
+
+    function reanudarAutoavanceConRetraso(delay = 1200) {
+        limpiarReinicioPendiente();
+        if (totalSlides() <= 1) {
+            return;
+        }
+
+        state.resumeTimeoutId = window.setTimeout(() => {
+            state.resumeTimeoutId = 0;
+            iniciarAutoavance();
+        }, delay);
+    }
+
+    function bindControles() {
+        if (state.controlsBound) {
+            return;
+        }
+
+        const botonSiguiente = document.querySelector('.carrusel-next');
+        const botonAnterior = document.querySelector('.carrusel-prev');
+
+        if (botonSiguiente) {
+            botonSiguiente.addEventListener('click', () => {
+                siguienteSlide();
+                reanudarAutoavanceConRetraso(3500);
+            });
+        }
+
+        if (botonAnterior) {
+            botonAnterior.addEventListener('click', () => {
+                slideAnterior();
+                reanudarAutoavanceConRetraso(3500);
+            });
+        }
+
+        state.controlsBound = true;
+    }
+
+    function bindInteracciones() {
+        if (!carrusel || state.interactionBound) {
+            return;
+        }
+
+        state.interactionBound = true;
+
+        carrusel.addEventListener('mouseenter', pausarAutoavance);
+        carrusel.addEventListener('mouseleave', () => {
+            reanudarAutoavanceConRetraso(250);
+        });
+
+        if (!window.PointerEvent) {
+            addPassiveListener(carrusel, 'touchstart', pausarAutoavance);
+            addPassiveListener(carrusel, 'touchend', () => {
+                reanudarAutoavanceConRetraso(1800);
+            });
+            addPassiveListener(carrusel, 'touchcancel', () => {
+                reanudarAutoavanceConRetraso(1800);
+            });
+            return;
+        }
+
+        carrusel.addEventListener('pointerdown', (event) => {
+            if (event.pointerType === 'mouse' && event.button !== 0) {
+                return;
+            }
+
+            state.swipeState.pointerId = event.pointerId;
+            state.swipeState.pointerType = event.pointerType || 'mouse';
+            state.swipeState.startX = event.clientX;
+            state.swipeState.startY = event.clientY;
+            state.swipeState.deltaX = 0;
+            state.swipeState.deltaY = 0;
+            state.swipeState.tracking = true;
+
+            pausarAutoavance();
+        });
+
+        carrusel.addEventListener('pointermove', (event) => {
+            if (!state.swipeState.tracking || event.pointerId !== state.swipeState.pointerId) {
+                return;
+            }
+
+            state.swipeState.deltaX = event.clientX - state.swipeState.startX;
+            state.swipeState.deltaY = event.clientY - state.swipeState.startY;
+        });
+
+        const finalizarInteraccionCarrusel = (event) => {
+            if (!state.swipeState.tracking || event.pointerId !== state.swipeState.pointerId) {
+                return;
+            }
+
+            const desplazamientoX = state.swipeState.deltaX;
+            const desplazamientoY = state.swipeState.deltaY;
+            const pointerType = state.swipeState.pointerType;
+            const esSwipeMovil = pointerType !== 'mouse'
+                && Math.abs(desplazamientoX) >= 48
+                && Math.abs(desplazamientoX) > Math.abs(desplazamientoY) * 1.25;
+
+            if (esSwipeMovil) {
+                if (desplazamientoX < 0) {
+                    siguienteSlide();
+                } else {
+                    slideAnterior();
+                }
+                reanudarAutoavanceConRetraso(4200);
+            } else {
+                reanudarAutoavanceConRetraso(pointerType === 'mouse' ? 250 : 1800);
+            }
+
+            resetearSwipeState();
+        };
+
+        carrusel.addEventListener('pointerup', finalizarInteraccionCarrusel);
+        carrusel.addEventListener('pointercancel', finalizarInteraccionCarrusel);
+        carrusel.addEventListener('pointerleave', (event) => {
+            if (!state.swipeState.tracking || event.pointerId !== state.swipeState.pointerId) {
+                return;
+            }
+
+            reanudarAutoavanceConRetraso(state.swipeState.pointerType === 'mouse' ? 250 : 1800);
+            resetearSwipeState();
+        });
+    }
+
+    function bindCicloDeVida() {
+        if (state.lifecycleBound) {
+            return;
+        }
+
+        state.lifecycleBound = true;
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                iniciarAutoavance();
+            } else {
+                pausarAutoavance();
+            }
+        });
+
+        window.addEventListener('pagehide', () => {
+            pausarAutoavance();
+            resetearSwipeState();
+        }, { capture: true });
+    }
+
     const slidesNuevos = [];
     let primeraImagenNueva = null;
 
-    // Generar dinámicamente los slides desde config
     imagenes.forEach((imagenPath, index) => {
         const slide = document.createElement('div');
         slide.className = `carrusel-item${index === 0 ? ' active' : ''}`;
-        
+
         const img = document.createElement('img');
         img.alt = `Imagen ${index + 1} del premio`;
         if (imageDelivery?.aplicarImagenOptimizada) {
@@ -615,127 +846,25 @@ function inicializarCarrusel() {
         if (index === 0) {
             primeraImagenNueva = img;
         }
-        
+
         slide.appendChild(img);
         slidesNuevos.push(slide);
     });
 
     const montarCarrusel = () => {
-        if (carruselInner.getAttribute('data-rifaplus-mounted') === 'true') {
-            return;
-        }
-
+        pausarAutoavance();
         carruselInner.innerHTML = '';
         slidesNuevos.forEach((slide) => carruselInner.appendChild(slide));
         carruselInner.classList.remove('is-loading');
         carruselInner.setAttribute('data-rifaplus-mounted', 'true');
-
-        // Obtener slides generados
-        const slides = carruselInner.querySelectorAll('.carrusel-item');
-        const botonSiguiente = document.querySelector('.carrusel-next');
-        const botonAnterior = document.querySelector('.carrusel-prev');
-
-        // No hay slides, salir
-        if (slides.length === 0) {
-            return;
-        }
-
-        let indexSlideActual = 0;
-        const totalSlides = slides.length;
-        let intervaloAutoavance;
-
-        /**
-         * Mostrar un slide específico
-         * @param {number} indice - Índice del slide a mostrar
-         */
-        function mostrarSlide(indice) {
-            slides.forEach(slide => {
-                slide.classList.remove('active');
-                slide.style.opacity = '0';
-            });
-
-            slides[indice].classList.add('active');
-            slides[indice].style.opacity = '1';
-            indexSlideActual = indice;
-        }
-
-        /**
-         * Ir al siguiente slide
-         */
-        function siguienteSlide() {
-            const siguiente = (indexSlideActual + 1) % totalSlides;
-            mostrarSlide(siguiente);
-        }
-
-        /**
-         * Ir al slide anterior
-         */
-        function slideAnterior() {
-            const anterior = (indexSlideActual - 1 + totalSlides) % totalSlides;
-            mostrarSlide(anterior);
-        }
-
-        // Event listeners para botones de navegación
-        if (botonSiguiente) {
-            botonSiguiente.addEventListener('click', siguienteSlide);
-        }
-
-        if (botonAnterior) {
-            botonAnterior.addEventListener('click', slideAnterior);
-        }
-
-        /**
-         * Iniciar autoavance automático
-         * OPTIMIZACIÓN: Aumentado de 5 a 10 segundos (menos re-renders del DOM)
-         */
-        function iniciarAutoavance() {
-            if (intervaloAutoavance || totalSlides <= 1 || document.hidden) {
-                return;
-            }
-
-            if (totalSlides > 1) {
-                intervaloAutoavance = setInterval(siguienteSlide, 10000); // 10 segundos
-            }
-        }
-
-        /**
-         * Pausar autoavance
-         */
-        function pausarAutoavance() {
-            if (intervaloAutoavance) {
-                clearInterval(intervaloAutoavance);
-                intervaloAutoavance = null;
-            }
-        }
-
-        // Pausar autoavance al interactuar
-        const carrusel = document.querySelector('.carrusel');
-        if (carrusel) {
-            carrusel.addEventListener('mouseenter', pausarAutoavance);
-            carrusel.addEventListener('mouseleave', iniciarAutoavance);
-            addPassiveListener(carrusel, 'touchstart', pausarAutoavance);
-            addPassiveListener(carrusel, 'touchend', () => {
-                setTimeout(iniciarAutoavance, 3000);
-            });
-        }
-
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') {
-                iniciarAutoavance();
-            } else {
-                pausarAutoavance();
-            }
-        });
-
-        // Iniciar
-        iniciarAutoavance();
+        state.slides = Array.from(carruselInner.querySelectorAll('.carrusel-item'));
+        state.currentIndex = 0;
+        bindControles();
+        bindInteracciones();
+        bindCicloDeVida();
         mostrarSlide(0);
-        
-        // OPTIMIZACIÓN: Cleanup - detener carrusel cuando usuario abandona la página
-        window.addEventListener('pagehide', function() {
-            pausarAutoavance();
-        }, { capture: true });
-        
+        iniciarAutoavance();
+
         console.log('✓ Carrusel inicializado');
     };
 
