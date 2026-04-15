@@ -586,8 +586,8 @@ function inicializarCarrusel() {
         return;
     }
 
-    // Limpiar contenedor (remover slides existentes)
-    carruselInner.innerHTML = '';
+    const slidesNuevos = [];
+    let primeraImagenNueva = null;
 
     // Generar dinámicamente los slides desde config
     imagenes.forEach((imagenPath, index) => {
@@ -611,118 +611,153 @@ function inicializarCarrusel() {
             img.loading = index === 0 ? 'eager' : 'lazy';
             img.decoding = 'async';
         }
+
+        if (index === 0) {
+            primeraImagenNueva = img;
+        }
         
         slide.appendChild(img);
-        carruselInner.appendChild(slide);
+        slidesNuevos.push(slide);
     });
 
-    // Obtener slides generados
-    const slides = document.querySelectorAll('.carrusel-item');
-    const botonSiguiente = document.querySelector('.carrusel-next');
-    const botonAnterior = document.querySelector('.carrusel-prev');
-
-    // No hay slides, salir
-    if (slides.length === 0) {
-        return;
-    }
-
-    let indexSlideActual = 0;
-    const totalSlides = slides.length;
-    let intervaloAutoavance;
-
-    /**
-     * Mostrar un slide específico
-     * @param {number} indice - Índice del slide a mostrar
-     */
-    function mostrarSlide(indice) {
-        slides.forEach(slide => {
-            slide.classList.remove('activo');
-            slide.style.opacity = '0';
-        });
-
-        slides[indice].classList.add('activo');
-        slides[indice].style.opacity = '1';
-        indexSlideActual = indice;
-    }
-
-    /**
-     * Ir al siguiente slide
-     */
-    function siguienteSlide() {
-        const siguiente = (indexSlideActual + 1) % totalSlides;
-        mostrarSlide(siguiente);
-    }
-
-    /**
-     * Ir al slide anterior
-     */
-    function slideAnterior() {
-        const anterior = (indexSlideActual - 1 + totalSlides) % totalSlides;
-        mostrarSlide(anterior);
-    }
-
-    // Event listeners para botones de navegación
-    if (botonSiguiente) {
-        botonSiguiente.addEventListener('click', siguienteSlide);
-    }
-
-    if (botonAnterior) {
-        botonAnterior.addEventListener('click', slideAnterior);
-    }
-
-    /**
-     * Iniciar autoavance automático
-     * OPTIMIZACIÓN: Aumentado de 5 a 10 segundos (menos re-renders del DOM)
-     */
-    function iniciarAutoavance() {
-        if (intervaloAutoavance || totalSlides <= 1 || document.hidden) {
+    const montarCarrusel = () => {
+        if (carruselInner.getAttribute('data-rifaplus-mounted') === 'true') {
             return;
         }
 
-        if (totalSlides > 1) {
-            intervaloAutoavance = setInterval(siguienteSlide, 10000); // 10 segundos
-        }
-    }
+        carruselInner.innerHTML = '';
+        slidesNuevos.forEach((slide) => carruselInner.appendChild(slide));
+        carruselInner.classList.remove('is-loading');
+        carruselInner.setAttribute('data-rifaplus-mounted', 'true');
 
-    /**
-     * Pausar autoavance
-     */
-    function pausarAutoavance() {
-        if (intervaloAutoavance) {
-            clearInterval(intervaloAutoavance);
-            intervaloAutoavance = null;
-        }
-    }
+        // Obtener slides generados
+        const slides = carruselInner.querySelectorAll('.carrusel-item');
+        const botonSiguiente = document.querySelector('.carrusel-next');
+        const botonAnterior = document.querySelector('.carrusel-prev');
 
-    // Pausar autoavance al interactuar
-    const carrusel = document.querySelector('.carrusel');
-    if (carrusel) {
-        carrusel.addEventListener('mouseenter', pausarAutoavance);
-        carrusel.addEventListener('mouseleave', iniciarAutoavance);
-        addPassiveListener(carrusel, 'touchstart', pausarAutoavance);
-        addPassiveListener(carrusel, 'touchend', () => {
-            setTimeout(iniciarAutoavance, 3000);
+        // No hay slides, salir
+        if (slides.length === 0) {
+            return;
+        }
+
+        let indexSlideActual = 0;
+        const totalSlides = slides.length;
+        let intervaloAutoavance;
+
+        /**
+         * Mostrar un slide específico
+         * @param {number} indice - Índice del slide a mostrar
+         */
+        function mostrarSlide(indice) {
+            slides.forEach(slide => {
+                slide.classList.remove('active');
+                slide.style.opacity = '0';
+            });
+
+            slides[indice].classList.add('active');
+            slides[indice].style.opacity = '1';
+            indexSlideActual = indice;
+        }
+
+        /**
+         * Ir al siguiente slide
+         */
+        function siguienteSlide() {
+            const siguiente = (indexSlideActual + 1) % totalSlides;
+            mostrarSlide(siguiente);
+        }
+
+        /**
+         * Ir al slide anterior
+         */
+        function slideAnterior() {
+            const anterior = (indexSlideActual - 1 + totalSlides) % totalSlides;
+            mostrarSlide(anterior);
+        }
+
+        // Event listeners para botones de navegación
+        if (botonSiguiente) {
+            botonSiguiente.addEventListener('click', siguienteSlide);
+        }
+
+        if (botonAnterior) {
+            botonAnterior.addEventListener('click', slideAnterior);
+        }
+
+        /**
+         * Iniciar autoavance automático
+         * OPTIMIZACIÓN: Aumentado de 5 a 10 segundos (menos re-renders del DOM)
+         */
+        function iniciarAutoavance() {
+            if (intervaloAutoavance || totalSlides <= 1 || document.hidden) {
+                return;
+            }
+
+            if (totalSlides > 1) {
+                intervaloAutoavance = setInterval(siguienteSlide, 10000); // 10 segundos
+            }
+        }
+
+        /**
+         * Pausar autoavance
+         */
+        function pausarAutoavance() {
+            if (intervaloAutoavance) {
+                clearInterval(intervaloAutoavance);
+                intervaloAutoavance = null;
+            }
+        }
+
+        // Pausar autoavance al interactuar
+        const carrusel = document.querySelector('.carrusel');
+        if (carrusel) {
+            carrusel.addEventListener('mouseenter', pausarAutoavance);
+            carrusel.addEventListener('mouseleave', iniciarAutoavance);
+            addPassiveListener(carrusel, 'touchstart', pausarAutoavance);
+            addPassiveListener(carrusel, 'touchend', () => {
+                setTimeout(iniciarAutoavance, 3000);
+            });
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                iniciarAutoavance();
+            } else {
+                pausarAutoavance();
+            }
         });
+
+        // Iniciar
+        iniciarAutoavance();
+        mostrarSlide(0);
+        
+        // OPTIMIZACIÓN: Cleanup - detener carrusel cuando usuario abandona la página
+        window.addEventListener('pagehide', function() {
+            pausarAutoavance();
+        }, { capture: true });
+        
+        console.log('✓ Carrusel inicializado');
+    };
+
+    const tieneSlideCacheado = Boolean(carruselInner.querySelector('[data-rifaplus-cached-slide="true"]'));
+    if (primeraImagenNueva && tieneSlideCacheado) {
+        const montarUnaVez = () => {
+            if (carruselInner.getAttribute('data-rifaplus-mounted') === 'true') return;
+            montarCarrusel();
+        };
+
+        if (primeraImagenNueva.complete && primeraImagenNueva.naturalWidth > 0) {
+            montarUnaVez();
+            return;
+        }
+
+        primeraImagenNueva.addEventListener('load', montarUnaVez, { once: true });
+        primeraImagenNueva.addEventListener('error', montarUnaVez, { once: true });
+        window.setTimeout(montarUnaVez, 1800);
+        return;
     }
 
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-            iniciarAutoavance();
-        } else {
-            pausarAutoavance();
-        }
-    });
-
-    // Iniciar
-    iniciarAutoavance();
-    mostrarSlide(0);
-    
-    // OPTIMIZACIÓN: Cleanup - detener carrusel cuando usuario abandona la página
-    window.addEventListener('pagehide', function() {
-        pausarAutoavance();
-    }, { capture: true });
-    
-    console.log('✓ Carrusel inicializado');
+    montarCarrusel();
 }
 
 // ============================================================ //

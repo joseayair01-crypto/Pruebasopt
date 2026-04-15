@@ -1,11 +1,11 @@
 (() => {
-    const SHOW_DELAY_MS = 180;
     const READY_STABLE_MS = 180;
     const MIN_VISIBLE_MS = 320;
     const SOFT_FALLBACK_MS = 1600;
     const MAX_WAIT_MS = 5200;
     const POLL_INTERVAL_MS = 120;
     const LEAVE_ANIMATION_MS = 320;
+    const HTML_BOOT_CLASS = 'rifaplus-shell-boot';
     const PLACEHOLDER_LOGO = 'images/placeholder-logo.svg';
     const LOGO_PLACEHOLDER_DATA_PREFIX = 'data:image/svg+xml';
     const PAGE_READY_EVENT = 'rifaplus:page-ready';
@@ -194,6 +194,7 @@
         body.classList.remove('rifaplus-shell-loading', 'rifaplus-shell-active');
         body.classList.add('rifaplus-shell-ready');
         body.removeAttribute('aria-busy');
+        document.documentElement.classList.remove(HTML_BOOT_CLASS);
     }
 
     function actualizarEstadoLogoHeader(body) {
@@ -214,43 +215,54 @@
         return () => target.removeEventListener(type, listener, options);
     }
 
+    function shellDebeIniciar(html, body) {
+        return html.classList.contains(HTML_BOOT_CLASS) || body.classList.contains('rifaplus-shell-loading');
+    }
+
+    function activarShellEnBody(body) {
+        body.classList.add('rifaplus-shell-loading', 'rifaplus-shell-active');
+        body.setAttribute('aria-busy', 'true');
+    }
+
     cuandoDomEsteListo(() => {
+        const html = document.documentElement;
         const body = document.body;
         const overlay = document.getElementById('rifaplusPublicShell');
 
-        if (!body || !overlay || !body.classList.contains('rifaplus-shell-loading')) {
+        if (!body || !overlay) {
             return;
         }
 
+        if (!shellDebeIniciar(html, body)) {
+            overlay.setAttribute('hidden', 'hidden');
+            actualizarEstadoLogoHeader(body);
+            return;
+        }
+
+        activarShellEnBody(body);
+        overlay.removeAttribute('hidden');
+        overlay.classList.add('is-visible');
+
         const estado = {
             inicio: performance.now(),
-            visible: false,
             cerrado: false,
-            mostradoEn: 0,
+            mostradoEn: performance.now() - MIN_VISIBLE_MS,
             pageReady: false,
             estableDesde: 0,
             configSincronizada: tieneConfigMinima(),
             ventanaCargada: document.readyState === 'complete',
             permitirFallbackLogo: false,
-            noMostrarOverlay: false,
             intervalId: 0,
-            showId: 0,
             softFallbackId: 0,
             forceCloseId: 0,
             cacheLogoRealDisponible: logoObjetivoVieneDeCacheReal()
         };
         const limpiadoresEventos = [];
 
-        overlay.setAttribute('hidden', 'hidden');
-
         const limpiarTimers = () => {
             if (estado.intervalId) {
                 window.clearInterval(estado.intervalId);
                 estado.intervalId = 0;
-            }
-            if (estado.showId) {
-                window.clearTimeout(estado.showId);
-                estado.showId = 0;
             }
             if (estado.softFallbackId) {
                 window.clearTimeout(estado.softFallbackId);
@@ -308,37 +320,10 @@
             const canClose = (!busyPending && configReady && logoGateReady && criticalContentReady)
                 || (!busyPending && elapsed >= SOFT_FALLBACK_MS && structureReady && fallbackContentReady && (criticalContentReady || configReady || logoGateReady))
                 || elapsed >= MAX_WAIT_MS;
-            const shouldShow = !estado.noMostrarOverlay
-                && !canClose
-                && (elapsed >= SHOW_DELAY_MS || busyPending)
-                && (!structureReady || !criticalContentReady || !configReady || !logoGateReady || busyPending);
 
             return {
-                elapsed,
-                configReady,
-                structureReady,
-                logoReady,
-                logoGateReady,
-                busyPending,
-                criticalContentReady,
-                fallbackContentReady,
-                canClose,
-                shouldShow
+                canClose
             };
-        };
-
-        const mostrarShell = () => {
-            if (estado.cerrado || estado.visible || estado.noMostrarOverlay) {
-                return;
-            }
-
-            estado.visible = true;
-            estado.mostradoEn = performance.now();
-            body.classList.add('rifaplus-shell-active');
-            overlay.removeAttribute('hidden');
-            requestAnimationFrame(() => {
-                overlay.classList.add('is-visible');
-            });
         };
 
         const cerrarShell = () => {
@@ -347,13 +332,6 @@
             limpiarTimers();
             limpiarEventos();
             actualizarLogoShell();
-
-            if (!estado.visible) {
-                requestAnimationFrame(() => {
-                    aplicarBodyReady(body);
-                });
-                return;
-            }
 
             const restante = Math.max(0, MIN_VISIBLE_MS - (performance.now() - estado.mostradoEn));
             window.setTimeout(() => {
@@ -375,23 +353,9 @@
             actualizarEstadoLogoHeader(body);
             const readiness = obtenerReadiness();
 
-            const puedeOmitirOverlayTemprano = readiness.structureReady
-                && !readiness.busyPending
-                && readiness.configReady
-                && readiness.criticalContentReady
-                && readiness.logoGateReady;
-
-            if (!estado.visible && puedeOmitirOverlayTemprano && readiness.elapsed < SHOW_DELAY_MS) {
-                estado.noMostrarOverlay = true;
-            }
-
             if (readiness.canClose) {
                 cerrarShell();
                 return true;
-            }
-
-            if (readiness.shouldShow) {
-                mostrarShell();
             }
 
             return false;
@@ -415,10 +379,6 @@
 
         actualizarLogoShell();
         actualizarEstadoLogoHeader(body);
-
-        estado.showId = window.setTimeout(() => {
-            evaluar();
-        }, SHOW_DELAY_MS);
 
         estado.softFallbackId = window.setTimeout(() => {
             estado.permitirFallbackLogo = true;

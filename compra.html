@@ -196,6 +196,25 @@
             }
         })();
     </script>
+    <script>
+        (function bootstrapPublicShellCompra() {
+            const hero = window.__RIFAPLUS_COMPRA_HERO__ || {};
+            const snapshotPrecio = Number(window.__RIFAPLUS_COMPRA_PRICE_SNAPSHOT__?.precioVisible);
+            const hasHero = Boolean(String(hero.titulo || '').trim() && String(hero.subtitulo || '').trim());
+            const hasPrice = Number.isFinite(snapshotPrecio) && snapshotPrecio > 0;
+            const hasLogo = Boolean(String(window.__RIFAPLUS_CACHED_LOGO__ || '').trim());
+            const shouldBoot = !(hasHero && hasPrice && hasLogo);
+
+            window.__RIFAPLUS_PUBLIC_SHELL_BOOT__ = {
+                page: 'compra',
+                enabled: shouldBoot
+            };
+
+            if (shouldBoot) {
+                document.documentElement.classList.add('rifaplus-shell-boot');
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" media="print" data-deferred-style="true">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"></noscript>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" data-deferred-style="true">
@@ -286,7 +305,7 @@
 
     <script defer src="js/modal-conflicto-boletos.js?v=20260219"></script>
 </head>
-<body id="compra-page" class="rifaplus-shell-loading" data-rifaplus-socket="true" data-rifaplus-live-state="true" data-rifaplus-warm-range="true" aria-busy="true">
+<body id="compra-page" data-rifaplus-socket="true" data-rifaplus-live-state="true" data-rifaplus-warm-range="true">
     <div class="rifaplus-shell-overlay rifaplus-shell-overlay--logo-only" id="rifaplusPublicShell" role="status" aria-live="polite" aria-label="Cargando">
         <div class="rifaplus-shell-card">
             <div class="rifaplus-shell-logo-frame">

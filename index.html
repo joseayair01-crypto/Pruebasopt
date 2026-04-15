@@ -131,6 +131,25 @@
             }
         })();
     </script>
+    <script>
+        (function bootstrapPublicShellIndex() {
+            const hero = window.__RIFAPLUS_INDEX_HERO__ || {};
+            const gallery = Array.isArray(window.__RIFAPLUS_CACHED_GALERIA__) ? window.__RIFAPLUS_CACHED_GALERIA__ : [];
+            const hasHero = Boolean(String(hero.nombre || '').trim() && String(hero.descripcion || '').trim());
+            const hasGallery = Boolean(String(gallery[0]?.url || '').trim());
+            const hasLogo = Boolean(String(window.__RIFAPLUS_CACHED_LOGO__ || '').trim());
+            const shouldBoot = !(hasHero && hasGallery && hasLogo);
+
+            window.__RIFAPLUS_PUBLIC_SHELL_BOOT__ = {
+                page: 'index',
+                enabled: shouldBoot
+            };
+
+            if (shouldBoot) {
+                document.documentElement.classList.add('rifaplus-shell-boot');
+            }
+        })();
+    </script>
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" as="style">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" media="print" data-deferred-style="true">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"></noscript>
@@ -288,7 +307,7 @@
         })();
     </script>
 </head>
-<body class="rifaplus-shell-loading" aria-busy="true">
+<body>
     <div class="rifaplus-shell-overlay rifaplus-shell-overlay--logo-only" id="rifaplusPublicShell" role="status" aria-live="polite" aria-label="Cargando">
         <div class="rifaplus-shell-card">
             <div class="rifaplus-shell-logo-frame">
@@ -364,7 +383,7 @@
     <section class="carrusel-section" aria-label="Galería de imágenes del premio">
         <div class="container">
             <div class="carrusel">
-                <div class="carrusel-inner">
+                <div class="carrusel-inner is-loading">
                     <script>
                         (function() {
                             const imagenInicial = Array.isArray(window.__RIFAPLUS_CACHED_GALERIA__) && window.__RIFAPLUS_CACHED_GALERIA__.length > 0
@@ -388,7 +407,7 @@
 
                             document.write(
                                 '<div class="carrusel-item active" data-rifaplus-cached-slide="true">' +
-                                    '<img src="' + src + '" alt="' + alt + '" loading="eager" fetchpriority="high" decoding="async">' +
+                                    '<img src="' + src + '" alt="' + alt + '" loading="eager" fetchpriority="high" decoding="async" onload="this.closest(\\'.carrusel-inner\\')?.classList.remove(\\'is-loading\\')" onerror="this.closest(\\'.carrusel-inner\\')?.classList.remove(\\'is-loading\\')">' +
                                 '</div>'
                             );
                         })();

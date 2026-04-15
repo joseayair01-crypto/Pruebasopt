@@ -1444,6 +1444,19 @@ body.rifaplus-logo-ready .logo-circle img[data-dynamic-logo="true"] {
         radial-gradient(circle at center, rgba(255, 255, 255, 0.98) 0%, rgba(243, 246, 249, 0.96) 62%, rgba(229, 234, 240, 0.92) 100%);
 }
 
+.carrusel-inner.is-loading::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    background:
+        linear-gradient(110deg, rgba(255, 255, 255, 0) 18%, rgba(255, 255, 255, 0.55) 38%, rgba(255, 255, 255, 0) 58%),
+        radial-gradient(circle at center, rgba(255, 255, 255, 0.88) 0%, rgba(238, 243, 247, 0.92) 100%);
+    background-size: 220% 100%, 100% 100%;
+    animation: rifaplusCarruselSkeleton 1.2s linear infinite;
+}
+
 .carrusel.carrusel--vertical-active .carrusel-inner {
     height: clamp(560px, 76vw, 980px);
 }
@@ -1473,11 +1486,22 @@ body.rifaplus-logo-ready .logo-circle img[data-dynamic-logo="true"] {
     height: 100%;
     object-fit: contain;
     display: block;
+    color: transparent;
+    font-size: 0;
     background: transparent;
     padding: clamp(0.5rem, 1vw, 1rem);
     transform: scale(1.03);
     transform-origin: center;
     filter: drop-shadow(0 24px 38px rgba(15, 23, 42, 0.18));
+}
+
+@keyframes rifaplusCarruselSkeleton {
+    from {
+        background-position: 200% 0, 0 0;
+    }
+    to {
+        background-position: -20% 0, 0 0;
+    }
 }
 
 .carrusel-prev,
@@ -11148,11 +11172,27 @@ body.modal-scroll-locked {
 
 /* ===== SHELL DE CARGA INICIAL PARA PÁGINAS PÚBLICAS ===== */
 
+html.rifaplus-shell-boot body {
+    overflow: hidden;
+}
+
+html.rifaplus-shell-boot body > :not(.rifaplus-shell-overlay) {
+    visibility: hidden;
+}
+
 body.rifaplus-shell-active {
     overflow: hidden;
 }
 
 body.rifaplus-shell-active > :not(.rifaplus-shell-overlay) {
+    visibility: hidden;
+}
+
+body.rifaplus-shell-loading {
+    overflow: hidden;
+}
+
+body.rifaplus-shell-loading > :not(.rifaplus-shell-overlay) {
     visibility: hidden;
 }
 
@@ -11170,6 +11210,16 @@ body.rifaplus-shell-active > :not(.rifaplus-shell-overlay) {
     opacity: 0;
     visibility: hidden;
     transition: opacity 240ms ease, visibility 240ms ease;
+}
+
+body.rifaplus-shell-loading .rifaplus-shell-overlay {
+    opacity: 1;
+    visibility: visible;
+}
+
+html.rifaplus-shell-boot body .rifaplus-shell-overlay {
+    opacity: 1;
+    visibility: visible;
 }
 
 .rifaplus-shell-overlay[hidden] {
