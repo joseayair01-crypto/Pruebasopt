@@ -34,6 +34,34 @@
         return !/tu-dominio\.com/i.test(url);
     }
 
+    function normalizarMarcaAdmin(valor) {
+        const texto = String(valor || '').trim();
+        if (!texto) return '';
+        if (/^(aqui va|aquí va)/i.test(texto)) return '';
+
+        return texto
+            .replace(/^sorteos?\s+/i, '')
+            .replace(/\s+-\s+admin$/i, '')
+            .trim();
+    }
+
+    function obtenerMarcaAdmin(config) {
+        const cliente = config?.cliente || {};
+        const candidatos = [
+            cliente.id,
+            cliente.nombre,
+            cliente.eslogan,
+            'SaDev'
+        ];
+
+        for (const candidato of candidatos) {
+            const marca = normalizarMarcaAdmin(candidato);
+            if (marca) return marca;
+        }
+
+        return 'SaDev';
+    }
+
     function resolverAliasRutaSeo(ruta = '/') {
         const rutaNormalizada = String(ruta || '/')
             .split('?')[0]
@@ -50,7 +78,9 @@
             '/admin-dashboard': 'admin-dashboard',
             '/admin-configuracion': 'admin-configuracion',
             '/admin-ordenes': 'admin-ordenes',
-            '/admin-boletos': 'admin-boletos'
+            '/admin-boletos': 'admin-boletos',
+            '/admin-ayuda': 'admin-ayuda',
+            '/admin-ruletazo': 'admin-ruletazo'
         };
 
         return mapaAlias[rutaNormalizada] || rutaNormalizada.replace(/^\/+/, '') || 'inicio';
@@ -70,6 +100,7 @@
         const nombreSorteo = String(rifa.nombreSorteo || '').trim();
         const nombreCliente = String(cliente.nombre || '').trim();
         const aliasRuta = resolverAliasRutaSeo(window.location.pathname || '/');
+        const marcaAdmin = obtenerMarcaAdmin(config);
         const seoPagina = obtenerSeoPaginaConfig(seo, aliasRuta);
         const tituloPagina =
             seoPagina.title ||
@@ -84,12 +115,16 @@
         const tituloCliente = [nombreSorteo, nombreCliente].filter(Boolean).join(' | ');
         const tituloBase = tituloCliente || nombreSorteo || nombreCliente || String(fallbackTitle || document.title || 'Sorteos').trim();
 
-        if (tituloPagina) {
+        if (tituloPagina && !aliasRuta.startsWith('admin-')) {
             return tituloPagina;
         }
 
-        if (esTextoSeoConfiable(tituloSeoGlobal)) {
+        if (esTextoSeoConfiable(tituloSeoGlobal) && !aliasRuta.startsWith('admin-')) {
             return tituloSeoGlobal;
+        }
+
+        if (aliasRuta.startsWith('admin-')) {
+            return `Panel Admin - ${marcaAdmin}`;
         }
 
         switch (aliasRuta) {
@@ -103,14 +138,6 @@
                 return `Ayuda y preguntas frecuentes${nombreCliente ? ` | ${nombreCliente}` : ''}`;
             case 'cuentas-pago':
                 return `Cuentas y medios de pago${nombreCliente ? ` | ${nombreCliente}` : ''}`;
-            case 'admin-dashboard':
-                return `Panel administrativo${nombreCliente ? ` | ${nombreCliente}` : ''}`;
-            case 'admin-configuracion':
-                return `Configuracion administrativa${nombreCliente ? ` | ${nombreCliente}` : ''}`;
-            case 'admin-ordenes':
-                return `Ordenes y comprobantes${nombreCliente ? ` | ${nombreCliente}` : ''}`;
-            case 'admin-boletos':
-                return `Control de boletos${nombreCliente ? ` | ${nombreCliente}` : ''}`;
             case 'inicio':
             default:
                 return tituloBase;

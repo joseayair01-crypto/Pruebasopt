@@ -577,11 +577,21 @@ function construirTemaNormalizado(temaRaw = {}) {
  * @param {Object} rifa - Datos de la rifa
  */
 function updatePageTitle(cliente, rifa) {
-    const tituloResuelto = typeof window.rifaplusResolverTituloPagina === 'function'
-        ? window.rifaplusResolverTituloPagina(window.rifaplusConfig || { cliente, rifa })
-        : (rifa && rifa.nombreSorteo)
-            ? rifa.nombreSorteo
-            : (cliente && cliente.nombre) || document.title;
+    const rutaActual = String(window.location.pathname || '').toLowerCase();
+    const esRutaAdmin = /\/admin(?:-|\/|$)/.test(rutaActual);
+    const marcaAdmin = String(cliente?.id || cliente?.nombre || cliente?.eslogan || 'SaDev')
+        .replace(/^(aqui va|aquí va)/i, '')
+        .replace(/^sorteos?\s+/i, '')
+        .replace(/\s+-\s+admin$/i, '')
+        .trim() || 'SaDev';
+
+    const tituloResuelto = esRutaAdmin
+        ? `Panel Admin - ${marcaAdmin}`
+        : typeof window.rifaplusResolverTituloPagina === 'function'
+            ? window.rifaplusResolverTituloPagina(window.rifaplusConfig || { cliente, rifa })
+            : (rifa && rifa.nombreSorteo)
+                ? rifa.nombreSorteo
+                : (cliente && cliente.nombre) || document.title;
 
     if (tituloResuelto) {
         document.title = tituloResuelto;

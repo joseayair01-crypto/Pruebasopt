@@ -1306,6 +1306,8 @@ function resolverAliasRutaSeo(ruta = '/') {
     if (limpia === '/admin-configuracion' || limpia === '/admin-configuracion.html') return 'admin-configuracion';
     if (limpia === '/admin-ordenes' || limpia === '/admin-ordenes.html') return 'admin-ordenes';
     if (limpia === '/admin-boletos' || limpia === '/admin-boletos.html') return 'admin-boletos';
+    if (limpia === '/admin-ayuda' || limpia === '/admin-ayuda.html') return 'admin-ayuda';
+    if (limpia === '/admin-ruletazo' || limpia === '/admin-ruletazo.html') return 'admin-ruletazo';
 
     return '';
 }
@@ -1361,6 +1363,11 @@ function construirSeoPorRuta(config = {}, ruta = '/', baseUrl = '') {
     const precioFormateado = formatearPrecioSeo(rifa.precioBoleto);
     const nombreSorteo = String(rifa.nombreSorteo || '').trim();
     const nombreCliente = String(cliente.nombre || '').trim();
+    const marcaAdmin = String(cliente.id || cliente.nombre || cliente.eslogan || 'SaDev')
+        .replace(/^(aqui va|aquí va)/i, '')
+        .replace(/^sorteos?\s+/i, '')
+        .replace(/\s+-\s+admin$/i, '')
+        .trim() || 'SaDev';
     const descripcionRifa = String(rifa.descripcion || '').replace(/\s+/g, ' ').trim();
     const tituloBase = seo.title || seo.titulo || nombreSorteo || nombreCliente || 'Sorteos';
     const descripcionBase = seo.description || seo.descripcion || descripcionRifa || `Participa en ${nombreSorteo || 'nuestro sorteo'}.`;
@@ -1401,20 +1408,28 @@ function construirSeoPorRuta(config = {}, ruta = '/', baseUrl = '') {
                 : 'Consulta las cuentas oficiales y medios de pago del sorteo activo.'
         },
         'admin-dashboard': {
-            title: `Panel administrativo${nombreCliente ? ` | ${nombreCliente}` : ''}`,
+            title: `Panel Admin - ${marcaAdmin}`,
             description: `Panel de control del sorteo${nombreSorteo ? ` ${nombreSorteo}` : ''}.`
         },
         'admin-configuracion': {
-            title: `Configuracion administrativa${nombreCliente ? ` | ${nombreCliente}` : ''}`,
+            title: `Panel Admin - ${marcaAdmin}`,
             description: `Configuracion general del sorteo${nombreSorteo ? ` ${nombreSorteo}` : ''}.`
         },
         'admin-ordenes': {
-            title: `Ordenes y comprobantes${nombreCliente ? ` | ${nombreCliente}` : ''}`,
+            title: `Panel Admin - ${marcaAdmin}`,
             description: `Gestion administrativa de ordenes${nombreSorteo ? ` para ${nombreSorteo}` : ''}.`
         },
         'admin-boletos': {
-            title: `Control de boletos${nombreCliente ? ` | ${nombreCliente}` : ''}`,
+            title: `Panel Admin - ${marcaAdmin}`,
             description: `Gestion administrativa de boletos${nombreSorteo ? ` para ${nombreSorteo}` : ''}.`
+        },
+        'admin-ayuda': {
+            title: `Panel Admin - ${marcaAdmin}`,
+            description: `Ayuda administrativa del sorteo${nombreSorteo ? ` ${nombreSorteo}` : ''}.`
+        },
+        'admin-ruletazo': {
+            title: `Panel Admin - ${marcaAdmin}`,
+            description: `Control administrativo del ruletazo${nombreSorteo ? ` de ${nombreSorteo}` : ''}.`
         }
     };
 
