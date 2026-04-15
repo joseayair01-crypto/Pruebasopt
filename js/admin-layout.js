@@ -66,23 +66,6 @@ const ADMIN_LAYOUT = {
         return 'SaDev';
     },
 
-    obtenerTituloAdmin(baseTitle, marcaAdmin) {
-        const limpio = String(baseTitle || '').trim();
-        const genericos = new Set([
-            '',
-            'panel admin',
-            'panel administrativo',
-            'admin',
-            'dashboard'
-        ]);
-
-        if (genericos.has(limpio.toLowerCase())) {
-            return `Panel Admin - ${marcaAdmin}`;
-        }
-
-        return `${limpio} - Panel Admin - ${marcaAdmin}`;
-    },
-
     esPaginaLoginAdmin() {
         const rawPath = window.location.pathname || '';
         const paginaActual = rawPath.split('/').pop() || 'admin-dashboard.html';
@@ -261,18 +244,11 @@ const ADMIN_LAYOUT = {
             dashboardLogo.alt = `Logo de ${nombreCliente}`;
         }
 
-        this.configurarMetadatosBranding(nombreCliente, marcaAdmin, logoCliente);
+        this.configurarMetadatosBranding(marcaAdmin, logoCliente, nombreCliente);
     },
 
-    configurarMetadatosBranding(nombreCliente, marcaAdmin, logoCliente) {
-        const tituloActual = String(document.title || '').trim();
-        const baseTitle = tituloActual
-            .replace(/\s*[-|]\s*Panel Admin\s*[-|]\s*.*$/i, '')
-            .replace(/\s*[-|]\s*SaDev\s*$/i, '')
-            .replace(/\s*[-|]\s*.*$/, '')
-            .trim() || 'Panel Admin';
-
-        document.title = this.obtenerTituloAdmin(baseTitle, marcaAdmin);
+    configurarMetadatosBranding(marcaAdmin, logoCliente, nombreCliente) {
+        document.title = `Panel Admin - ${marcaAdmin}`;
 
         document.querySelectorAll('link[rel="icon"], link[rel="apple-touch-icon"], link[rel="preload"][as="image"]').forEach((link) => {
             link.href = logoCliente;
